@@ -51,7 +51,7 @@ fn main() {
 
     let code_enum_brace = "pub enum Color {pub x:int,y:float, z:str};";
     let code_enum_indent = "enum Color {x:int,y:float,z:str}\n";
-
+    //
 
     let code_func_braces = "pub fn add(x: int, y: int) -> int {\
     let mut result = x + y;\
@@ -70,7 +70,7 @@ fn main() {
 
     let code_func_braces2 = r#"fn add(x: int, y: int) -> int {return x + y};"#;
 
-    let code_func_braces3 = "fn add() ->int{return 5};";
+    let code_func_braces3 = "pub fn add() ->int{return 5};";
 
 
     let code_func_call_braces = "let sum:int = add(5, 10);";
@@ -222,9 +222,19 @@ else:
 "#;
     let code_test18 = r#"counter: loop {print("infini");x += 1;if x > 10 {break;}}"#;
 
-    let code_test19 = r#"1>=5"#;
+    let code_test19 = r#"1..5"#;
     let code_test20 = r#"use std.io::{Read as R, Write as W}"#;
 
+    let code_test21 = r#"class MyClass:
+    pub let x: int
+    let y: str
+    fn do_something() -> int:
+        return self.x + 1 "#;
+
+
+    let code_test22 = r#"class(classe){let x:int fn do_something() ->int{return x + 1}}"#;
+
+    let code_test23 = r#"fn add(x:int)->int{return x+1};"#;
 
 
 
@@ -234,7 +244,8 @@ else:
 
 
 
-    let mut lexer = Lexer::new(code_test19, SyntaxMode::Indentation);
+
+    let mut lexer = Lexer::new(code_source, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -243,7 +254,7 @@ else:
     }
     println!("\n");
 
-    let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
     // while !parser.is_at_end() {
     //     match parser.parse_declaration() {
@@ -258,8 +269,8 @@ else:
     //     }
     // }
 
-    // println!("Parsing terminé\n");
-    // println!("Sinon, Parsing des Statement \n");
+    println!("Parsing terminé\n");
+    println!("Sinon, Parsing des Statement \n");
 
 
 

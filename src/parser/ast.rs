@@ -147,8 +147,8 @@ pub enum CompoundOperator{
 #[allow(dead_code)]
 #[derive(Debug, Clone,PartialEq,Eq)]
 pub struct GenericType{
-    pub base: String,           // Nom du type
-    pub parameters: Vec<Type>, //   Paramètres génériques
+    pub base: String,           // Nom du type  "foo"
+    pub type_parameters: Vec<Type>, //   Paramètres génériques <T,U>
 }
 
 #[allow(dead_code)]
@@ -225,10 +225,30 @@ pub struct ClassDeclaration {
     pub name: String,
     pub parent_classes: Vec<String>,
     pub attributes: Vec<Attribute>,
-    pub constructor: Option<Constructor>,
-    pub methods: Vec<FunctionDeclaration>,
+    // pub constructor: Option<Constructor>,
+    pub methods: Vec<MethodeDeclaration>,
+    // pub body: Vec<ClassMember>,
     pub visibility: Visibility,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum ClassMember {
+    Method(FunctionDeclaration),
+    Attribute(Attribute),
+    Constructor(Constructor),
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct MethodeDeclaration {
+    pub name: String,
+    pub parameters: Vec<Parameter>,
+    pub return_type: Option<Type>,
+    pub body: Vec<ASTNode>,
+    pub visibility: Visibility,
+}
+
 
 
 #[allow(dead_code)]
@@ -244,6 +264,11 @@ pub struct Parameter{
 pub struct Attribute {
     pub name: String,
     pub attr_type: Type,
+    pub visibility: Visibility,
+    pub mutability: Mutability,
+    // pub value: Option<Expression>,
+
+
     // pub mutable: bool,
     // pub default_value: Option<Expression>,
 }

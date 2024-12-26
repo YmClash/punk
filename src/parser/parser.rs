@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, FunctionSignature, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, ModuleImportStatement, Mutability, Operator, Parameter, Parameters, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, FunctionSignature, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Parameters, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -157,10 +157,11 @@ impl Parser {
 
 
     pub fn parse_statement(&mut self) -> Result<ASTNode, ParserError> {
+        let visibility = self.parse_visibility();
 
         /// Cas particulier : pour la gestion de label dans les statements
         /// l'utilisation de label est optionnelle et est de souhaite restreinte a etre utilise
-        /// que pour les boucles LOOP
+        /// que pour les boucles loop
         if let Some(current) = self.peek_token() {
             if let Some(next) = self.peek_next_token() {
                 if matches!(current.token_type, TokenType::IDENTIFIER { .. }) &&
@@ -204,6 +205,9 @@ impl Parser {
             self.consume_seperator();
             Ok(ASTNode::Statement(Statement::Continue))
             //self.parse_continue_statement()
+        }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_function_declaration(visibility)
         }else {
             self.parse_expression_statement()
         }
@@ -453,13 +457,13 @@ impl Parser {
                     self.advance(); // Consomme le token
                     Expression::Literal(Literal::Boolean(false))
                 }
-
-                TokenType::KEYWORD(Keywords::SELF) =>{
-                    self.advance();
-                    let name = "self".to_string();
-                    Expression::Identifier(name)
-
-                }
+                // SELF   pour les methode d'instantiation dans class declaration
+                // TokenType::KEYWORD(Keywords::SELF) =>{
+                //     self.advance();
+                //     let name = "self".to_string();
+                //     Expression::Identifier(name)
+                //
+                // }
 
                 TokenType::IDENTIFIER { name } => {
                     let name = name.clone();
@@ -742,8 +746,8 @@ impl Parser {
             self.parse_variable_declaration()
         } else if self.check(&[TokenType::KEYWORD(Keywords::CONST)]) {
             self.parse_const_declaration(visibility)
-        } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-            self.parse_function_declaration(visibility)
+        // } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+        //     self.parse_function_declaration(visibility)
         } else if self.check(&[TokenType::KEYWORD(Keywords::STRUCT)]) {
             self.parse_struct_declaration(visibility)
         } else if self.check(&[TokenType::KEYWORD(Keywords::ENUM)]) {
@@ -927,12 +931,145 @@ impl Parser {
     }
 
     fn parse_class_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
-        todo!()
+        println!("Début du parsing de la déclaration de classe");
+        self.consume(TokenType::KEYWORD(Keywords::CLASS))?;
+
+        let name = self.consume_identifier()?;
+        println!("Nom de la classe parsé : {}", name);
+        let parent_classes = self.parse_class_inheritance()?;
+
+        match self.syntax_mode{
+            SyntaxMode::Indentation => self.consume(TokenType::DELIMITER(Delimiters::COLON))?,
+            SyntaxMode::Braces => self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?,
+        }
+
+        let (attributes ,methods)= self.parse_class_body()?;
+
+        println!("Attributs de la classe parsés : {:?} et {:?}", attributes,methods);
+
+        Ok(ASTNode::Declaration(Declaration::Class(ClassDeclaration{
+            name,
+            parent_classes,
+            attributes,
+            methods,
+            visibility,
+
+        })))
+
+    }
+    fn parse_class_inheritance(&mut self) -> Result<Vec<String>,ParserError>{
+        let mut parent_classes = Vec::new();
+        if self.match_token(&[TokenType::DELIMITER(Delimiters::LPAR)]){
+            self.advance();
+            loop {
+                let parent = self.consume_identifier()?;
+                parent_classes.push(parent.clone());
+                if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+                    break;
+                }
+                self.advance();
+            }
+            self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+        }
+        println!("Classes parentes parsées : {:?}", parent_classes);
+        Ok(parent_classes)
     }
 
-    fn parse_methode_declaration(&mut self) -> Result<ASTNode, ParserError> {
-        todo!()
+    pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>,Vec<MethodeDeclaration>), ParserError>{
+        let mut attributes = Vec::new();
+        let mut methods = Vec::new();
+
+        match self.syntax_mode{
+            SyntaxMode::Braces => {
+                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end(){
+                    if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+                        let attribute = self.parse_attribute_declaration()?;
+                        attributes.push(attribute);
+                    }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
+                        let method = self.parse_methode_declaration()?;
+                        methods.push(method);
+                    }else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                }
+                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+            }
+            SyntaxMode::Indentation => {
+                self.consume(TokenType::NEWLINE)?;
+                self.consume(TokenType::INDENT)?;
+                while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end(){
+                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
+                        let method = self.parse_methode_declaration()?;
+                        methods.push(method);
+                    }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+                        let attribute = self.parse_attribute_declaration()?;
+                        attributes.push(attribute);
+                    }else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                }
+                if !self.check(&[TokenType::DEDENT]){
+                    self.consume(TokenType::DEDENT)?;
+                }
+            }
+        }
+        Ok((attributes,methods))
+
     }
+
+
+    fn parse_attribute_declaration(&mut self) -> Result<Attribute, ParserError> {
+        println!("Début du parsing de la déclaration de méthode");
+        let visibility = self.parse_visibility()?;
+        self.consume(TokenType::KEYWORD(Keywords::LET))?;
+        let mutability = self.parse_mutability()?;
+
+        let name = self.consume_identifier()?;
+        let attribute_type = self.parse_type()?;
+        self.consume_seperator();
+        println!("Parsing de la déclaration de méthode OK!!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(Attribute{
+            name,
+            attr_type: attribute_type,
+            // value: Some(value),
+            visibility,
+            mutability
+        })
+
+    }
+    fn parse_methode_declaration(&mut self) -> Result<MethodeDeclaration,ParserError>{
+        println!("Debut du parsing de la déclaration de méthode");
+        let visibility = self.parse_visibility()?;
+
+        self.consume(TokenType::KEYWORD(Keywords::FN))?;
+
+        let name = self.consume_identifier()?;
+        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+        let parameters = self.parse_function_parameters()?;
+        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+
+        let return_type = if self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]){
+            self.parse_type()?
+        }else { Type::Infer };
+        if self.syntax_mode == SyntaxMode::Indentation{
+            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+        }
+        let body = self.parse_function_body()?;
+        self.consume_seperator();
+        println!("Fin du parsing de la déclaration de méthode OK!!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(MethodeDeclaration{
+            name,
+            parameters,
+            return_type: Some(return_type),
+            body,
+            visibility,
+        })
+    }
+
+
 
     /// fonction pour parser les types
     fn parse_type(&mut self) -> Result<Type, ParserError> {
@@ -978,10 +1115,35 @@ impl Parser {
         todo!()
     }
 
+    // fn parse_type_gen_param(&mut self) -> Result<Vec<Type>,ParserError> {
+    //     let mut params = Vec::new();
+    //
+    //     loop {
+    //         let param_type = self.parse_generic_type()?;
+    //         params.push(param_type);
+    //
+    //         if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+    //             continue;
+    //         }else { break; }
+    //     }
+    //     Ok(params)
+    // }
 
-    fn parse_generic_type(&mut self) -> Result<Type, ParserError> {
-        todo!()
-    }
+
+    // fn parse_generic_type(&mut self) -> Result<Type, ParserError> {
+    //     let base_name = self.consume_identifier()?;
+    //
+    //     if self.match_token(&[TokenType::OPERATOR(Operators::LESS)]){
+    //         let type_parameters = self.parse_type_parameters()?;
+    //         self.consume(TokenType::OPERATOR(Operators::GREATER))?;
+    //
+    //         Ok(Type::Generic(GenericType{
+    //             base: base_name,
+    //             type_parameters,
+    //         }))
+    //     }
+    //
+    // }
 
     /// fonction  pour parser la mutabilité et la visibilité
     fn parse_mutability(&mut self) -> Result<Mutability, ParserError> {
@@ -1670,7 +1832,7 @@ impl Parser {
             Operator::Range | Operator::RangeInclusive => 3,
             Operator::Equal | Operator::NotEqual => 2,
             Operator::And => 1,
-            Operator::Or => 0,
+            //Operator::Or => 0,
             _ => 0,
         }
     }
@@ -1931,6 +2093,17 @@ impl Parser {
         }
         Ok(None)
     }
+
+    // methode utilitaire pour consommer un token s'il est present
+    // sans generé d'erreur s'il n'est pas present
+    // fn consume_if(&mut self,expected:TokenType) -> bool{
+    //     if self.match_token(&[expected.clone()]){
+    //         self.advance();
+    //         true
+    //     }else { false }
+    // }
+    //
+    //
 
 
 
