@@ -27,7 +27,7 @@ fn main() {
 
 
 
-    let code_source = r#"let x = 5;const v = 100;"#;
+    let code_source = r#"let x = 5; const v = 100;"#;
 
     let code_binary = "array[0][1]";
 
@@ -232,7 +232,7 @@ else:
         return self.x + 1 "#;
 
 
-    let code_test22 = r#"class(classe){let x:int fn do_something() ->int{return x + 1}}"#;
+    let code_test22 = r#"class Myclass(classe){let x:int fn do_something() ->int{return x + 1}}"#;
 
     let code_test23 = r#"fn add(x:int)->int{return x+1};"#;
 
@@ -245,7 +245,7 @@ else:
 
 
 
-    let mut lexer = Lexer::new(code_source, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_decl_braces, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -256,33 +256,34 @@ else:
 
     let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
-    // while !parser.is_at_end() {
-    //     match parser.parse_declaration() {
-    //         Ok(ast) => {
-    //             println!("AST généré pour la déclaration :");
-    //             println!("{:#?}", ast);
-    //         }
-    //         Err(e) => {
-    //             println!("Erreur lors du parsing : {}", e);
-    //             break;
-    //         }
-    //     }
-    // }
-
-    println!("Parsing terminé\n");
-    println!("Sinon, Parsing des Statement \n");
-
-
-
-    match parser.parse_statement() {
-        Ok(ast) => {
-            println!("AST généré pour l'expression :");
-            println!("{:#?}", ast);
-        }
-        Err(e) => {
-            println!("Erreur lors du parsing : {}", e);
+    while !parser.is_at_end() {
+        match parser.parse_statement() {
+            Ok(ast) => {
+                println!("AST OK");
+                println!("AST généré pour la déclaration,l'expression ou le statement  :");
+                println!("{:#?}", ast);
+            }
+            Err(e) => {
+                println!("Erreur lors du parsing : {}", e);
+                break;
+            }
         }
     }
+
+    println!("Parsing terminé\n");
+    // println!("Sinon, Parsing des Statement \n");
+
+
+
+    // match parser.parse_statement() {
+    //     Ok(ast) => {
+    //         println!("AST généré pour l'expression :");
+    //         println!("{:#?}", ast);
+    //     }
+    //     Err(e) => {
+    //         println!("Erreur lors du parsing : {}", e);
+    //     }
+    // }
 
     println!("\n");
     println!("=========OK==========\n");

@@ -181,15 +181,35 @@ impl Parser {
         // }
 
 
-
-        if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
+        if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+            self.parse_variable_declaration()
+        }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_function_declaration(visibility)
+        }else if self.check(&[TokenType::KEYWORD(Keywords::CONST)]){
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_const_declaration(visibility)
+        }else if self.check(&[TokenType::KEYWORD(Keywords::STRUCT)]){
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_struct_declaration(visibility)
+        }else if self.check(&[TokenType::KEYWORD(Keywords::ENUM)]){
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_enum_declaration(visibility)
+        }else if self.check(&[TokenType::KEYWORD(Keywords::CLASS)]) {
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_class_declaration(visibility)
+        }else if self.check(&[TokenType::KEYWORD(Keywords::TRAIT)]) {
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_trait_declaration(visibility)
+        }else if self.check(&[TokenType::KEYWORD(Keywords::IMPL)]) {
+            let visibility = visibility.unwrap_or(Visibility::Private);
+            self.parse_impl_declaration()
+        }else if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
             self.parse_loop_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::IMPORT),TokenType::KEYWORD(Keywords::USE)]){
             self.parse_module_import_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::RETURN)]) {
             self.parse_return_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
-            self.parse_variable_declaration()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::IF)]){
             self.parse_if_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::WHILE)]) {
@@ -205,9 +225,6 @@ impl Parser {
             self.consume_seperator();
             Ok(ASTNode::Statement(Statement::Continue))
             //self.parse_continue_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_function_declaration(visibility)
         }else {
             self.parse_expression_statement()
         }
@@ -746,8 +763,8 @@ impl Parser {
             self.parse_variable_declaration()
         } else if self.check(&[TokenType::KEYWORD(Keywords::CONST)]) {
             self.parse_const_declaration(visibility)
-        // } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-        //     self.parse_function_declaration(visibility)
+        } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+            self.parse_function_declaration(visibility)
         } else if self.check(&[TokenType::KEYWORD(Keywords::STRUCT)]) {
             self.parse_struct_declaration(visibility)
         } else if self.check(&[TokenType::KEYWORD(Keywords::ENUM)]) {
