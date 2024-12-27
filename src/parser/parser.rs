@@ -204,20 +204,20 @@ impl Parser {
             self.parse_trait_declaration(visibility)
         }else if self.check(&[TokenType::KEYWORD(Keywords::IMPL)]) {
             let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_impl_declaration()
+            self.parse_impl_declaration(visibility)
         // }else if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
         //     self.parse_loop_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::IMPORT),TokenType::KEYWORD(Keywords::USE)]){
             self.parse_module_import_statement()
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::RETURN)]) {
+        }else if self.check(&[TokenType::KEYWORD(Keywords::RETURN)]) {
             self.parse_return_statement()
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::IF)]){
+        }else if self.check(&[TokenType::KEYWORD(Keywords::IF)]){
             self.parse_if_statement()
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::WHILE)]) {
+        }else if self.check(&[TokenType::KEYWORD(Keywords::WHILE)]) {
             self.parse_while_statement()
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::FOR)]) {
+        }else if self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
             self.parse_for_statement()
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::MATCH)]) {
+        }else if self.check(&[TokenType::KEYWORD(Keywords::MATCH)]) {
             self.parse_match_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::BREAK)]){
             self.consume_seperator();
@@ -758,6 +758,7 @@ impl Parser {
 
 
     /// fonction pour parser les declarations
+    // fonction tranfere a parse_statement()
 
     // pub fn parse_declaration(&mut self) -> Result<ASTNode, ParserError> {
     //     let visibility = self.parse_visibility()?;
@@ -958,7 +959,7 @@ impl Parser {
         todo!()
     }
 
-    fn parse_impl_declaration(&mut self) -> Result<ASTNode, ParserError> {
+    fn parse_impl_declaration(&mut self,visibility: Visibility) -> Result<ASTNode, ParserError> {
         todo!()
     }
 
@@ -1293,6 +1294,8 @@ impl Parser {
     /// fonction pour le gestion de structure de controle
     fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction if");
+
+        self.consume(TokenType::KEYWORD(Keywords::IF))?;
         let condition = self.parse_expression(0)?;
         //let then_block = self.parse_body_block()?;; // block_expression
         let then_block = self.parse_block()?;
@@ -1316,6 +1319,9 @@ impl Parser {
     }
     fn parse_while_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction while");
+
+        self.consume(TokenType::KEYWORD(Keywords::WHILE))?;
+
         let condition = self.parse_expression(0)?;
         let body = self.parse_body_block()?;
         println!("Fin du parsing de l'instruction while OK!!!!!!!!!!!!!!");
@@ -1344,6 +1350,9 @@ impl Parser {
 
     fn parse_for_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction for");
+
+        self.consume(TokenType::KEYWORD(Keywords::FOR))?;
+
         let iterator = self.consume_identifier()?;
         self.consume(TokenType::KEYWORD(Keywords::IN))?;
         let iterable = self.parse_expression(0)?;
@@ -1717,7 +1726,7 @@ impl Parser {
 
     fn parse_return_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction de retour");
-        //self.consume(TokenType::KEYWORD(Keywords::RETURN))?;
+        self.consume(TokenType::KEYWORD(Keywords::RETURN))?;
         let value = if !self.match_token(&[TokenType::NEWLINE, TokenType::DEDENT, TokenType::EOF]) {
             Some(self.parse_expression(0)?)
         } else {
@@ -2085,7 +2094,9 @@ impl Parser {
             }
             SyntaxMode::Braces =>{
                 println!("Braces Mode");
-                let _ = self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON));
+                if self.check(&[TokenType::DELIMITER(Delimiters::SEMICOLON)]) || self.check(&[TokenType::EOF]){
+                    let _  = self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON));
+                }
             }
         }
     }

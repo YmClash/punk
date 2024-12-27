@@ -68,7 +68,7 @@ fn main() {
         let z = result + 5
         return z"#;
 /////////////////////////////
-    let code_func_braces2 = r#"let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5}"#;
+    let code_func_braces2 = r#"match x {1 => print("one"),2 => print("two"),_ => print("other")} let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5} obj.method1().field.method2(1+2);"#;
 ////////////////////////////
     let code_func_braces3 = "pub fn add() ->int{return 5};";
 
@@ -193,7 +193,7 @@ fn main() {
     _ => print("Other")
 "#;
 
-    let code_test12 = r#"match x :1..5 => println!("entre 1 et 4"),10.. => println!("10 ou plus"),..10 => println!("moins de 10"),}"#;
+    let code_test12 = r#"match x :1..5 => println!("entre 1 et 4"),10.. => println!("10 ou plus"),..10 => println!("moins de 10")"#;
 
     let code_test13 = r#"match x :
     n if n > 0 => print("positive")
@@ -205,7 +205,7 @@ fn main() {
     let code_test14 = r#"match x {n if n > 0 => print("positive"),(x, y) => print("tuple simple"),[1, 2] => print("array simple"),_ => print("default")}"#;
 
 
-    let code_test15 = r#"if x > 0 {print("hello");}else{print("Nothing");};"#;
+    let code_test15 = r#"if x > 0 {print("hello");}else{print("Nothing");}"#;
     let code_test16 = r#"if x > 0 :
     print("hello")
 elif x < 0:
@@ -245,7 +245,7 @@ else:
 
 
 
-    let mut lexer = Lexer::new(code_func_braces2, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test14, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -259,7 +259,7 @@ else:
     while !parser.is_at_end() {
         match parser.parse_statement() {
             Ok(ast) => {
-                println!("AST OK");
+                println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 println!("AST généré pour la déclaration,l'expression ou le statement  :");
                 println!("{:#?}", ast);
             }
