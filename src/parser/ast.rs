@@ -214,6 +214,7 @@ pub struct ConstDeclaration {
 #[derive(Debug, Clone)]
 pub struct StructDeclaration {
     pub name: String,
+    // pub generic_type: Option<Vec<GenericType>>,
     pub fields: Vec<Field>,
     pub visibility: Visibility,
 

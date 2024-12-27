@@ -159,9 +159,10 @@ impl Parser {
     pub fn parse_statement(&mut self) -> Result<ASTNode, ParserError> {
         let visibility = self.parse_visibility();
 
-        /// Cas particulier : pour la gestion de label dans les statements
-        /// l'utilisation de label est optionnelle et est de souhaite restreinte a etre utilise
-        /// que pour les boucles loop
+        // Cas particulier : pour la gestion de label dans les statements
+        // l'utilisation de label est optionnelle et est de souhaite restreinte a etre utilise que pour les boucles
+
+
         if let Some(current) = self.peek_token() {
             if let Some(next) = self.peek_next_token() {
                 if matches!(current.token_type, TokenType::IDENTIFIER { .. }) &&
@@ -204,8 +205,8 @@ impl Parser {
         }else if self.check(&[TokenType::KEYWORD(Keywords::IMPL)]) {
             let visibility = visibility.unwrap_or(Visibility::Private);
             self.parse_impl_declaration()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
-            self.parse_loop_statement()
+        // }else if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
+        //     self.parse_loop_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::IMPORT),TokenType::KEYWORD(Keywords::USE)]){
             self.parse_module_import_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::RETURN)]) {
@@ -216,6 +217,8 @@ impl Parser {
             self.parse_while_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::FOR)]) {
             self.parse_for_statement()
+        }else if self.match_token(&[TokenType::KEYWORD(Keywords::MATCH)]) {
+            self.parse_match_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::BREAK)]){
             self.consume_seperator();
             Ok(ASTNode::Statement(Statement::Break))
@@ -756,29 +759,29 @@ impl Parser {
 
     /// fonction pour parser les declarations
 
-    pub fn parse_declaration(&mut self) -> Result<ASTNode, ParserError> {
-        let visibility = self.parse_visibility()?;
-
-        if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
-            self.parse_variable_declaration()
-        } else if self.check(&[TokenType::KEYWORD(Keywords::CONST)]) {
-            self.parse_const_declaration(visibility)
-        } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-            self.parse_function_declaration(visibility)
-        } else if self.check(&[TokenType::KEYWORD(Keywords::STRUCT)]) {
-            self.parse_struct_declaration(visibility)
-        } else if self.check(&[TokenType::KEYWORD(Keywords::ENUM)]) {
-            self.parse_enum_declaration(visibility)
-        } else if self.check(&[TokenType::KEYWORD(Keywords::TRAIT)]) {
-            self.parse_trait_declaration(visibility)
-        } else if self.check(&[TokenType::KEYWORD(Keywords::CLASS)]) {
-            self.parse_class_declaration(visibility)
-        } else if self.check(&[TokenType::KEYWORD(Keywords::IMPL)]) {
-            self.parse_impl_declaration()
-        } else {
-            Err(ParserError::new(ExpectedDeclaration, self.current_position()))
-        }
-    }
+    // pub fn parse_declaration(&mut self) -> Result<ASTNode, ParserError> {
+    //     let visibility = self.parse_visibility()?;
+    //
+    //     if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
+    //         self.parse_variable_declaration()
+    //     } else if self.check(&[TokenType::KEYWORD(Keywords::CONST)]) {
+    //         self.parse_const_declaration(visibility)
+    //     } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+    //         self.parse_function_declaration(visibility)
+    //     } else if self.check(&[TokenType::KEYWORD(Keywords::STRUCT)]) {
+    //         self.parse_struct_declaration(visibility)
+    //     } else if self.check(&[TokenType::KEYWORD(Keywords::ENUM)]) {
+    //         self.parse_enum_declaration(visibility)
+    //     } else if self.check(&[TokenType::KEYWORD(Keywords::TRAIT)]) {
+    //         self.parse_trait_declaration(visibility)
+    //     } else if self.check(&[TokenType::KEYWORD(Keywords::CLASS)]) {
+    //         self.parse_class_declaration(visibility)
+    //     } else if self.check(&[TokenType::KEYWORD(Keywords::IMPL)]) {
+    //         self.parse_impl_declaration()
+    //     } else {
+    //         Err(ParserError::new(ExpectedDeclaration, self.current_position()))
+    //     }
+    // }
 
 
     /// fonction pour parser les déclarations de variables
@@ -881,7 +884,7 @@ impl Parser {
 
         let body = self.parse_function_body()?;
 
-        self.consume_seperator();
+        // self.consume_seperator();  plus de ; apres une fonction
 
         Ok(ASTNode::Declaration(Declaration::Function(FunctionDeclaration {
             name,
@@ -899,15 +902,27 @@ impl Parser {
         self.consume(TokenType::KEYWORD(Keywords::STRUCT))?;
         let name = self.consume_identifier()?;
         println!("Nom de la structure parsé : {}", name);
+
+        // // on vas implementer le type generique si on as un <
+        // let generic_type = if self.match_token(&[TokenType::OPERATOR(Operators::LESS)]){
+        //     self.parse_gen_type_param()?;
+        // }else {
+        //     vec![]
+        //
+        // };
+
+
+
         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
 
         let fields = self.parse_struct_fields()?;
         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
 
-        self.consume_seperator();
+        // self.consume_seperator();
 
         Ok(ASTNode::Declaration(Declaration::Structure(StructDeclaration{
             name,
+            // generic_type,
             fields,
             visibility,
         })))
@@ -923,9 +938,9 @@ impl Parser {
         let variantes = self.parse_enum_variantes()?;
         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
 
-        self.consume_seperator();
+        // self.consume_seperator();
 
-        println!("Variantes d'énumération parsées");
+        println!("Variantes d'énumération parsées OK!!!!!!!!!!!!!!!!!!!!!!");
         Ok(ASTNode::Declaration(Declaration::Enum(EnumDeclaration{
             name,
             variantes,
@@ -1132,11 +1147,11 @@ impl Parser {
         todo!()
     }
 
-    // fn parse_type_gen_param(&mut self) -> Result<Vec<Type>,ParserError> {
+    // fn parse_gen_type_param(&mut self) -> Result<Vec<String>,ParserError> {
     //     let mut params = Vec::new();
     //
     //     loop {
-    //         let param_type = self.parse_generic_type()?;
+    //         let param_type = self.consume_identifier()?;
     //         params.push(param_type);
     //
     //         if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
@@ -1145,9 +1160,9 @@ impl Parser {
     //     }
     //     Ok(params)
     // }
-
-
-    // fn parse_generic_type(&mut self) -> Result<Type, ParserError> {
+    //
+    //
+    // fn parse_generic_type(&mut self) -> Result<GenericType, ParserError> {
     //     let base_name = self.consume_identifier()?;
     //
     //     if self.match_token(&[TokenType::OPERATOR(Operators::LESS)]){

@@ -55,7 +55,7 @@ fn main() {
 
     let code_func_braces = "pub fn add(x: int, y: int) -> int {\
     let mut result = x + y;\
-    return result};";
+    return result}";
 
     let code_func_indent =
         r#"pub fn add(x: int, y: int) -> int:
@@ -67,9 +67,9 @@ fn main() {
         let mut result = x + y
         let z = result + 5
         return z"#;
-
-    let code_func_braces2 = r#"fn add(x: int, y: int) -> int {return x + y};"#;
-
+/////////////////////////////
+    let code_func_braces2 = r#"let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5}"#;
+////////////////////////////
     let code_func_braces3 = "pub fn add() ->int{return 5};";
 
 
@@ -223,7 +223,7 @@ else:
     let code_test18 = r#"counter: loop {print("infini");x += 1;if x > 10 {break;}}"#;
 
     let code_test19 = r#"1..5"#;
-    let code_test20 = r#"use std.io::{Read as R, Write as W}"#;
+    let code_test20 = r#"use std.io::{Read as R, Write as W};"#;
 
     let code_test21 = r#"class MyClass:
     pub let x: int
@@ -232,7 +232,7 @@ else:
         return self.x + 1 "#;
 
 
-    let code_test22 = r#"class Myclass(classe){let x:int fn do_something() ->int{return x + 1}}"#;
+    let code_test22 = r#"class Myclass(classe){let x:int fn do_something() ->int{return self.x + 1};}"#;
 
     let code_test23 = r#"fn add(x:int)->int{return x+1};"#;
 
@@ -245,7 +245,7 @@ else:
 
 
 
-    let mut lexer = Lexer::new(code_decl_braces, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_func_braces2, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
