@@ -278,7 +278,7 @@ pub struct Attribute {
 #[derive(Debug, Clone)]
 pub struct Constructor { // Keyword  pour  le constructeur serai def  et le methods  utiliserai fn
     pub name: String,       //  def init (self, parameters) init est le nom du constructeur par defaut
-    pub parameters: Vec<Attribute>,
+    pub parameters: Vec<Parameter>,
     pub body: Block,
 }
 

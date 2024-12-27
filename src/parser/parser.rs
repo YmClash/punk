@@ -478,12 +478,12 @@ impl Parser {
                     Expression::Literal(Literal::Boolean(false))
                 }
                 // SELF   pour les methode d'instantiation dans class declaration
-                // TokenType::KEYWORD(Keywords::SELF) =>{
-                //     self.advance();
-                //     let name = "self".to_string();
-                //     Expression::Identifier(name)
-                //
-                // }
+                TokenType::KEYWORD(Keywords::SELF) =>{
+                    self.advance();
+                    let name = "self".to_string();
+                    Expression::Identifier(name)
+
+                }
 
                 TokenType::IDENTIFIER { name } => {
                     let name = name.clone();
@@ -992,15 +992,14 @@ impl Parser {
     }
     fn parse_class_inheritance(&mut self) -> Result<Vec<String>,ParserError>{
         let mut parent_classes = Vec::new();
-        if self.match_token(&[TokenType::DELIMITER(Delimiters::LPAR)]){
-            self.advance();
+        if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
+            self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
             loop {
                 let parent = self.consume_identifier()?;
                 parent_classes.push(parent.clone());
                 if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
                     break;
                 }
-                self.advance();
             }
             self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
         }
@@ -1014,7 +1013,7 @@ impl Parser {
 
         match self.syntax_mode{
             SyntaxMode::Braces => {
-                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+                // self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
                 while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end(){
                     if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
                         let attribute = self.parse_attribute_declaration()?;
@@ -1059,6 +1058,7 @@ impl Parser {
         let mutability = self.parse_mutability()?;
 
         let name = self.consume_identifier()?;
+        self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
         let attribute_type = self.parse_type()?;
         self.consume_seperator();
         println!("Parsing de la déclaration de méthode OK!!!!!!!!!!!!!!!!!!!!!!!");
