@@ -226,7 +226,7 @@ pub struct ClassDeclaration {
     pub name: String,
     pub parent_classes: Vec<String>,
     pub attributes: Vec<Attribute>,
-    // pub constructor: Option<Constructor>,
+    pub constructor: Option<Constructor>,
     pub methods: Vec<MethodeDeclaration>,
     // pub body: Vec<ClassMember>,
     pub visibility: Visibility,
@@ -279,7 +279,7 @@ pub struct Attribute {
 pub struct Constructor { // Keyword  pour  le constructeur serai def  et le methods  utiliserai fn
     pub name: String,       //  def init (self, parameters) init est le nom du constructeur par defaut
     pub parameters: Vec<Parameter>,
-    pub body: Block,
+    pub body: Vec<ASTNode>,
 }
 
 #[allow(dead_code)]

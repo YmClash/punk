@@ -3,7 +3,7 @@ use crate::lexer::lex::{SyntaxMode, Token};
 
 use crate::parser::ast::{ArrayRest, Assignment, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, FunctionSignature, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Parameters, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
 
-use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator};
+use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
 
@@ -968,7 +968,9 @@ impl Parser {
         self.consume(TokenType::KEYWORD(Keywords::CLASS))?;
 
         let name = self.consume_identifier()?;
+
         println!("Nom de la classe parsé : {}", name);
+
         let parent_classes = self.parse_class_inheritance()?;
 
         match self.syntax_mode{
@@ -976,7 +978,7 @@ impl Parser {
             SyntaxMode::Braces => self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?,
         }
 
-        let (attributes ,methods)= self.parse_class_body()?;
+        let (attributes ,methods,constructor)= self.parse_class_body()?;
 
         println!("Attributs de la classe parsés : {:?} et {:?}", attributes,methods);
 
@@ -984,6 +986,7 @@ impl Parser {
             name,
             parent_classes,
             attributes,
+            constructor,
             methods,
             visibility,
 
@@ -1007,20 +1010,28 @@ impl Parser {
         Ok(parent_classes)
     }
 
-    pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>,Vec<MethodeDeclaration>), ParserError>{
+    pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>,Vec<MethodeDeclaration>,Option<Constructor>), ParserError>{
         let mut attributes = Vec::new();
         let mut methods = Vec::new();
+        let mut constructor = None;
 
         match self.syntax_mode{
             SyntaxMode::Braces => {
                 // self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
                 while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end(){
-                    if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
-                        let attribute = self.parse_attribute_declaration()?;
-                        attributes.push(attribute);
+                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
+                        if constructor.is_some(){
+                            return Err(ParserError::new(MultipleConstructors, self.current_position()));
+                        }
+                        let mut constructor = self.parse_constructor_declaration()?;
+                        constructor = Some(constructor);
+
                     }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
                         let method = self.parse_methode_declaration()?;
                         methods.push(method);
+                    }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+                        let attribute = self.parse_attribute_declaration()?;
+                        attributes.push(attribute);
                     }else {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
@@ -1031,7 +1042,13 @@ impl Parser {
                 self.consume(TokenType::NEWLINE)?;
                 self.consume(TokenType::INDENT)?;
                 while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end(){
-                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
+                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
+                        if constructor.is_some(){
+                            return Err(ParserError::new(MultipleConstructors, self.current_position()));
+                        }
+                        let mut constructor = self.parse_constructor_declaration()?;
+                        constructor = Some(constructor);
+                    }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
                         let method = self.parse_methode_declaration()?;
                         methods.push(method);
                     }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
@@ -1046,7 +1063,72 @@ impl Parser {
                 }
             }
         }
-        Ok((attributes,methods))
+        Ok((attributes,methods,constructor))
+
+    }
+
+
+    // fn parse_constructor_declaration(&mut self) -> Result<Constructor, ParserError> {
+    //     // Consomme le mot-clé `def`
+    //     self.consume(TokenType::KEYWORD(Keywords::DEF))?;
+    //
+    //     // On attend que le nom soit `init` (ou un identifiant si vous autorisez d’autres noms)
+    //     let constructor_name = self.consume_identifier()?;
+    //     if constructor_name != "init" {
+    //         return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //     }
+    //
+    //     // Lire les paramètres (par ex. `(x: int, y: int)`)
+    //     self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+    //     let parameters = self.parse_function_parameters()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //
+    //     // Optionnel : un `->` ?
+    //     // self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]) { ... }
+    //
+    //     // Lire le bloc (ou indentation)
+    //     if self.syntax_mode == SyntaxMode::Braces {
+    //         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //         // lire tout le bloc
+    //         let body = self.parse_block()?;
+    //         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //         // Retourne un `Constructor`
+    //         Ok(Constructor {
+    //             name: constructor_name,
+    //             parameters,
+    //             body,
+    //         })
+    //     } else {
+    //         // Mode Indentation
+    //         // ...
+    //         todo!()
+    //     }
+    // }
+
+    fn parse_constructor_declaration(&mut self) -> Result<Constructor,ParserError>{
+        println!("Debut du parsing du constructeur");
+        self.consume(TokenType::KEYWORD(Keywords::DEF))?;
+        let constructor_name = self.consume_identifier()?;
+        if constructor_name != "init"{
+            return Err(ParserError::new(UnexpectedToken, self.current_position()));
+        }
+        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+        let parameters = self.parse_function_parameters()?;
+        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+
+        // self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]){
+        //
+        // };
+
+        let body = self.parse_block()?;
+
+        println!("Fin du parsing du constructeur OK!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(Constructor{
+            name: constructor_name,
+            parameters,
+            body,
+        })
 
     }
 

@@ -236,6 +236,7 @@ else:
 
     let code_test23 = r#"fn add(x:int)->int{return x+1}"#;
 
+    let code_test24 = r#"class Myclass(parent){def init(x: int, y: int) {self.x = x ,self.y = y }fn do_something() -> int {return self.x + 1}}"#;
 
 
 
@@ -245,7 +246,9 @@ else:
 
 
 
-    let mut lexer = Lexer::new(code_test22, SyntaxMode::Braces);
+
+
+    let mut lexer = Lexer::new(code_test24, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
