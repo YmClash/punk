@@ -1001,7 +1001,7 @@ impl Parser {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
                 }
-                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?; // Consomme explicitement la '}'
             },
             SyntaxMode::Indentation => {
                 self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
@@ -1016,13 +1016,12 @@ impl Parser {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
                 }
-                self.consume(TokenType::DEDENT)?;
 
             }
         }
 
         // self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-        self.consume_seperator();
+        // self.consume_seperator();
 
 
         println!("Parsing des Trait OK!!!!!!!!!!!!!!!!!!!!!!");
