@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::lexer::lex::Token;
 use crate::parser::parser_error::ParserError;
 use crate::SyntaxMode;
@@ -294,16 +295,17 @@ pub struct EnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: String,
-    pub method_signatures: Vec<FunctionSignature>,
-    pub public_access: bool, // pub
+    pub method_signatures: Vec<TraitMethodSignature>,
+    pub visibility: Visibility // pub
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ImplDeclaration {
     pub trait_name: String,
-    pub for_type: Type,
-    pub methods: Vec<FunctionDeclaration>,
+    pub target_type: Type,
+    // pub methods: Vec<ImplMethodSignature>,
+    pub methods: HashMap<String,ImplMethodSignature>
 }
 
 #[allow(dead_code)]
@@ -338,9 +340,18 @@ pub struct EnumVariant{
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct FunctionSignature{
+pub struct TraitMethodSignature{
     pub name: String,
-    pub parameters: Vec<(String,Type)>,
+    pub parameters: Vec<(Parameter)>,
+    pub return_type: Option<Type>,
+
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ImplMethodSignature{
+    pub name: String,
+    pub parameters: Vec<(Parameter)>,
     pub return_type: Option<Type>,
 
 }
@@ -446,12 +457,12 @@ pub enum Literal {
 }
 
 //fonction parametre
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Parameters {
-    pub name: String,
-    pub parameter_type: Option<Type>,
-}
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Parameters {
+//     pub name: String,
+//     pub parameter_type: Option<Type>,
+// }
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
@@ -594,6 +605,7 @@ pub struct MatchStatement{
 #[derive(Clone, Debug)]
 pub struct ReturnStatement {
     pub value: Option<Expression>,
+    // pub value: Expression
 }
 
 #[allow(dead_code)]

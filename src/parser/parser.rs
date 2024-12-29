@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, FunctionSignature, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Parameters, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -975,7 +975,8 @@ impl Parser {
 
         match self.syntax_mode{
             SyntaxMode::Indentation => self.consume(TokenType::DELIMITER(Delimiters::COLON))?,
-            SyntaxMode::Braces => self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?,
+            // SyntaxMode::Braces => self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?,
+            SyntaxMode::Braces => (),
         }
 
         let (attributes ,methods,constructor)= self.parse_class_body()?;
@@ -1010,29 +1011,29 @@ impl Parser {
         Ok(parent_classes)
     }
 
-    pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>,Vec<MethodeDeclaration>,Option<Constructor>), ParserError>{
+    pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>, Vec<MethodeDeclaration>, Option<Constructor>), ParserError> {
         let mut attributes = Vec::new();
         let mut methods = Vec::new();
         let mut constructor = None;
 
-        match self.syntax_mode{
+        match self.syntax_mode {
             SyntaxMode::Braces => {
-                // self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end(){
-                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
-                        if constructor.is_some(){
+                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
+                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
+                        if constructor.is_some() {
                             return Err(ParserError::new(MultipleConstructors, self.current_position()));
                         }
-                        let mut constructor = self.parse_constructor_declaration()?;
-                        constructor = Some(constructor);
-
-                    }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
+                        // parse un constructor
+                        let ctor = self.parse_constructor_declaration()?;
+                        constructor = Some(ctor);
+                    } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
                         let method = self.parse_methode_declaration()?;
                         methods.push(method);
-                    }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+                    } else if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
                         let attribute = self.parse_attribute_declaration()?;
                         attributes.push(attribute);
-                    }else {
+                    } else {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
                 }
@@ -1041,20 +1042,20 @@ impl Parser {
             SyntaxMode::Indentation => {
                 self.consume(TokenType::NEWLINE)?;
                 self.consume(TokenType::INDENT)?;
-                while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end(){
-                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
-                        if constructor.is_some(){
+                while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end() {
+                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
+                        if constructor.is_some() {
                             return Err(ParserError::new(MultipleConstructors, self.current_position()));
                         }
-                        let mut constructor = self.parse_constructor_declaration()?;
-                        constructor = Some(constructor);
-                    }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
+                        let ctor = self.parse_constructor_declaration()?;
+                        constructor = Some(ctor);
+                    } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
                         let method = self.parse_methode_declaration()?;
                         methods.push(method);
-                    }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+                    } else if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
                         let attribute = self.parse_attribute_declaration()?;
                         attributes.push(attribute);
-                    }else {
+                    } else {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
                 }
@@ -1063,9 +1064,69 @@ impl Parser {
                 }
             }
         }
-        Ok((attributes,methods,constructor))
-
+        Ok((attributes, methods, constructor))
     }
+
+
+    // pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>,Vec<MethodeDeclaration>,Option<Constructor>), ParserError>{
+    //     let mut attributes = Vec::new();
+    //     let mut methods = Vec::new();
+    //     let mut constructor = None;
+    //
+    //     match self.syntax_mode{
+    //         SyntaxMode::Braces => {
+    //             // self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //             while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end(){
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
+    //                     if constructor.is_some(){
+    //                         return Err(ParserError::new(MultipleConstructors, self.current_position()));
+    //                     }
+    //                     let mut constructor = self.parse_constructor_declaration()?;
+    //                     // constructor = Some(constructor);
+    //                     Ok(constructor);
+    //
+    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
+    //                     let method = self.parse_methode_declaration()?;
+    //                     methods.push(method);
+    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+    //                     let attribute = self.parse_attribute_declaration()?;
+    //                     attributes.push(attribute);
+    //                 }else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //             self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //         }
+    //         SyntaxMode::Indentation => {
+    //             self.consume(TokenType::NEWLINE)?;
+    //             self.consume(TokenType::INDENT)?;
+    //             while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end(){
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
+    //                     if constructor.is_some(){
+    //                         return Err(ParserError::new(MultipleConstructors, self.current_position()));
+    //                     }
+    //                     let mut constructor = self.parse_constructor_declaration()?;
+    //                     // constructor = Some(constructor);
+    //
+    //
+    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
+    //                     let method = self.parse_methode_declaration()?;
+    //                     methods.push(method);
+    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
+    //                     let attribute = self.parse_attribute_declaration()?;
+    //                     attributes.push(attribute);
+    //                 }else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //             if !self.check(&[TokenType::DEDENT]){
+    //                 self.consume(TokenType::DEDENT)?;
+    //             }
+    //         }
+    //     }
+    //     Ok((attributes,methods,constructor))
+    //
+    // }
 
 
     // fn parse_constructor_declaration(&mut self) -> Result<Constructor, ParserError> {
