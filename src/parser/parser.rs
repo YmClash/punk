@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -225,6 +225,8 @@ impl Parser {
             self.parse_for_statement()
         }else if self.check(&[TokenType::KEYWORD(Keywords::MATCH)]) {
             self.parse_match_statement()
+        // }else if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]){
+        //     self.parse_where_clauses()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::BREAK)]){
             self.consume_seperator();
             Ok(ASTNode::Statement(Statement::Break))
@@ -962,28 +964,50 @@ impl Parser {
         let name = self.consume_identifier()?;
         println!("Nom du trait parsé : {}", name);
 
-        self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-
-        // let where_clause = if self.match_token(&[TokenType::KEYWORD(Keywords::WHERE)]) {
-        //     self.parse_where_clause()?
-        // } else {
-        //     Vec::new()
-        // };
-
         let mut methods = Vec::new();
         let mut associated_types = Vec::new();
 
-        while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
-            if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-                methods.push(self.parse_trait_methods()?);
-            } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
-                associated_types.push(self.parse_associated_type()?);
-            } else {
-                return Err(ParserError::new(UnexpectedToken, self.current_position()));
+        //Optionelement de where clause
+        let where_clause = self.parse_where_clauses()?;
+
+        match self.syntax_mode{
+            SyntaxMode::Braces => {
+                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
+                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+                        methods.push(self.parse_trait_methods()?);
+                    } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
+                        associated_types.push(self.parse_associated_type()?);
+                    } else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                }
+            },
+            SyntaxMode::Indentation => {
+                self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+                self.consume(TokenType::NEWLINE)?;
+                self.consume(TokenType::INDENT)?;
+                while !self.check(&[TokenType::DEDENT]) && !self.is_at_end() {
+                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+                        methods.push(self.parse_trait_methods()?);
+                    } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
+                        associated_types.push(self.parse_associated_type()?);
+                    } else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                }
+                // if !self.match_token(&[TokenType::DEDENT]){
+                //     self.consume(TokenType::DEDENT)?;
+                // }
             }
+
+
         }
 
-        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+
+        // self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+        self.consume_seperator();
+
 
         println!("Parsing des Trait OK!!!!!!!!!!!!!!!!!!!!!!");
         Ok(ASTNode::Declaration(Declaration::Trait(TraitDeclaration{
@@ -991,10 +1015,8 @@ impl Parser {
             methods,
             associated_types,
             visibility,
+            where_clause,
         })))
-
-
-
 
     }
 
@@ -1285,6 +1307,33 @@ impl Parser {
         })
     }
 
+
+    pub fn parse_where_clauses(&mut self) -> Result<Vec<WhereClause>,ParserError>{
+        println!("Début du parsing des clauses where");
+        
+        // self.consume(TokenType::KEYWORD(Keywords::WHERE))?;
+        
+        let mut clauses = Vec::new();
+
+        if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]) && !self.is_at_end(){
+            self.consume(TokenType::KEYWORD(Keywords::WHERE))?;
+            loop {
+                let type_name = self.consume_identifier()?;
+                self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+
+                let bounds = self.parse_type_bonds()?;
+                clauses.push(WhereClause{
+                    type_name,
+                    bounds,
+                });
+            }
+        }
+        println!("Parsing des clauses where OK!!!!!!!!!!!!!!!!!!!!!!!");
+        Ok(clauses)
+
+
+    }
+
     fn parse_associated_type(&mut self) -> Result<AssociatedType, ParserError> {
         // Consommer le mot-clé `type`
         self.consume(TokenType::KEYWORD(Keywords::TYPE))?;
@@ -1296,16 +1345,39 @@ impl Parser {
         let type_bound = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.advance();
             // self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-            // Some(self.parse_type_bounds()?)
-            Some(self.parse_type()?)
+            Some(self.parse_type_bonds()?)
+            // Some(self.parse_type()?)
         } else {
             None
         };
 
-        // Consommer le point-virgule `;`
-        self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON))?;
+        //ici on verifie aussi le where clause
+        let where_clause = self.parse_where_clauses()?;
 
-        Ok(AssociatedType { name, type_bound })
+        // Consommer le point-virgule `;`
+        // self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON))?;
+        self.consume_seperator();
+
+        Ok(AssociatedType { name, type_bound ,where_clause})
+    }
+
+    fn parse_type_bonds(&mut self) -> Result<Vec<Type>,ParserError>{
+        let mut type_bounds = Vec::new();
+
+        loop {
+            // Lire le nom d'un trait ou d'une contrainte
+            let bound = self.consume_identifier()?;
+            type_bounds.push(Type::Trait(bound));
+
+            // Vérifier s'il y a un séparateur supplémentaire, comme `+` pour des contraintes multiples
+            if self.check(&[TokenType::OPERATOR(Operators::PLUS)]) {
+                self.consume(TokenType::OPERATOR(Operators::PLUS))?;
+            } else {
+                break; // Fin des bounds
+            }
+        }
+
+        Ok(type_bounds)
     }
 
 

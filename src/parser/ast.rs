@@ -165,6 +165,9 @@ pub enum Type {
     Custom(String),
     Generic(GenericType),
     Infer, // Type inféré déduire par le compilateur
+
+    Trait(String), // pour Type Bounds
+
 }
 
 #[allow(dead_code)]
@@ -297,7 +300,8 @@ pub struct TraitDeclaration {
     pub name: String,
     pub methods: Vec<TraitMethod>,
     pub associated_types: Vec<AssociatedType>,
-    pub visibility: Visibility // pub
+    pub visibility: Visibility,          // pub
+    pub where_clause: Vec<WhereClause>,
 }
 
 #[allow(dead_code)]
@@ -352,15 +356,16 @@ pub struct TraitMethod{
 #[derive(Debug, Clone)]
 pub struct AssociatedType{
     pub name: String,
-    pub type_bound: Option<Type>,
+    pub type_bound: Option<Vec<Type>>,
+    pub where_clause: Vec<WhereClause>,
 
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct WhereClause{
+pub struct WhereClause {
     pub type_name: String,
-    pub type_bound: Vec<Type>,
+    pub bounds: Vec<Type>,
 }
 
 
