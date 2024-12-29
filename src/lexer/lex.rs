@@ -142,6 +142,7 @@ impl<'a> Lexer<'a> {
         keywords.insert("typeof".to_string(), Keywords::TYPEOF);
         keywords.insert("use".to_string(), Keywords::USE);
         keywords.insert("with".to_string(), Keywords::WITH);
+        keywords.insert("where".to_string(), Keywords::WHERE);
         keywords.insert("while".to_string(), Keywords::WHILE);
         keywords.insert("yield".to_string(), Keywords::YIELD);
         //TYPE KEYWORDS

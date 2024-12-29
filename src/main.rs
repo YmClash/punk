@@ -244,6 +244,8 @@ else:
     fn do_something() -> int:
         return self.x + 1"#;
 
+    let code_test26 = r#"pub trait Drawable {fn do_something(x: int) -> int;type Color;}"#;
+    let code_test27 = r#"where ""#;
 
 
 
@@ -255,8 +257,8 @@ else:
 
 
 
-    // let mut lexer = Lexer::new(code_test25, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test24, SyntaxMode::Braces);
+    // let mut lexer = Lexer::new(code_test26, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test26, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification

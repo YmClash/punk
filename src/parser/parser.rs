@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -962,7 +962,40 @@ impl Parser {
         let name = self.consume_identifier()?;
         println!("Nom du trait parsé : {}", name);
 
-        todo!()
+        self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+
+        // let where_clause = if self.match_token(&[TokenType::KEYWORD(Keywords::WHERE)]) {
+        //     self.parse_where_clause()?
+        // } else {
+        //     Vec::new()
+        // };
+
+        let mut methods = Vec::new();
+        let mut associated_types = Vec::new();
+
+        while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
+            if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+                methods.push(self.parse_trait_methods()?);
+            } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
+                associated_types.push(self.parse_associated_type()?);
+            } else {
+                return Err(ParserError::new(UnexpectedToken, self.current_position()));
+            }
+        }
+
+        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+
+        println!("Parsing des Trait OK!!!!!!!!!!!!!!!!!!!!!!");
+        Ok(ASTNode::Declaration(Declaration::Trait(TraitDeclaration{
+            name,
+            methods,
+            associated_types,
+            visibility,
+        })))
+
+
+
+
     }
 
     fn parse_impl_declaration(&mut self,visibility: Visibility) -> Result<ASTNode, ParserError> {
@@ -988,6 +1021,7 @@ impl Parser {
         let (attributes ,methods,constructor)= self.parse_class_body()?;
 
         println!("Attributs de la classe parsés : {:?} et {:?}", attributes,methods);
+
 
         Ok(ASTNode::Declaration(Declaration::Class(ClassDeclaration{
             name,
@@ -1065,7 +1099,7 @@ impl Parser {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
                 }
-                if !self.check(&[TokenType::DEDENT]){
+                if !self.match_token(&[TokenType::DEDENT]){
                     self.consume(TokenType::DEDENT)?;
                 }
             }
@@ -1223,8 +1257,68 @@ impl Parser {
         })
 
     }
+
+    fn parse_trait_methods(&mut self) -> Result<TraitMethod, ParserError> {
+        println!("Début du parsing de la signature de méthode de trait");
+        self.consume(TokenType::KEYWORD(Keywords::FN))?;
+        let name = self.consume_identifier()?;
+        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+        let parameters = self.parse_function_parameters()?;
+        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+
+        let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
+
+            self.consume(TokenType::OPERATOR(Operators::RARROW))?;
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        self.consume_seperator();
+
+        println!("Parsing de Trait Method OK!!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(TraitMethod {
+            name,
+            parameters,
+            return_type,
+        })
+    }
+
+    fn parse_associated_type(&mut self) -> Result<AssociatedType, ParserError> {
+        // Consommer le mot-clé `type`
+        self.consume(TokenType::KEYWORD(Keywords::TYPE))?;
+
+        // Lire le nom du type associé
+        let name = self.consume_identifier()?;
+
+        // Vérifier si des bounds (contraintes de type) sont spécifiées
+        let type_bound = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+            self.advance();
+            // self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+            // Some(self.parse_type_bounds()?)
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Consommer le point-virgule `;`
+        self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON))?;
+
+        Ok(AssociatedType { name, type_bound })
+    }
+
+
+
+
     fn parse_methode_declaration(&mut self) -> Result<MethodeDeclaration,ParserError>{
         println!("Debut du parsing de la déclaration de méthode");
+        // pour la visibilite de methode dans une classe je pense que
+        // ca serai  mieux de laisse ceci a  "pub class".
+        // une classe publique  rend toutes ses methodes publiques aussi
+        // pour let visibilite = self.parse_visibility()?;  pour  l'ast
+        // on revoir
+
         let visibility = self.parse_visibility()?;
 
         self.consume(TokenType::KEYWORD(Keywords::FN))?;

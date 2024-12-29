@@ -295,7 +295,8 @@ pub struct EnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: String,
-    pub method_signatures: Vec<TraitMethodSignature>,
+    pub methods: Vec<TraitMethod>,
+    pub associated_types: Vec<AssociatedType>,
     pub visibility: Visibility // pub
 }
 
@@ -340,12 +341,28 @@ pub struct EnumVariant{
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct TraitMethodSignature{
+pub struct TraitMethod{
     pub name: String,
     pub parameters: Vec<(Parameter)>,
     pub return_type: Option<Type>,
 
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct AssociatedType{
+    pub name: String,
+    pub type_bound: Option<Type>,
+
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct WhereClause{
+    pub type_name: String,
+    pub type_bound: Vec<Type>,
+}
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
