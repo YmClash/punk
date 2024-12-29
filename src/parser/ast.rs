@@ -324,10 +324,12 @@ pub struct TraitDeclaration {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ImplDeclaration {
-    pub trait_name: String,
+    pub trait_name: Option<String>,
     pub target_type: Type,
-    // pub methods: Vec<ImplMethodSignature>,
-    pub methods: HashMap<String,ImplMethodSignature>
+    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub methods: Vec<ImplMethod>,
+    pub where_clause: Vec<WhereClause>,
+    pub visibility: Visibility,
 }
 
 #[allow(dead_code)]
@@ -343,6 +345,8 @@ pub struct MacroDeclaration {
     pub parameters: Vec<String>,
     pub body: Block,
 }
+
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -388,10 +392,12 @@ pub struct WhereClause {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct ImplMethodSignature{
+pub struct ImplMethod{
     pub name: String,
     pub parameters: Vec<(Parameter)>,
     pub return_type: Option<Type>,
+    pub visibility: Visibility,
+    pub body: Vec<ASTNode>,
 
 }
 

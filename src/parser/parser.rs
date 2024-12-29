@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -1040,8 +1040,99 @@ impl Parser {
 
 
     fn parse_impl_declaration(&mut self,visibility: Visibility) -> Result<ASTNode, ParserError> {
-        todo!()
+        println!("Début du parsing de la déclaration d'implémentation");
+        self.consume(TokenType::KEYWORD(Keywords::IMPL))?;
+
+        // Parse les paramètres génériques optionnels
+        let generic_params = if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
+            Some(self.parse_generic_parameters()?)
+        } else {
+            None
+        };
+
+        // Parse le type cible
+        let trait_name = self.consume_identifier()?;
+
+        // Vérifie s'il s'agit d'une implémentation de trait
+        let target_type = if self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
+            self.advance(); // Consomme 'for'
+            // Parse le type cible qui peut être générique
+            let base_type = self.consume_identifier()?;
+
+            // Vérifie s'il y a des paramètres génériques pour le type cible
+            if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
+                self.advance(); // Consomme '<'
+                let mut type_params = Vec::new();
+
+                loop {
+                    type_params.push(self.parse_type()?);
+                    if self.check(&[TokenType::OPERATOR(Operators::GREATER)]) {
+                        self.advance();
+                        break;
+                    } else if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+                        self.advance();
+                    } else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                }
+
+                Type::Generic(GenericType {
+                    base: base_type,
+                    type_parameters: type_params,
+                })
+            } else {
+                Type::Named(base_type)
+            }
+        } else {
+            Type::Named(trait_name.clone())
+        };
+
+        // Parse where clause optionnelle
+        let where_clause = self.parse_where_clauses()?;
+
+        let mut methods = Vec::new();
+
+        match self.syntax_mode {
+            SyntaxMode::Braces => {
+                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
+                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+                        methods.push(self.parse_impl_method()?);
+                    } else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                }
+                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+            },
+            SyntaxMode::Indentation => {
+                self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+                self.consume(TokenType::NEWLINE)?;
+                self.consume(TokenType::INDENT)?;
+
+                while !self.check(&[TokenType::DEDENT]) && !self.is_at_end() {
+                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+                        methods.push(self.parse_impl_method()?);
+                    } else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                }
+
+                self.consume(TokenType::DEDENT)?;
+            }
+        }
+
+        Ok(ASTNode::Declaration(Declaration::Impl(ImplDeclaration {
+            target_type,
+            trait_name: Some(trait_name),
+            generic_parameters: generic_params,
+            methods,
+            where_clause,
+            visibility,
+        })))
     }
+
+
+
 
     fn parse_class_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de classe");
@@ -1061,7 +1152,7 @@ impl Parser {
 
         let (attributes ,methods,constructor)= self.parse_class_body()?;
 
-        println!("Attributs de la classe parsés : {:?} et {:?}", attributes,methods);
+        println!("Fin du parsing de la classe OK!!!!!!!!!!!!!!!!!!!!!!");
 
 
         Ok(ASTNode::Declaration(Declaration::Class(ClassDeclaration{
@@ -1277,7 +1368,7 @@ impl Parser {
         let where_clause = self.parse_where_clauses()?;
 
         // Consommer le point-virgule `;`
-        // self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON))?;
+        // self. Consume(TokenType::DELIMITER(Delimiters::SEMICOLON))?;
         self.consume_seperator();
 
         Ok(AssociatedType { name, type_bound ,where_clause})
@@ -1500,6 +1591,35 @@ impl Parser {
             Err(ParserError::new(ExpectedLifetime, self.current_position()
             ))
         }
+    }
+
+    fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
+        let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
+
+        self.consume(TokenType::KEYWORD(Keywords::FN))?;
+        let name = self.consume_identifier()?;
+
+        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+        let parameters = self.parse_function_parameters()?;
+        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+
+        let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
+            self.advance();
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
+
+        // Parse le corps de la méthode
+        let body = self.parse_block()?;
+
+        Ok(ImplMethod {
+            name,
+            parameters,
+            return_type,
+            visibility,
+            body,
+        })
     }
 
 
