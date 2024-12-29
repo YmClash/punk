@@ -682,21 +682,6 @@ impl<'a> Lexer<'a> {
                 self.current_token_text = combined;
                 return TokenType::DELIMITER(Delimiters::DOUBLECOLON);
             }
-            // if first_char == '.' && next_char == '.' {
-            //     self.advance(); // Consomme le deuxième '.'
-            //     let mut combined = "..".to_string();
-            //     if let Some(&third_char) = self.source.peek(){
-            //         if third_char == '.'{
-            //             self.advance();
-            //             combined.push('.');
-            //             self.current_token_text = combined;
-            //             return TokenType::DELIMITER(Delimiters::ELLIPSIS);
-            //         }
-            //
-            //     }
-            //     // self.current_token_text = combined;
-            //     // return TokenType::DELIMITER(Delimiters::DOTDOT);
-            // }
 
             if first_char == '.' {
                 if let Some(&next_char) = self.source.peek(){
@@ -922,15 +907,13 @@ impl<'a> Lexer<'a> {
         TokenType::NEWLINE
     }
 
-    fn is_operator_start(&self,ch:char) ->bool{
-        match ch {
-            '+' | '-' | '*' | '/' | '%' | '=' | '!' | '<' | '>' | '&' | '|' | '^' | '~' | '@' | ':' | '?' |'.'=> true,
-            _ => false,
-        }
-
-    }
-
-
+    // fn is_operator_start(&self,ch:char) ->bool{
+    //     match ch {
+    //         '+' | '-' | '*' | '/' | '%' | '=' | '!' | '<' | '>' | '&' | '|' | '^' | '~' | '@' | ':' | '?' |'.'=> true,
+    //         _ => false,
+    //     }
+    //
+    // }
 }
 
 //by YmC
