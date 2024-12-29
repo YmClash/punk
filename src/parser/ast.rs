@@ -153,6 +153,20 @@ pub struct GenericType{
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct GenericParameter{
+    pub name: String,
+    pub bounds: Vec<TypeBound>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum TypeBound{
+    TraitBound(String),
+    Lifetime(String),
+}
+
+#[allow(dead_code)]
 #[derive(Debug, Clone,PartialEq,Eq)]
 pub enum Type {
     Int,
@@ -166,7 +180,8 @@ pub enum Type {
     Generic(GenericType),
     Infer, // Type inféré déduire par le compilateur
 
-    Trait(String), // pour Type Bounds
+    //Trait(String), // pour Type Bounds
+    Named(String),
 
 }
 
@@ -298,10 +313,12 @@ pub struct EnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: String,
+    pub generic_parameters: Option<Vec<GenericParameter>>,
     pub methods: Vec<TraitMethod>,
     pub associated_types: Vec<AssociatedType>,
     pub visibility: Visibility,          // pub
     pub where_clause: Vec<WhereClause>,
+    pub super_traits: Vec<TypeBound>,
 }
 
 #[allow(dead_code)]
@@ -356,7 +373,7 @@ pub struct TraitMethod{
 #[derive(Debug, Clone)]
 pub struct AssociatedType{
     pub name: String,
-    pub type_bound: Option<Vec<Type>>,
+    pub type_bound: Option<Vec<TypeBound>>,
     pub where_clause: Vec<WhereClause>,
 
 }
@@ -365,7 +382,7 @@ pub struct AssociatedType{
 #[derive(Debug, Clone)]
 pub struct WhereClause {
     pub type_name: String,
-    pub bounds: Vec<Type>,
+    pub bounds: Vec<TypeBound>,
 }
 
 

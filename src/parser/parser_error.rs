@@ -56,6 +56,7 @@ pub enum ParserErrorType {
     ExpectedUseOrImport,
     ExpectedAlias,
     ExpectedRangeOperator,
+    ExpectedLifetime,
 
 
 
@@ -157,6 +158,7 @@ impl Display for ParserErrorType {
             ParserErrorType::ExpectedUseOrImport => write!(f, "ExpectedUseOrImport"),
             ParserErrorType::ExpectedAlias => write!(f, "ExpectedAlias"),
             ParserErrorType::ExpectedRangeOperator => write!(f, "ExpectedRangeOperator"),
+            ParserErrorType::ExpectedLifetime => write!(f, "ExpectedLifetime"),
 
 
             ParserErrorType::MultipleConstructors => write!(f, "MultipleConstructors"),
@@ -211,6 +213,7 @@ impl ParserError {
             ParserErrorType::ExpectedAlias => "Expected alias after 'as '".to_string(),
 
             ParserErrorType::ExpectedRangeOperator => "Expected range operator".to_string(),
+            ParserErrorType::ExpectedLifetime => "Expected lifetime".to_string(),
 
 
             ParserErrorType::ExpectedDeclaration => "Expected declaration".to_string(),

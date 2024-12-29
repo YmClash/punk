@@ -244,13 +244,13 @@ else:
     fn do_something() -> int:
         return self.x + 1"#;
 
-    let code_test26 = r#"pub trait Drawable  {fn do_something(x: int) -> int;fn area(a:float)->float;fn do_something_else(x: char) -> int;type Color;"#;
+    let code_test26 = r#"pub trait Drawable  {fn do_something(x: T) -> int;fn area(a:float)->float;fn do_something_else(x: char) -> int;type Color;}"#;
     let code_test27 = r#"pub trait Drawable:
     fn do_something(x: int) -> int
     fn do_something_else(x: int) -> int
     fn area() -> float
     type Color"#;
-    let code_test28 = r#"trait Drawable where T: Copy + Display {fn draw(x: T);fn get_color() -> T;type AssociatedType where Self: Clone;}"#;
+    let code_test28 = r#"trait Drawable where T: Copy + Display {fn draw(x: T);fn get_color() -> T;type AssociatedType where Self: Clone;"#;
 
     let code_test29 = r#"trait Drawable where T:Copy
     fn draw(&self, x: T)
@@ -268,8 +268,8 @@ else:
 
 
 
-    let mut lexer = Lexer::new(code_test29, SyntaxMode::Indentation);
-    // let mut lexer = Lexer::new(code_test28, SyntaxMode::Braces);
+    // let mut lexer = Lexer::new(code_test27, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test28, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -278,8 +278,8 @@ else:
     }
     println!("\n");
 
-    let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    // let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
     while !parser.is_at_end() {
         match parser.parse_statement() {

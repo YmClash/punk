@@ -1,9 +1,9 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
-use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace};
+use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
 
@@ -964,6 +964,25 @@ impl Parser {
         let name = self.consume_identifier()?;
         println!("Nom du trait parsé : {}", name);
 
+        let generic_params = if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
+            Some(self.parse_generic_parameters()?)
+        } else {
+            None
+        };
+
+        /// Parse des supertraits optionnels - ne tente que si c'est vraiment un : pour les supertraits
+        let mut super_traits = Vec::new();
+        if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+            let next_token = self.peek_next_token();
+            if let Some(token) = next_token {
+                if !matches!(token.token_type, TokenType::NEWLINE) &&
+                    !matches!(token.token_type, TokenType::DELIMITER(Delimiters::LCURBRACE)) {
+                    self.advance(); // Consomme le ':'
+                    super_traits = self.parse_trait_bounds()?;
+                }
+            }
+        }
+
         let mut methods = Vec::new();
         let mut associated_types = Vec::new();
 
@@ -982,6 +1001,7 @@ impl Parser {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
                 }
+                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
             },
             SyntaxMode::Indentation => {
                 self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
@@ -996,14 +1016,10 @@ impl Parser {
                         return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
                 }
-                // if !self.match_token(&[TokenType::DEDENT]){
-                //     self.consume(TokenType::DEDENT)?;
-                // }
+                self.consume(TokenType::DEDENT)?;
+
             }
-
-
         }
-
 
         // self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
         self.consume_seperator();
@@ -1012,13 +1028,17 @@ impl Parser {
         println!("Parsing des Trait OK!!!!!!!!!!!!!!!!!!!!!!");
         Ok(ASTNode::Declaration(Declaration::Trait(TraitDeclaration{
             name,
+            generic_parameters: generic_params,
             methods,
             associated_types,
             visibility,
             where_clause,
+            super_traits
         })))
 
     }
+
+
 
     fn parse_impl_declaration(&mut self,visibility: Visibility) -> Result<ASTNode, ParserError> {
         todo!()
@@ -1130,103 +1150,6 @@ impl Parser {
     }
 
 
-    // pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>,Vec<MethodeDeclaration>,Option<Constructor>), ParserError>{
-    //     let mut attributes = Vec::new();
-    //     let mut methods = Vec::new();
-    //     let mut constructor = None;
-    //
-    //     match self.syntax_mode{
-    //         SyntaxMode::Braces => {
-    //             // self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-    //             while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end(){
-    //                 if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
-    //                     if constructor.is_some(){
-    //                         return Err(ParserError::new(MultipleConstructors, self.current_position()));
-    //                     }
-    //                     let mut constructor = self.parse_constructor_declaration()?;
-    //                     // constructor = Some(constructor);
-    //                     Ok(constructor);
-    //
-    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
-    //                     let method = self.parse_methode_declaration()?;
-    //                     methods.push(method);
-    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
-    //                     let attribute = self.parse_attribute_declaration()?;
-    //                     attributes.push(attribute);
-    //                 }else {
-    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
-    //                 }
-    //             }
-    //             self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-    //         }
-    //         SyntaxMode::Indentation => {
-    //             self.consume(TokenType::NEWLINE)?;
-    //             self.consume(TokenType::INDENT)?;
-    //             while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end(){
-    //                 if self.check(&[TokenType::KEYWORD(Keywords::DEF)]){
-    //                     if constructor.is_some(){
-    //                         return Err(ParserError::new(MultipleConstructors, self.current_position()));
-    //                     }
-    //                     let mut constructor = self.parse_constructor_declaration()?;
-    //                     // constructor = Some(constructor);
-    //
-    //
-    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]){
-    //                     let method = self.parse_methode_declaration()?;
-    //                     methods.push(method);
-    //                 }else if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
-    //                     let attribute = self.parse_attribute_declaration()?;
-    //                     attributes.push(attribute);
-    //                 }else {
-    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
-    //                 }
-    //             }
-    //             if !self.check(&[TokenType::DEDENT]){
-    //                 self.consume(TokenType::DEDENT)?;
-    //             }
-    //         }
-    //     }
-    //     Ok((attributes,methods,constructor))
-    //
-    // }
-
-
-    // fn parse_constructor_declaration(&mut self) -> Result<Constructor, ParserError> {
-    //     // Consomme le mot-clé `def`
-    //     self.consume(TokenType::KEYWORD(Keywords::DEF))?;
-    //
-    //     // On attend que le nom soit `init` (ou un identifiant si vous autorisez d’autres noms)
-    //     let constructor_name = self.consume_identifier()?;
-    //     if constructor_name != "init" {
-    //         return Err(ParserError::new(UnexpectedToken, self.current_position()));
-    //     }
-    //
-    //     // Lire les paramètres (par ex. `(x: int, y: int)`)
-    //     self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-    //     let parameters = self.parse_function_parameters()?;
-    //     self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-    //
-    //     // Optionnel : un `->` ?
-    //     // self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]) { ... }
-    //
-    //     // Lire le bloc (ou indentation)
-    //     if self.syntax_mode == SyntaxMode::Braces {
-    //         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-    //         // lire tout le bloc
-    //         let body = self.parse_block()?;
-    //         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-    //         // Retourne un `Constructor`
-    //         Ok(Constructor {
-    //             name: constructor_name,
-    //             parameters,
-    //             body,
-    //         })
-    //     } else {
-    //         // Mode Indentation
-    //         // ...
-    //         todo!()
-    //     }
-    // }
 
     fn parse_constructor_declaration(&mut self) -> Result<Constructor,ParserError>{
         println!("Debut du parsing du constructeur");
@@ -1254,9 +1177,6 @@ impl Parser {
         })
 
     }
-
-
-
 
     fn parse_attribute_declaration(&mut self) -> Result<Attribute, ParserError> {
         println!("Début du parsing de la déclaration de méthode");
@@ -1315,17 +1235,20 @@ impl Parser {
         
         let mut clauses = Vec::new();
 
-        if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]) && !self.is_at_end(){
+        if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]) /*&& !self.is_at_end()*/{
             self.consume(TokenType::KEYWORD(Keywords::WHERE))?;
             loop {
                 let type_name = self.consume_identifier()?;
                 self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
 
-                let bounds = self.parse_type_bonds()?;
+                let bounds = self.parse_type_bounds()?;
                 clauses.push(WhereClause{
                     type_name,
                     bounds,
                 });
+                if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+                    self.advance();
+                }else { break; }
             }
         }
         println!("Parsing des clauses where OK!!!!!!!!!!!!!!!!!!!!!!!");
@@ -1345,7 +1268,7 @@ impl Parser {
         let type_bound = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.advance();
             // self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-            Some(self.parse_type_bonds()?)
+            Some(self.parse_type_bounds()?)
             // Some(self.parse_type()?)
         } else {
             None
@@ -1361,20 +1284,33 @@ impl Parser {
         Ok(AssociatedType { name, type_bound ,where_clause})
     }
 
-    fn parse_type_bonds(&mut self) -> Result<Vec<Type>,ParserError>{
+    fn parse_type_bounds(&mut self) -> Result<Vec<TypeBound>, ParserError> {
         let mut type_bounds = Vec::new();
 
-        loop {
-            // Lire le nom d'un trait ou d'une contrainte
-            let bound = self.consume_identifier()?;
-            type_bounds.push(Type::Trait(bound));
+        let bound = self.consume_identifier()?;
+        // type_bounds.push(Type::Trait(bound));
+        type_bounds.push(TypeBound::TraitBound(bound));
 
-            // Vérifier s'il y a un séparateur supplémentaire, comme `+` pour des contraintes multiples
-            if self.check(&[TokenType::OPERATOR(Operators::PLUS)]) {
-                self.consume(TokenType::OPERATOR(Operators::PLUS))?;
-            } else {
-                break; // Fin des bounds
-            }
+
+        // loop {
+            // // Lire le nom d'un trait ou d'une contrainte
+            // let bound = self.consume_identifier()?;
+            // // type_bounds.push(Type::Trait(bound));
+            // type_bounds.push(TypeBound::TraitBound(bound));
+
+            // // Vérifier s'il y a un séparateur supplémentaire, comme `+` pour des contraintes multiples
+            // if self.check(&[TokenType::OPERATOR(Operators::PLUS)]) {
+            //     self.consume(TokenType::OPERATOR(Operators::PLUS))?;
+            // } else {
+            //     break; // Fin des bounds
+            // }
+        // }
+
+        while self.check(&[TokenType::OPERATOR(Operators::PLUS)]){
+            self.advance();
+            let bound = self.consume_identifier()?;
+            type_bounds.push(TypeBound::TraitBound(bound));
+
         }
 
         Ok(type_bounds)
@@ -1450,6 +1386,38 @@ impl Parser {
                 self.advance(); // Consomme le token `char`
                 Ok(Type::Char)
             }
+            TokenType::IDENTIFIER { name } => {
+                let base_name = name.clone();
+                self.advance();
+                // let base_name = name.clone();
+
+                // Vérifie s'il y a des paramètres génériques
+                if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
+                    // Parse les paramètres génériques
+                    let mut type_params = Vec::new();
+                    self.consume(TokenType::OPERATOR(Operators::LESS))?;
+
+                    loop {
+                        type_params.push(self.parse_type()?);
+
+                        if self.check(&[TokenType::OPERATOR(Operators::GREATER)]) {
+                            self.advance();
+                            break;
+                        } else if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+                            self.advance();
+                        } else {
+                            return Err(ParserError::new(InvalidTypeAnnotation, self.current_position()));
+                        }
+                    }
+
+                    Ok(Type::Generic(GenericType {
+                        base: base_name,
+                        type_parameters: type_params,
+                    }))
+                } else {
+                    Ok(Type::Named(base_name))
+                }
+            }
             _ => {
                 println!("Unexpected token: {:?}", token);
                 // Si le token actuel n'est pas un type valide, renvoyer une erreur
@@ -1478,22 +1446,79 @@ impl Parser {
     //     }
     //     Ok(params)
     // }
+
     //
-    //
-    // fn parse_generic_type(&mut self) -> Result<GenericType, ParserError> {
-    //     let base_name = self.consume_identifier()?;
-    //
-    //     if self.match_token(&[TokenType::OPERATOR(Operators::LESS)]){
-    //         let type_parameters = self.parse_type_parameters()?;
-    //         self.consume(TokenType::OPERATOR(Operators::GREATER))?;
-    //
-    //         Ok(Type::Generic(GenericType{
-    //             base: base_name,
-    //             type_parameters,
-    //         }))
-    //     }
-    //
-    // }
+    fn parse_generic_parameters(&mut self) -> Result<Vec<GenericParameter>, ParserError> {
+        self.consume(TokenType::OPERATOR(Operators::LESS))?; // Consomme '<'
+        let mut params = Vec::new();
+
+        while !self.check(&[TokenType::OPERATOR(Operators::GREATER)]) {
+            let name = self.consume_identifier()?;
+            let mut bounds = Vec::new();
+
+            // Parse les bounds du paramètre générique (T: Display + Clone)
+            if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+                self.advance(); // Consomme ':'
+                bounds = self.parse_trait_bounds()?;
+            }
+
+            params.push(GenericParameter { name, bounds });
+
+            // Gère la virgule entre les paramètres
+            if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        self.consume(TokenType::OPERATOR(Operators::GREATER))?; // Consomme '>'
+        Ok(params)
+    }
+
+    fn parse_trait_bounds(&mut self) -> Result<Vec<TypeBound>, ParserError> {
+        let mut bounds = Vec::new();
+
+        loop {
+            let bound = if self.check_lifetime_token() {
+                TypeBound::Lifetime(self.parse_lifetime()?)
+            } else {
+                TypeBound::TraitBound(self.consume_identifier()?)
+            };
+
+            bounds.push(bound);
+
+            // Vérifie s'il y a d'autres bounds (séparés par +)
+            if self.check(&[TokenType::OPERATOR(Operators::PLUS)]) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        Ok(bounds)
+    }
+
+    /// Parse un lifetime ('a, 'static, etc)
+
+    fn parse_lifetime(&mut self) -> Result<String, ParserError> {
+        if let Some(token) = self.current_token() {
+            match &token.token_type {
+                TokenType::IDENTIFIER { name } if name.starts_with('\'') => {
+                    let lifetime_name = name.clone();
+                    self.advance(); // Consomme le token
+                    Ok(lifetime_name)
+                },
+                _ => Err(ParserError::new(ExpectedLifetime, self.current_position()
+                )),
+            }
+        } else {
+            Err(ParserError::new(ExpectedLifetime, self.current_position()
+            ))
+        }
+    }
+
+
 
     /// fonction  pour parser la mutabilité et la visibilité
     fn parse_mutability(&mut self) -> Result<Mutability, ParserError> {
@@ -2487,6 +2512,18 @@ impl Parser {
     //
     //     Ok(declarations)
     //
+
+    // fonction pour checke  le lifetime
+    fn check_lifetime_token(&mut self) ->bool{
+        if let Some(token) = &self.current_token(){
+            match &token.token_type {
+                TokenType::IDENTIFIER {name} => name.starts_with('\''),
+                _ => false,
+            }
+        }else { false }
+    }
+
+
 
 
 
