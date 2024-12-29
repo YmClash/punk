@@ -1290,21 +1290,6 @@ impl Parser {
         // type_bounds.push(Type::Trait(bound));
         type_bounds.push(TypeBound::TraitBound(bound));
 
-
-        // loop {
-            // // Lire le nom d'un trait ou d'une contrainte
-            // let bound = self.consume_identifier()?;
-            // // type_bounds.push(Type::Trait(bound));
-            // type_bounds.push(TypeBound::TraitBound(bound));
-
-            // // Vérifier s'il y a un séparateur supplémentaire, comme `+` pour des contraintes multiples
-            // if self.check(&[TokenType::OPERATOR(Operators::PLUS)]) {
-            //     self.consume(TokenType::OPERATOR(Operators::PLUS))?;
-            // } else {
-            //     break; // Fin des bounds
-            // }
-        // }
-
         while self.check(&[TokenType::OPERATOR(Operators::PLUS)]){
             self.advance();
             let bound = self.consume_identifier()?;

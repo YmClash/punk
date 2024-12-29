@@ -252,9 +252,10 @@ else:
     type Color"#;
     let code_test28 = r#"trait Drawable where T: Copy + Display {fn draw(x: T);fn get_color() -> T;type AssociatedType where Self: Clone;}"#;
 
-    let code_test29 = r#"trait Drawable where T:Copy:
+    let code_test29 = r#"trait Drawable where T:Copy + Display :
     fn draw(x: T)
-    fn get_color() -> T"#;
+    fn get_color() -> T
+    type Color"#;
 
     let code_test30 = r#"where T: Copy"#;
 
