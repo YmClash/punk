@@ -236,10 +236,7 @@ else:
 
     let code_test23 = r#"fn add(x:int)->int{return x+1}"#;
 
-    let code_test24 = r#"class Myclass(parent){def init(x: int, y: int) {self.x = x ,
-
-
-    self.y = y }fn do_something() -> int {return self.x + 1}}"#;
+    let code_test24 = r#"class Myclass(parent){def init(x: int, y: int) {self.x = x,self.y = y }fn do_something() -> int {return self.x + 1}}"#;
 
 
 
