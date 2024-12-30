@@ -259,11 +259,11 @@ else:
 
     let code_test30 = r#"where T: Copy"#;
 
-    let code_test31 = r#"impl<T> Drawable for MyType<T>{fn draw(x: float) {return self.x+1}fn get_color() -> int { return color.code() }}"#;
+    let code_test31 = r#"impl<T> Drawable for MyType<T>{fn draw(x:) {return self.x+1}fn get_color() -> int { return color.code() }}"#;
 
 
 
-    let code_test32 = r#"impl Color {fn new() -> MyType { }fn display() { }}"#;
+    let code_test32 = r#"impl Color {def init(value: T) -> Self {MyType { value }}fn consume(self)-> T {&self.value} fn get_value(&self) -> &T {&self.value}fn set_value(&mut self, value: T) {self.value = value }}"#;
 
     let code_test33 = r#"mpl<T> Drawable for MyType:
     fn draw(x: float):
@@ -272,9 +272,19 @@ else:
         return color.code()"#;
 
     let code_test34 = r#"impl Color:
-    pub fn new(x:int,y:T)
-    fn display():
-        return display.new()"#;
+    def init(value: T) -> Self:
+        MyType { value }
+
+    fn consume(self) -> T:
+        self.value
+
+    fn get_value(&self) -> &T:
+        &self.value
+
+    fn set_value(&mut self, value: T):
+        self.value = value"#;
+
+
 
     let code_test35 = r#"impl<T> Drawable for MyType<T> where T: Display:
     fn draw(x: T) -> bool:
@@ -290,8 +300,8 @@ else:
 
 
 
-    // let mut lexer = Lexer::new(code_test35, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test31, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test27, SyntaxMode::Indentation);
+    // let mut lexer = Lexer::new(code_test31, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -300,8 +310,8 @@ else:
     }
     println!("\n");
 
-    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+    let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    // let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
     while !parser.is_at_end() {
         match parser.parse_statement() {

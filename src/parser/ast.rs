@@ -183,6 +183,7 @@ pub enum Type {
     //Trait(String), // pour Type Bounds
     Named(String),
 
+    SelfType,
 }
 
 #[allow(dead_code)]
@@ -346,6 +347,14 @@ pub struct MacroDeclaration {
     pub body: Block,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum SelfKind{
+    Value,                  // self
+    Reference,              // &self
+    MutableReference,       // &mut self
+}
+
 
 
 #[allow(dead_code)]
@@ -394,6 +403,7 @@ pub struct WhereClause {
 #[derive(Debug, Clone)]
 pub struct ImplMethod{
     pub name: String,
+    pub self_param:Option<SelfKind>,
     pub parameters: Vec<(Parameter)>,
     pub return_type: Option<Type>,
     pub visibility: Visibility,

@@ -65,7 +65,11 @@ pub enum ParserErrorType {
     MultipleConstructors,
     UnexpectedParameterName,
     MismatchedParametersAndAttributes,
-    MultipleRestPatterns
+    MultipleRestPatterns,
+
+    InvalidConstructorReturn,
+    InvalidConstructorParameter,
+    InvalidConstructorName,
 
 
 
@@ -167,6 +171,11 @@ impl Display for ParserErrorType {
 
 
             ParserErrorType::InvalidFunctionDeclaration => write!(f, "InvalidFunctionDeclaration"),
+
+            ParserErrorType::InvalidConstructorReturn => write!(f, "InvalidConstructorReturn"),
+            ParserErrorType::InvalidConstructorParameter => write!(f, "InvalidConstructorParameter"),
+            ParserErrorType::InvalidConstructorName => write!(f, "InvalidConstructorName"),
+
         }
     }
 }
@@ -226,6 +235,11 @@ impl ParserError {
             ParserErrorType::MultipleConstructors => "Multiple constructors".to_string(),
             ParserErrorType::MismatchedParametersAndAttributes => "Mismatched parameters and attributes".to_string(),
             ParserErrorType::MultipleRestPatterns => "Multiple rest patterns".to_string(),
+
+
+            ParserErrorType::InvalidConstructorReturn => "Invalid constructor return".to_string(),
+            ParserErrorType::InvalidConstructorParameter => "Invalid constructor parameter".to_string(),
+            ParserErrorType::InvalidConstructorName => "Invalid constructor name".to_string(),
 
 
 

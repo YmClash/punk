@@ -1,9 +1,9 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
-use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType};
+use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
 
@@ -1596,29 +1596,125 @@ impl Parser {
     fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
         let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
 
-        self.consume(TokenType::KEYWORD(Keywords::FN))?;
-        let name = self.consume_identifier()?;
+        let (is_constructor, name) = if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
+            self.advance();  // Consomme 'def'
+            let name = self.consume_identifier()?;
+            if name == "init" {
+                (true, name)
+            } else {
+                return Err(ParserError::new(
+                    InvalidConstructorName,
+                    self.current_position()
+                ));
+            }
+        } else {
+            // Sinon c'est une méthode normale avec 'fn'
+            self.consume(TokenType::KEYWORD(Keywords::FN))?;
+            let name = self.consume_identifier()?;
+            (false, name)
+        };
 
-        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-        let parameters = self.parse_function_parameters()?;
-        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+        let (self_param, parameters) = self.parse_method_parameters()?;
 
+        // Vérifie le type de retour
         let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
             self.advance();
+            if is_constructor {
+                // Pour un constructeur, le type de retour doit être Self
+                if !self.check(&[TokenType::KEYWORD(Keywords::SELF)]) {
+                    return Err(ParserError::new(
+                        InvalidConstructorReturn,
+                        self.current_position()
+                    ));
+                }
+                self.advance();
+                Some(Type::SelfType)
+            } else {
+                Some(self.parse_type()?)
+            }
+        } else {
+            None
+        };
+
+        // Un constructeur ne doit pas avoir de self_param
+        if is_constructor && self_param.is_some() {
+            return Err(ParserError::new(
+                InvalidConstructorParameter,
+                self.current_position()
+            ));
+        }
+
+        let body = self.parse_block()?;
+
+        Ok(ImplMethod {
+            name,
+            self_param,
+            parameters,
+            return_type,
+            visibility,
+            body,
+        })
+    }
+
+    fn parse_method_parameters(&mut self) -> Result<(Option<SelfKind>, Vec<Parameter>), ParserError> {
+        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+        let mut parameters = Vec::new();
+        let mut self_param = None;
+
+        if !self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]) {
+            // Vérifie si le premier paramètre est self
+            if self.check(&[TokenType::KEYWORD(Keywords::SELF)]) {
+                self.advance();
+                self_param = Some(SelfKind::Value);
+            } else if self.check(&[TokenType::OPERATOR(Operators::AMPER)]) { // &self
+                self.advance();
+                if self.check(&[TokenType::KEYWORD(Keywords::MUT)]) {
+                    self.advance();
+                    self.consume(TokenType::KEYWORD(Keywords::SELF))?;
+                    self_param = Some(SelfKind::MutableReference);
+                } else {
+                    self.consume(TokenType::KEYWORD(Keywords::SELF))?;
+                    self_param = Some(SelfKind::Reference);
+                }
+            }
+
+            // S'il y a d'autres paramètres après self
+            if self_param.is_some() && self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+                self.advance();
+            }
+
+            // Parse les autres paramètres normaux
+            while !self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]) {
+                let param = self.parse_parameter()?; // Utilise parse_parameter au lieu de parse_method_parameters
+                parameters.push(param);
+
+                if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+        Ok((self_param, parameters))
+    }
+
+    fn parse_parameter(&mut self) -> Result<Parameter, ParserError> {
+        println!("Début du parsing d'un paramètre");
+        let param_name = self.consume_identifier()?;
+
+        // Vérifier s'il y a un type spécifié
+        let param_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             Some(self.parse_type()?)
         } else {
             None
         };
 
-        // Parse le corps de la méthode
-        let body = self.parse_block()?;
-
-        Ok(ImplMethod {
-            name,
-            parameters,
-            return_type,
-            visibility,
-            body,
+        println!("Fin du parsing du paramètre OK!!!!!!!!!!!!!!!!!!!!!!");
+        Ok(Parameter {
+            name: param_name,
+            parameter_type: param_type.unwrap_or(Type::Infer),
         })
     }
 
