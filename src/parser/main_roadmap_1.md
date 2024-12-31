@@ -14,7 +14,7 @@
 - [ ] Expressions d'accès
    - [x] Indexation
    - [ ] Slicing
-   - [ ] Range
+   - [x] Range
 - [ ] Cast de type
 - [ ] Chaînage d'opérations (method chaining)
 
@@ -26,15 +26,15 @@
 - [x] Système de modules
    - [x] Déclaration de modules
    - [x] Imports/Exports
-   - [ ] Visibilité publique/privée // pas besoin car lorsqu'on importe un module, on a accès à tout
+   - [x] Visibilité publique/privée // pas besoin car lorsqu'on importe un module, on a accès à tout
 - [ ] Orienté objet
-   - [ ] Classes
-   - [ ] Traits
-   - [ ] Implémentations (impl)
-   - [ ] Interfaces
+   - [x] Classes
+   - [x] Traits
+   - [=] Implémentations (impl)  partiellement 
+   - [x] Interfaces
 - [ ] Génériques
    - [ ] Fonctions génériques
-   - [ ] Types génériques
+   - [x] Types génériques
    - [ ] Contraintes de traits
 
 ## 2. Control Flow
@@ -54,8 +54,8 @@
 - [x] Guards
 - [x] Tuples et arrays
 - [ ] Patterns avancés
-   - [ ] Rest (...)
-   - [ ] Range
+   - [x] Rest (...)
+   - [x] Range
    - [ ] OR patterns
    - [ ] Destructuring de structs
    - [ ] Deep matching
@@ -73,13 +73,13 @@
 
 ### 3.2 Système de Types Avancé 🔄
 - [ ] Génériques
-   - [ ] Bounds de traits
-   - [ ] Where clauses
-   - [ ] Associated types
+   - [x] Bounds de traits
+   - [x] Where clauses
+   - [x] Associated types
 - [ ] Lifetimes
-   - [ ] Annotations de lifetime
+   - [x] Annotations de lifetime
    - [ ] Elision de lifetime
-   - [ ] Lifetime bounds
+   - [x] Lifetime bounds
 - [ ] Types algébriques
    - [ ] Sum types
    - [ ] Product types
@@ -91,7 +91,7 @@
 - [x] Mode indentation (Python-like)
 - [x] Basculement contextuel
 - [ ] Features avancées
-   - [ ] Block expressions
+   - [x] Block expressions
    - [ ] Gestion INDENT/DEDENT améliorée
    - [ ] One-line vs multi-line
 

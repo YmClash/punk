@@ -309,7 +309,7 @@ let mut y = 10;
 
 let z:int = 1.5;
 
-let mut = x + 1    "#;
+let mut = x + 1"#;
 
 
 
