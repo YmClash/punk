@@ -225,8 +225,8 @@ else:
     let code_test19 = r#"1..5"#;
     let code_test20 = r#"use std.io::{Read as R, Write as W};"#;
 
-    let code_test21 = r#"class MyClass:
-    pub let x: int
+    let code_test21 = r#"pub class MyClass:
+    let x: int
     let y: str
     fn do_something() -> int:
         return self.x + 1 "#;
@@ -297,7 +297,7 @@ else:
 
 
 
-    let mut lexer = Lexer::new(code_test25, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test35, SyntaxMode::Indentation);
     // let mut lexer = Lexer::new(code_test3, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
