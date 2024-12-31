@@ -259,7 +259,13 @@ else:
 
     let code_test30 = r#"where T: Copy"#;
 
-    let code_test31 = r#"impl<T> Drawable for MyType<T>{fn draw(x:int) {return self.x+1}fn get_color() -> int { return color.code() }}"#;
+    let code_test31 = r#"impl<T> Drawable for MyType<T>{
+    fn draw(x:int) {
+        return self.x+1}
+    fn get_color() -> int {
+        return color.code()
+        }
+    }"#;
 
 
 
@@ -291,14 +297,25 @@ else:
         return self.x + 1"#;
 
 
-    let code_test36 = r#"let x = 10;let mut y = 10;"#;
+    let code_test36 = r#"let x = 10
+let mut y = 10
+let z:int = 1.5
+fn get_color(x:int) -> int:
+    return self.x+1"#;
+
+
+    let code_test37 = r#"let x = 10;
+let mut y = 10;
+
+let z:int = 1.5;
+
+let mut = x + 1    "#;
 
 
 
 
-
-    let mut lexer = Lexer::new(code_test35, SyntaxMode::Indentation);
-    // let mut lexer = Lexer::new(code_test3, SyntaxMode::Braces);
+    // let mut lexer = Lexer::new(code_test36, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test31, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -307,8 +324,8 @@ else:
     }
     println!("\n");
 
-    let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    // let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
     while !parser.is_at_end() {
         match parser.parse_statement() {
