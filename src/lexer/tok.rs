@@ -127,6 +127,7 @@ pub enum Keywords {
     TYPEOF,
     USE,
     WITH,
+    WHERE,
     WHILE,
     YIELD,
     //TYPE KEYWORDS

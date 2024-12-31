@@ -27,7 +27,7 @@ fn main() {
 
 
 
-    let code_source = r#"let x = 5;const v = 100;"#;
+    let code_source = r#"let x = 5; const v = 100;"#;
 
     let code_binary = "array[0][1]";
 
@@ -51,11 +51,11 @@ fn main() {
 
     let code_enum_brace = "pub enum Color {pub x:int,y:float, z:str};";
     let code_enum_indent = "enum Color {x:int,y:float,z:str}\n";
-
+    //
 
     let code_func_braces = "pub fn add(x: int, y: int) -> int {\
     let mut result = x + y;\
-    return result};";
+    return result}";
 
     let code_func_indent =
         r#"pub fn add(x: int, y: int) -> int:
@@ -67,10 +67,10 @@ fn main() {
         let mut result = x + y
         let z = result + 5
         return z"#;
-
-    let code_func_braces2 = r#"fn add(x: int, y: int) -> int {return x + y};"#;
-
-    let code_func_braces3 = "fn add() ->int{return 5};";
+/////////////////////////////
+    let code_func_braces2 = r#"match x {1 => print("one"),2 => print("two"),_ => print("other")} let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5} obj.method1().field.method2(1+2);"#;
+////////////////////////////
+    let code_func_braces3 = "pub fn add() ->int{return 5};";
 
 
     let code_func_call_braces = "let sum:int = add(5, 10);";
@@ -193,7 +193,7 @@ fn main() {
     _ => print("Other")
 "#;
 
-    let code_test12 = r#"match x :1..5 => println!("entre 1 et 4"),10.. => println!("10 ou plus"),..10 => println!("moins de 10"),}"#;
+    let code_test12 = r#"match x :1..5 => println!("entre 1 et 4"),10.. => println!("10 ou plus"),..10 => println!("moins de 10")"#;
 
     let code_test13 = r#"match x :
     n if n > 0 => print("positive")
@@ -205,7 +205,7 @@ fn main() {
     let code_test14 = r#"match x {n if n > 0 => print("positive"),(x, y) => print("tuple simple"),[1, 2] => print("array simple"),_ => print("default")}"#;
 
 
-    let code_test15 = r#"if x > 0 {print("hello");}else{print("Nothing");};"#;
+    let code_test15 = r#"if x > 0 {print("hello");}else{print("Nothing");}"#;
     let code_test16 = r#"if x > 0 :
     print("hello")
 elif x < 0:
@@ -222,19 +222,83 @@ else:
 "#;
     let code_test18 = r#"counter: loop {print("infini");x += 1;if x > 10 {break;}}"#;
 
-    let code_test19 = r#"1>=5"#;
-    let code_test20 = r#"use std.io::{Read as R, Write as W}"#;
+    let code_test19 = r#"1..5"#;
+    let code_test20 = r#"use std.io::{Read as R, Write as W};"#;
+
+    let code_test21 = r#"pub class MyClass:
+    let x: int
+    let y: str
+    fn do_something() -> int:
+        return self.x + 1 "#;
+
+
+    let code_test22 = r#"pub class Myclass(classe){let x:int;pubfn do_something() ->int{return self.x + 1}}"#;
+
+    let code_test23 = r#"fn add(x:int)->int{return x+1}"#;
+
+    let code_test24 = r#"pub class Myclass(parent){def init(x: int, y: int) {self.x = x,self.y = y }fn do_something() -> int {return self.x + 1}}"#;
+    let code_test25 = r#"pub class Myclass(parent):
+    def init(x: int, y: int):
+        self.x = x
+        self.y = y
+    fn do_something() -> int:
+        return self.x + 1"#;
+
+    let code_test26 = r#"pub trait Drawable  {fn do_something(x: T) -> int;fn area(a:float)->float;fn do_something_else(x: char) -> int;type Color;}"#;
+    let code_test27 = r#"pub trait Drawable:
+    fn do_something(x: int) -> int
+    fn do_something_else(x: int) -> int
+    fn area() -> float
+    type Color"#;
+    let code_test28 = r#"trait Drawable where T: Copy + Display {fn draw(x: T);fn get_color() -> T;type AssociatedType where Self: Clone;}"#;
+
+    let code_test29 = r#"trait Drawable where T:Copy + Display :
+    fn draw(x: T)
+    fn get_color() -> T
+    type Color"#;
+
+    let code_test30 = r#"where T: Copy"#;
+
+    let code_test31 = r#"impl<T> Drawable for MyType<T>{fn draw(x:int) {return self.x+1}fn get_color() -> int { return color.code() }}"#;
+
+
+
+    let code_test32 = r#"impl Color {def init(value: T) -> Self {MyType { value }}fn consume(self)-> T {&self.value} fn get_value(&self) -> &T {&self.value}fn set_value(&mut self, value: T) {self.value = value }}"#;
+
+    let code_test33 = r#"mpl<T> Drawable for MyType<S>:
+    fn draw(x: float):
+        return self.x+1}
+    fn get_color() -> int:
+        return color.code()"#;
+
+    let code_test34 = r#"impl Color:
+    def init(value: T) -> Self:
+        MyType { value }
+
+    fn consume(self) -> T:
+        self.value
+
+    fn get_value(&self) -> &T:
+        &self.value
+
+    fn set_value(&mut self, value: T):
+        self.value = value"#;
+
+
+
+    let code_test35 = r#"impl<T> Drawable for MyType<T> where D: Display:
+    fn draw(x: T) -> bool:
+        return self.x + 1"#;
+
+
+    let code_test36 = r#"let x = 10;let mut y = 10;"#;
 
 
 
 
 
-
-
-
-
-
-    let mut lexer = Lexer::new(code_test19, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test35, SyntaxMode::Indentation);
+    // let mut lexer = Lexer::new(code_test3, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -244,34 +308,36 @@ else:
     println!("\n");
 
     let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    // let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
-    // while !parser.is_at_end() {
-    //     match parser.parse_declaration() {
-    //         Ok(ast) => {
-    //             println!("AST généré pour la déclaration :");
-    //             println!("{:#?}", ast);
-    //         }
-    //         Err(e) => {
-    //             println!("Erreur lors du parsing : {}", e);
-    //             break;
-    //         }
-    //     }
-    // }
+    while !parser.is_at_end() {
+        match parser.parse_statement() {
+            Ok(ast) => {
+                println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                println!("AST généré pour la déclaration,l'expression ou le statement  :");
+                println!("{:#?}", ast);
+            }
+            Err(e) => {
+                println!("Erreur lors du parsing : {}", e);
+                break;
+            }
+        }
+    }
 
-    // println!("Parsing terminé\n");
+    println!("Parsing terminé\n");
     // println!("Sinon, Parsing des Statement \n");
 
 
-
-    match parser.parse_statement() {
-        Ok(ast) => {
-            println!("AST généré pour l'expression :");
-            println!("{:#?}", ast);
-        }
-        Err(e) => {
-            println!("Erreur lors du parsing : {}", e);
-        }
-    }
+    //
+    // match parser.parse_where_clauses() {
+    //     Ok(ast) => {
+    //         println!("AST généré pour l'expression :");
+    //         println!("{:#?}", ast);
+    //     }
+    //     Err(e) => {
+    //         println!("Erreur lors du parsing : {}", e);
+    //     }
+    // }
 
     println!("\n");
     println!("=========OK==========\n");

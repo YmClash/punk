@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::lexer::lex::Token;
 use crate::parser::parser_error::ParserError;
 use crate::SyntaxMode;
@@ -147,8 +148,22 @@ pub enum CompoundOperator{
 #[allow(dead_code)]
 #[derive(Debug, Clone,PartialEq,Eq)]
 pub struct GenericType{
-    pub base: String,           // Nom du type
-    pub parameters: Vec<Type>, //   Paramètres génériques
+    pub base: String,           // Nom du type  "foo"
+    pub type_parameters: Vec<Type>, //   Paramètres génériques <T,U>
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct GenericParameter{
+    pub name: String,
+    pub bounds: Vec<TypeBound>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum TypeBound{
+    TraitBound(String),
+    Lifetime(String),
 }
 
 #[allow(dead_code)]
@@ -164,6 +179,11 @@ pub enum Type {
     Custom(String),
     Generic(GenericType),
     Infer, // Type inféré déduire par le compilateur
+
+    //Trait(String), // pour Type Bounds
+    Named(String),
+
+    SelfType,
 }
 
 #[allow(dead_code)]
@@ -214,6 +234,7 @@ pub struct ConstDeclaration {
 #[derive(Debug, Clone)]
 pub struct StructDeclaration {
     pub name: String,
+    // pub generic_type: Option<Vec<GenericType>>,
     pub fields: Vec<Field>,
     pub visibility: Visibility,
 
@@ -226,9 +247,29 @@ pub struct ClassDeclaration {
     pub parent_classes: Vec<String>,
     pub attributes: Vec<Attribute>,
     pub constructor: Option<Constructor>,
-    pub methods: Vec<FunctionDeclaration>,
+    pub methods: Vec<MethodeDeclaration>,
+    // pub body: Vec<ClassMember>,
     pub visibility: Visibility,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum ClassMember {
+    Method(FunctionDeclaration),
+    Attribute(Attribute),
+    Constructor(Constructor),
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct MethodeDeclaration {
+    pub name: String,
+    pub parameters: Vec<Parameter>,
+    pub return_type: Option<Type>,
+    pub body: Vec<ASTNode>,
+    pub visibility: Visibility,
+}
+
 
 
 #[allow(dead_code)]
@@ -244,6 +285,11 @@ pub struct Parameter{
 pub struct Attribute {
     pub name: String,
     pub attr_type: Type,
+    pub visibility: Visibility,
+    pub mutability: Mutability,
+    // pub value: Option<Expression>,
+
+
     // pub mutable: bool,
     // pub default_value: Option<Expression>,
 }
@@ -252,8 +298,8 @@ pub struct Attribute {
 #[derive(Debug, Clone)]
 pub struct Constructor { // Keyword  pour  le constructeur serai def  et le methods  utiliserai fn
     pub name: String,       //  def init (self, parameters) init est le nom du constructeur par defaut
-    pub parameters: Vec<Attribute>,
-    pub body: Block,
+    pub parameters: Vec<Parameter>,
+    pub body: Vec<ASTNode>,
 }
 
 #[allow(dead_code)]
@@ -268,16 +314,23 @@ pub struct EnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: String,
-    pub method_signatures: Vec<FunctionSignature>,
-    pub public_access: bool, // pub
+    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub methods: Vec<TraitMethod>,
+    pub associated_types: Vec<AssociatedType>,
+    pub visibility: Visibility,          // pub
+    pub where_clause: Vec<WhereClause>,
+    pub super_traits: Vec<TypeBound>,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ImplDeclaration {
-    pub trait_name: String,
-    pub for_type: Type,
-    pub methods: Vec<FunctionDeclaration>,
+    pub trait_name: Option<String>,
+    pub target_type: Type,
+    pub generic_parameters: Option<Vec<GenericParameter>>,
+    pub methods: Vec<ImplMethod>,
+    pub where_clause: Vec<WhereClause>,
+    pub visibility: Visibility,
 }
 
 #[allow(dead_code)]
@@ -293,6 +346,16 @@ pub struct MacroDeclaration {
     pub parameters: Vec<String>,
     pub body: Block,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum SelfKind{
+    Value,                  // self
+    Reference,              // &self
+    MutableReference,       // &mut self
+}
+
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -312,10 +375,39 @@ pub struct EnumVariant{
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct FunctionSignature{
+pub struct TraitMethod{
     pub name: String,
-    pub parameters: Vec<(String,Type)>,
+    pub parameters: Vec<Parameter>,
     pub return_type: Option<Type>,
+
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct AssociatedType{
+    pub name: String,
+    pub type_bound: Option<Vec<TypeBound>>,
+    pub where_clause: Vec<WhereClause>,
+
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct WhereClause {
+    pub type_name: String,
+    pub bounds: Vec<TypeBound>,
+}
+
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ImplMethod{
+    pub name: String,
+    pub self_param:Option<SelfKind>,
+    pub parameters: Vec<Parameter>,
+    pub return_type: Option<Type>,
+    pub visibility: Visibility,
+    pub body: Vec<ASTNode>,
 
 }
 
@@ -420,12 +512,12 @@ pub enum Literal {
 }
 
 //fonction parametre
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Parameters {
-    pub name: String,
-    pub parameter_type: Option<Type>,
-}
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Parameters {
+//     pub name: String,
+//     pub parameter_type: Option<Type>,
+// }
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
@@ -568,6 +660,7 @@ pub struct MatchStatement{
 #[derive(Clone, Debug)]
 pub struct ReturnStatement {
     pub value: Option<Expression>,
+    // pub value: Expression
 }
 
 #[allow(dead_code)]

@@ -56,6 +56,7 @@ pub enum ParserErrorType {
     ExpectedUseOrImport,
     ExpectedAlias,
     ExpectedRangeOperator,
+    ExpectedLifetime,
 
 
 
@@ -64,7 +65,17 @@ pub enum ParserErrorType {
     MultipleConstructors,
     UnexpectedParameterName,
     MismatchedParametersAndAttributes,
-    MultipleRestPatterns
+    MultipleRestPatterns,
+
+    InvalidConstructorReturn,
+    InvalidConstructorParameter,
+    InvalidConstructorName,
+    InvalidSelfParameter,
+
+
+    MissingType,
+    MissingParameter,
+
 
 
 
@@ -157,6 +168,7 @@ impl Display for ParserErrorType {
             ParserErrorType::ExpectedUseOrImport => write!(f, "ExpectedUseOrImport"),
             ParserErrorType::ExpectedAlias => write!(f, "ExpectedAlias"),
             ParserErrorType::ExpectedRangeOperator => write!(f, "ExpectedRangeOperator"),
+            ParserErrorType::ExpectedLifetime => write!(f, "ExpectedLifetime"),
 
 
             ParserErrorType::MultipleConstructors => write!(f, "MultipleConstructors"),
@@ -165,6 +177,18 @@ impl Display for ParserErrorType {
 
 
             ParserErrorType::InvalidFunctionDeclaration => write!(f, "InvalidFunctionDeclaration"),
+
+            ParserErrorType::InvalidConstructorReturn => write!(f, "InvalidConstructorReturn"),
+            ParserErrorType::InvalidConstructorParameter => write!(f, "InvalidConstructorParameter"),
+            ParserErrorType::InvalidConstructorName => write!(f, "InvalidConstructorName"),
+            ParserErrorType::InvalidSelfParameter => write!(f, "InvalidSelfParameter"),
+
+            ParserErrorType::MissingType => write!(f, "MissingType"),
+            ParserErrorType::MissingParameter => write!(f, "MissingParameter"),
+
+
+
+
         }
     }
 }
@@ -211,6 +235,7 @@ impl ParserError {
             ParserErrorType::ExpectedAlias => "Expected alias after 'as '".to_string(),
 
             ParserErrorType::ExpectedRangeOperator => "Expected range operator".to_string(),
+            ParserErrorType::ExpectedLifetime => "Expected lifetime".to_string(),
 
 
             ParserErrorType::ExpectedDeclaration => "Expected declaration".to_string(),
@@ -225,15 +250,22 @@ impl ParserError {
             ParserErrorType::MultipleRestPatterns => "Multiple rest patterns".to_string(),
 
 
-
-
-
-
+            ParserErrorType::InvalidConstructorReturn => "Invalid constructor return".to_string(),
+            ParserErrorType::InvalidConstructorParameter => "Invalid constructor parameter".to_string(),
+            ParserErrorType::InvalidConstructorName => "Invalid constructor name".to_string(),
+            ParserErrorType::InvalidSelfParameter => "Invalid self parameter".to_string(),
 
 
 
             ParserErrorType::UnexpectedParameterName => "Unexpected parameter name".to_string(),
             ParserErrorType::UnexpectedEndOfInput => "Unexpected end of input".to_string(),
+
+
+            ParserErrorType::MissingType => "Missing type".to_string(),
+            ParserErrorType::MissingParameter => "Missing parameter".to_string(),
+
+
+
         };
 
         ParserError {
