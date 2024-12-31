@@ -377,7 +377,7 @@ pub struct EnumVariant{
 #[derive(Debug, Clone)]
 pub struct TraitMethod{
     pub name: String,
-    pub parameters: Vec<(Parameter)>,
+    pub parameters: Vec<Parameter>,
     pub return_type: Option<Type>,
 
 }
@@ -404,7 +404,7 @@ pub struct WhereClause {
 pub struct ImplMethod{
     pub name: String,
     pub self_param:Option<SelfKind>,
-    pub parameters: Vec<(Parameter)>,
+    pub parameters: Vec<Parameter>,
     pub return_type: Option<Type>,
     pub visibility: Visibility,
     pub body: Vec<ASTNode>,

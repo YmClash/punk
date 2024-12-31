@@ -70,6 +70,12 @@ pub enum ParserErrorType {
     InvalidConstructorReturn,
     InvalidConstructorParameter,
     InvalidConstructorName,
+    InvalidSelfParameter,
+
+
+    MissingType,
+    MissingParameter,
+
 
 
 
@@ -175,6 +181,13 @@ impl Display for ParserErrorType {
             ParserErrorType::InvalidConstructorReturn => write!(f, "InvalidConstructorReturn"),
             ParserErrorType::InvalidConstructorParameter => write!(f, "InvalidConstructorParameter"),
             ParserErrorType::InvalidConstructorName => write!(f, "InvalidConstructorName"),
+            ParserErrorType::InvalidSelfParameter => write!(f, "InvalidSelfParameter"),
+
+            ParserErrorType::MissingType => write!(f, "MissingType"),
+            ParserErrorType::MissingParameter => write!(f, "MissingParameter"),
+
+
+
 
         }
     }
@@ -240,17 +253,19 @@ impl ParserError {
             ParserErrorType::InvalidConstructorReturn => "Invalid constructor return".to_string(),
             ParserErrorType::InvalidConstructorParameter => "Invalid constructor parameter".to_string(),
             ParserErrorType::InvalidConstructorName => "Invalid constructor name".to_string(),
-
-
-
-
-
-
+            ParserErrorType::InvalidSelfParameter => "Invalid self parameter".to_string(),
 
 
 
             ParserErrorType::UnexpectedParameterName => "Unexpected parameter name".to_string(),
             ParserErrorType::UnexpectedEndOfInput => "Unexpected end of input".to_string(),
+
+
+            ParserErrorType::MissingType => "Missing type".to_string(),
+            ParserErrorType::MissingParameter => "Missing parameter".to_string(),
+
+
+
         };
 
         ParserError {

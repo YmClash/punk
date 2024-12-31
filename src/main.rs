@@ -259,13 +259,13 @@ else:
 
     let code_test30 = r#"where T: Copy"#;
 
-    let code_test31 = r#"impl<T> Drawable for MyType<T>{fn draw(x:) {return self.x+1}fn get_color() -> int { return color.code() }}"#;
+    let code_test31 = r#"impl<T> Drawable for MyType<T>{fn draw(x:int) {return self.x+1}fn get_color() -> int { return color.code() }}"#;
 
 
 
     let code_test32 = r#"impl Color {def init(value: T) -> Self {MyType { value }}fn consume(self)-> T {&self.value} fn get_value(&self) -> &T {&self.value}fn set_value(&mut self, value: T) {self.value = value }}"#;
 
-    let code_test33 = r#"mpl<T> Drawable for MyType:
+    let code_test33 = r#"mpl<T> Drawable for MyType<S>:
     fn draw(x: float):
         return self.x+1}
     fn get_color() -> int:
@@ -286,22 +286,19 @@ else:
 
 
 
-    let code_test35 = r#"impl<T> Drawable for MyType<T> where T: Display:
+    let code_test35 = r#"impl<T> Drawable for MyType<T> where D: Display:
     fn draw(x: T) -> bool:
         return self.x + 1"#;
 
 
+    let code_test36 = r#"let x = 10;let mut y = 10;"#;
 
 
 
 
 
-
-
-
-
-    let mut lexer = Lexer::new(code_test27, SyntaxMode::Indentation);
-    // let mut lexer = Lexer::new(code_test31, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test25, SyntaxMode::Indentation);
+    // let mut lexer = Lexer::new(code_test3, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification

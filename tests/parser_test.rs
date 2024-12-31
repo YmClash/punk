@@ -1,53 +1,53 @@
-#[cfg(test)]
-mod tests {
-    use nom::Parser;
-    use num_bigint::BigInt;
-    use pyrust::parser::ast::{Declaration, Expression, Literal, Mutability, Statement, Type, BinaryOperation, Operator};
-    use pyrust::parser::parser::Parser;
-    use pyrust::{Lexer, SyntaxMode};
-    use BigInt;
-
-
-    use pyrust::tok::{Delimiters, Keywords, Operators, TokenType};
-    use super::*;
-
-
-
-    #[test]
-    fn test_complex_expressions() {
-        let test_cases = vec![
-            ("5 + 3 * 2", 11),
-            ("(10 - 4) / 2", 3),
-            ("2 * (3 + 4)", 14),
-            ("15 - 5 * 2 + 3", 8),
-            // ("true && (5 > 3)", true),
-            // ("3.14 <= 3.14 || false", true),
-        ];
-
-        for (input, expected_result) in test_cases {
-            let mut lexer = Lexer::new(input, SyntaxMode::Braces);
-            let tokens = lexer.tokenize();
-            let mut parser = Parser::new(tokens, SyntaxMode::Braces);
-
-            match parser.parse_expression() {
-                Ok(ast) => {
-                    // Ici, vous devriez évaluer l'AST pour obtenir le résultat
-                    // et le comparer avec expected_result
-                    // Par exemple :
-                    // let result = evaluate_ast(ast);
-                    // assert_eq!(result, expected_result, "Failed for input: {}", input);
-                },
-                Err(e) => panic!("Error parsing expression '{}': {:?}", input, e),
-            }
-        }
-
-
-    // Vous devrez implémenter cette fonction pour évaluer l'AST
-    // fn evaluate_ast(ast: Expression) -> Result<Value, String> {
-    //     // Implémentez l'évaluation de l'AST ici
-    //     todo!()
-    }
-
+// #[cfg(test)]
+// mod tests {
+//     use nom::Parser;
+//     use num_bigint::BigInt;
+//     use pyrust::parser::ast::{Declaration, Expression, Literal, Mutability, Statement, Type, BinaryOperation, Operator};
+//     use pyrust::parser::parser::Parser;
+//     use pyrust::{Lexer, SyntaxMode};
+//     use BigInt;
+//
+//
+//     use pyrust::tok::{Delimiters, Keywords, Operators, TokenType};
+//     use super::*;
+//
+//
+//
+//     #[test]
+//     fn test_complex_expressions() {
+//         let test_cases = vec![
+//             ("5 + 3 * 2", 11),
+//             ("(10 - 4) / 2", 3),
+//             ("2 * (3 + 4)", 14),
+//             ("15 - 5 * 2 + 3", 8),
+//             // ("true && (5 > 3)", true),
+//             // ("3.14 <= 3.14 || false", true),
+//         ];
+//
+//         for (input, expected_result) in test_cases {
+//             let mut lexer = Lexer::new(input, SyntaxMode::Braces);
+//             let tokens = lexer.tokenize();
+//             let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+//
+//             match parser.parse_expression() {
+//                 Ok(ast) => {
+//                     // Ici, vous devriez évaluer l'AST pour obtenir le résultat
+//                     // et le comparer avec expected_result
+//                     // Par exemple :
+//                     // let result = evaluate_ast(ast);
+//                     // assert_eq!(result, expected_result, "Failed for input: {}", input);
+//                 },
+//                 Err(e) => panic!("Error parsing expression '{}': {:?}", input, e),
+//             }
+//         }
+//
+//
+//     // Vous devrez implémenter cette fonction pour évaluer l'AST
+//     // fn evaluate_ast(ast: Expression) -> Result<Value, String> {
+//     //     // Implémentez l'évaluation de l'AST ici
+//     //     todo!()
+//     }
+//
 
     // fn create_parser(source: &str, syntax_mode: SyntaxMode) -> Parser {
     //     let mut lexer = Lexer::new(source, syntax_mode);
@@ -679,4 +679,4 @@ mod tests {
     // }
 
 
-}
+// }

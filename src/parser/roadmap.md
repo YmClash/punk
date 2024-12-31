@@ -9,11 +9,11 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Appels de fonction
 - [x] Accès aux membres (dot notation)
 - [x] Expressions lambda basiques
-- [ ] Expressions lambda avancées (captures, closures)
+- [x] Expressions lambda avancées (captures, closures)
 - [ ] Expressions de cast de type
 - [ ] Expressions d'indexation
 - [ ] Expressions de slice
-- [ ] Expressions de range
+- [x] Expressions de range
 
 ## 2. Déclarations
 - [x] Déclarations de variables
@@ -21,11 +21,11 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Déclarations de fonctions
 - [x] Déclarations de structures
 - [x] Déclarations d'énumérations
-- [ ] Déclarations de traits
-- [ ] Déclarations de classes
-- [ ] Implémentations (impl)
-- [ ] Déclarations de modules
-- [ ] Déclarations d'interfaces
+- [x] Déclarations de traits
+- [x] Déclarations de classes
+- [x] Implémentations (impl)  // partiellement 
+- [x] Déclarations de modules
+- [x] Déclarations d'interfaces -> Trait
 
 ## 3. Statements
 - [x] Blocs de code
@@ -36,14 +36,14 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Boucles for
 - [ ] Statement (try, catch)
 - [ ] Gestion des emprunts (borrow, mut)
-- [ ] Gestion des clôtures (closures)
-- [ ] Gestion des modules et imports
+- [x] Gestion des clôtures (closures) // deja dans Lambda
+- [x] Gestion des modules et imports
 - [x] Statements match pattern basiques
 - [x] Match pattern avec guards
 - [x] Match pattern avec tuples
 - [x] Match pattern avec arrays
-- [ ] Match pattern avec rest (...)
-- [ ] Match pattern avec range
+- [x] Match pattern avec rest (...)
+- [x] Match pattern avec range
 - [ ] Match pattern avec OR
 - [ ] Match pattern avec structs
 - [x] Break et continue avec labels
@@ -52,10 +52,10 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Types primitifs (int, float, bool, str, char)
 - [x] Types composés basiques (arrays, tuples)
 - [ ] Types composés avancés (slices, références)
-- [ ] Types génériques
-- [ ] Types de fonction
-- [ ] Traits bounds
-- [ ] Lifetimes
+- [x] Types génériques
+- [x] Types de fonction
+- [x] Traits bounds
+- [x] Lifetimes
 - [ ] Types algébriques (sum types)
 - [ ] Types dépendants
 
@@ -63,9 +63,9 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Mode accolades basique
 - [x] Mode indentation basique
 - [x] Basculement entre les modes pour patterns
-- [ ] Support complet des block expressions
-- [ ] Gestion avancée des INDENT/DEDENT
-- [ ] Gestion des commentaires multilignes
+- [x] Support complet des block expressions
+- [x] Gestion avancée des INDENT/DEDENT
+- [] Gestion des commentaires multilignes
 - [ ] Gestion des docstrings
 
 ## 6. Gestion des erreurs
@@ -100,7 +100,7 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [ ] Support des annotations
 - [ ] Macros procédurales
 - [ ] Macros déclaratives
-- [ ] Gestion des modules et imports
+- [x ] Gestion des modules et imports
 - [ ] Async/await
 - [ ] Générateurs
 - [ ] Métaprogrammation
