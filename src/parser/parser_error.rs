@@ -265,7 +265,6 @@ impl ParserError {
             ParserErrorType::MissingParameter => "Missing parameter".to_string(),
 
 
-
         };
 
         ParserError {

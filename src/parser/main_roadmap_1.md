@@ -10,7 +10,7 @@
 - [ ] Expressions lambda avancées
    - [ ] Capture de variables
    - [ ] Support des closures
-   - [] Paramètres par défaut
+   - [ ] Paramètres par défaut
 - [ ] Expressions d'accès
    - [x] Indexation
    - [ ] Slicing

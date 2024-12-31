@@ -44,8 +44,8 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Match pattern avec arrays
 - [x] Match pattern avec rest (...)
 - [x] Match pattern avec range
-- [ ] Match pattern avec OR
-- [ ] Match pattern avec structs
+- [ ] Match pattern avec OR                       pas encore neccessaire 
+- [ ] Match pattern avec structs                  pas encore neccessaire
 - [x] Break et continue avec labels
 
 ## 4. Types

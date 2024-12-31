@@ -574,44 +574,6 @@ impl Parser {
 
     }
 
-
-    // fn parse_range_expression(&mut self) -> Result<Expression, ParserError> {
-    //     println!("Début du parsing de l'expression de Range");
-    //     let left = if !self.match_token(&[
-    //         TokenType::OPERATOR(Operators::DOTDOT),
-    //         TokenType::OPERATOR(Operators::DOTDOTEQUAL),
-    //     ]) {
-    //         Some(Box::new(self.parse_term()?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     // Vérifie et consomme l'opérateur de plage
-    //     let operator = if self.match_token(&[
-    //         TokenType::OPERATOR(Operators::DOTDOT),
-    //         TokenType::OPERATOR(Operators::DOTDOTEQUAL),
-    //     ]) {
-    //         let token = self.advance_token(); // Consomme le token
-    //         token.token_type
-    //     } else {
-    //         return Err(ParserError::new(ExpectedRangeOperator, self.current_position()));
-    //     };
-    //
-    //     // Parse l'expression de droite si elle existe
-    //     let right = if !self.check(TokenType::DELIMITER(Delimiters::SEMICOLON)) && !self.check(TokenType::EOF) {
-    //         Some(Box::new(self.parse_term()?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     Ok(Expression::RangeExpression(RangeExpression {
-    //         left,
-    //         operator,
-    //         right,
-    //     }))
-    // }
-
-
     /// fonction pour parser les parametres
 
     fn parse_arguments_list(&mut self) -> Result<Vec<Expression>, ParserError> {
@@ -840,7 +802,6 @@ impl Parser {
 
     }
 
-
     pub fn parse_const_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de constante");
 
@@ -919,9 +880,6 @@ impl Parser {
         //     vec![]
         //
         // };
-
-
-
         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
 
         let fields = self.parse_struct_fields()?;
@@ -1132,8 +1090,6 @@ impl Parser {
     }
 
 
-
-
     fn parse_class_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de classe");
         self.consume(TokenType::KEYWORD(Keywords::CLASS))?;
@@ -1238,7 +1194,6 @@ impl Parser {
         }
         Ok((attributes, methods, constructor))
     }
-
 
 
     fn parse_constructor_declaration(&mut self) -> Result<Constructor,ParserError>{
@@ -1392,8 +1347,6 @@ impl Parser {
     }
 
 
-
-
     fn parse_methode_declaration(&mut self) -> Result<MethodeDeclaration,ParserError>{
         println!("Debut du parsing de la déclaration de méthode");
         // pour la visibilite de methode dans une classe je pense que
@@ -1508,21 +1461,7 @@ impl Parser {
         todo!()
     }
 
-    // fn parse_gen_type_param(&mut self) -> Result<Vec<String>,ParserError> {
-    //     let mut params = Vec::new();
-    //
-    //     loop {
-    //         let param_type = self.consume_identifier()?;
-    //         params.push(param_type);
-    //
-    //         if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
-    //             continue;
-    //         }else { break; }
-    //     }
-    //     Ok(params)
-    // }
 
-    //
     fn parse_generic_parameters(&mut self) -> Result<Vec<GenericParameter>, ParserError> {
         self.consume(TokenType::OPERATOR(Operators::LESS))?; // Consomme '<'
         let mut params = Vec::new();
@@ -1592,69 +1531,6 @@ impl Parser {
             ))
         }
     }
-
-    // fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
-    //     let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
-    //
-    //     let (is_constructor, name) = if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
-    //         self.advance();  // Consomme 'def'
-    //         let name = self.consume_identifier()?;
-    //         if name == "init" {
-    //             (true, name)
-    //         } else {
-    //             return Err(ParserError::new(
-    //                 InvalidConstructorName,
-    //                 self.current_position()
-    //             ));
-    //         }
-    //     } else {
-    //         // Sinon c'est une méthode normale avec 'fn'
-    //         self.consume(TokenType::KEYWORD(Keywords::FN))?;
-    //         let name = self.consume_identifier()?;
-    //         (false, name)
-    //     };
-    //
-    //     let (self_param, parameters) = self.parse_method_parameters()?;
-    //
-    //     // Vérifie le type de retour
-    //     let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
-    //         self.advance();
-    //         if is_constructor {
-    //             // Pour un constructeur, le type de retour doit être Self
-    //             if !self.check(&[TokenType::KEYWORD(Keywords::SELF)]) {
-    //                 return Err(ParserError::new(
-    //                     InvalidConstructorReturn,
-    //                     self.current_position()
-    //                 ));
-    //             }
-    //             self.advance();
-    //             Some(Type::SelfType)
-    //         } else {
-    //             Some(self.parse_type()?)
-    //         }
-    //     } else {
-    //         None
-    //     };
-    //
-    //     // Un constructeur ne doit pas avoir de self_param
-    //     if is_constructor && self_param.is_some() {
-    //         return Err(ParserError::new(
-    //             InvalidConstructorParameter,
-    //             self.current_position()
-    //         ));
-    //     }
-    //
-    //     let body = self.parse_block()?;
-    //
-    //     Ok(ImplMethod {
-    //         name,
-    //         self_param,
-    //         parameters,
-    //         return_type,
-    //         visibility,
-    //         body,
-    //     })
-    // }
 
     fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
         let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
@@ -1880,7 +1756,6 @@ impl Parser {
         }
     }
 
-
     // fn parse_parameter(&mut self) -> Result<Parameter, ParserError> {
     //     println!("Début du parsing d'un paramètre");
     //     let param_name = self.consume_identifier()?;
@@ -1898,7 +1773,6 @@ impl Parser {
     //         parameter_type: param_type.unwrap_or(Type::Infer),
     //     })
     // }
-
     fn parse_parameter(&mut self) -> Result<Parameter, ParserError> {
         println!("Début du parsing d'un paramètre");
 
@@ -1942,7 +1816,6 @@ impl Parser {
     //         parameter_type: param_type,
     //     })
     // }
-
 
 
     /// fonction  pour parser la mutabilité et la visibilité
@@ -2057,7 +1930,6 @@ impl Parser {
 
     }
 
-
     /// fonction pour le gestion de structure de controle
     fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction if");
@@ -2114,7 +1986,6 @@ impl Parser {
         })))
     }
 
-
     fn parse_for_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction for");
 
@@ -2132,7 +2003,6 @@ impl Parser {
         })))
 
     }
-
 
     fn parse_break_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction break");
@@ -2210,7 +2080,6 @@ impl Parser {
     }
 
 
-
     fn parse_indented_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         // On vérifie si on utilise => ou : pour ce bras
         let uses_arrow = self.check(&[TokenType::OPERATOR(Operators::FATARROW)]);
@@ -2238,7 +2107,6 @@ impl Parser {
             Ok(body)
         }
     }
-
 
     fn parse_braced_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         self.consume(TokenType::OPERATOR(Operators::FATARROW))?;
@@ -2268,7 +2136,6 @@ impl Parser {
             Ok(None)
         }
     }
-
     fn parse_match_arm(&mut self) -> Result<MatchArm, ParserError> {
         println!("Début du parsing du bras de match");
         let pattern = self.parse_pattern_complex()?;
@@ -2488,9 +2355,6 @@ impl Parser {
 
 
 
-
-
-
     fn parse_return_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction de retour");
         self.consume(TokenType::KEYWORD(Keywords::RETURN))?;
@@ -2558,7 +2422,6 @@ impl Parser {
 
     }
 
-
     fn parse_module_path(&mut self) -> Result<Vec<String>, ParserError> {
         let mut path = Vec::new();
         loop {
@@ -2612,18 +2475,9 @@ impl Parser {
 
     }
 
-
-
-
-
     // fn parse_annotation(&mut self) -> Result<Attribute, ParserError> {
     //     todo!()
     // }
-
-
-
-
-
 
     // fonction utilitaire pour aide au parsing
 
@@ -2914,9 +2768,6 @@ impl Parser {
     // }
     //
     //
-
-
-
 
 
     // pub fn parse_declarations(&mut self) -> Result<Vec<ASTNode>, ParserError> {

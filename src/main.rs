@@ -304,18 +304,13 @@ fn get_color(x:int) -> int:
     return self.x+1"#;
 
 
-    let code_test37 = r#"let x = 10;
-let mut y = 10;
-
-let z:int = 1.5;
-
-let mut = x + 1"#;
+    let code_test37 = r#"x..y"#;
 
 
 
 
     // let mut lexer = Lexer::new(code_test36, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test31, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test37, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
