@@ -2793,6 +2793,9 @@ impl Parser {
         }else { false }
     }
 
+    // fonction pour aidder le parsing des erreurs
+    // il syncronise  le parsing apres une erreur
+
     pub fn synchronize(&mut self) -> Result<(), ParserError> {
         println!("Début de la synchronisation après erreur");
 
