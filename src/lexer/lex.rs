@@ -540,7 +540,7 @@ impl<'a> Lexer<'a> {
                 is_escaped = true;
             }
 
-            else if ch == '\'' && value.len() == 3 {
+            else if ch == '\'' && value.len() == 1 { // Si
                 return TokenType::CHAR {
                     value: value.chars().next().unwrap()
                 }

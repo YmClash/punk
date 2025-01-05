@@ -304,7 +304,7 @@ fn get_color(x:int) -> int:
     return self.x+1"#;
 
 
-    let code_test37 = r#"let mut x  = 'm';"#;
+    let code_test37 = r#"pub const x = "c";"#;
 
 
 

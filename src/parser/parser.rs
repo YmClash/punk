@@ -478,7 +478,7 @@ impl Parser {
 
                 TokenType::STRING { value,.. } => {
                     let value = value.clone();
-                    if value.len() == 1 && self.if_single_quote(&value) {
+                    if value.len() == 1 /* && self.if_single_quote(&value)*/ {
                         self.advance();
                         Expression::Literal(Literal::Char(value.chars().next().unwrap()))
                     }else {
@@ -864,20 +864,52 @@ impl Parser {
         self.consume(TokenType::KEYWORD(Keywords::CONST))?;
 
         let name = self.consume_identifier()?;
+
+
+        let mut type_context = TypeContext::new();
+
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
         } else {
             Type::Infer
         };
+
+
         self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
         let value = self.parse_expression(0)?;
+
+
+        let inferred_type = type_context.infer_expression(&value)
+            .map_err(|msg| ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            ))?;
+
+        let final_type = match variable_type {
+            Type::Infer => inferred_type,
+            t if t == inferred_type => t,
+            _ => return Err(ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            )),
+        };
+
+
+
+
+
+
+
+
         self.consume_seperator();
+
+
 
         println!("la valeur de la constante parse : {:?}", value);
 
         Ok(ASTNode::Declaration(Declaration::Constante(ConstDeclaration{
             name,
-            constant_type: Some(variable_type),
+            constant_type: Some(final_type),
             value,
             visibility,
         })))
@@ -2547,8 +2579,33 @@ impl Parser {
         } else {
             false
         }
-        // s.chars().next() == Some('\'')
     }
+
+    fn parse_inference_type(&mut self, infer:&Expression) -> Result<Type, ParserError> {
+        // let mut type_context = TypeContext::new();
+        //
+        // let inferred_type = type_context.infer_expression(infer)
+        //     .map_err(|msg| ParserError::new(
+        //         ParserErrorType::TypeInferenceError,
+        //         self.current_position()
+        //     ))?;
+        //
+        // let final_type = match variable_type {
+        //     Type::Infer => inferred_type,
+        //     t if t == inferred_type => t,
+        //     _ => return Err(ParserError::new(
+        //         ParserErrorType::TypeInferenceError,
+        //         self.current_position()
+        //     )),
+        // };
+        // Ok(final_type)
+
+        todo!()
+
+
+    }
+
+
 
     fn get_operator_precedence(&self, operator: &Operator) -> u8 {
         match operator {
@@ -2826,143 +2883,143 @@ impl Parser {
         }else { false }
     }
 
-    // fonction pour aidder le parsing des erreurs
+    // fonction pour aider le parsing des erreurs
     // il syncronise  le parsing apres une erreur
 
-    pub fn synchronize(&mut self) -> Result<(), ParserError> {
-        println!("Début de la synchronisation après erreur");
-
-        let mut nesting_level: i32 = 0;
-
-        fn is_declaration_start(token_type: &TokenType) -> bool {
-            matches!(
-                token_type,
-                TokenType::KEYWORD(Keywords::FN) |
-                TokenType::KEYWORD(Keywords::LET) |
-                TokenType::KEYWORD(Keywords::CONST) |
-                TokenType::KEYWORD(Keywords::STRUCT) |
-                TokenType::KEYWORD(Keywords::ENUM) |
-                TokenType::KEYWORD(Keywords::TRAIT) |
-                TokenType::KEYWORD(Keywords::IMPL) |
-                TokenType::KEYWORD(Keywords::CLASS)
-            )
-        }
-
-        while !self.is_at_end() {
-            // Gérer le niveau d'imbrication pour les blocs
-            let current_token = self.current_token()
-                .ok_or_else(|| ParserError::new(
-                    ParserErrorType::UnexpectedEOF,
-                    self.current_position()
-                ))?;
-
-            match &current_token.token_type {
-                TokenType::DELIMITER(Delimiters::LCURBRACE) => {
-                    nesting_level += 1;
-                },
-                TokenType::DELIMITER(Delimiters::RCURBRACE) => {
-                    nesting_level = nesting_level.saturating_sub(1);
-                    if nesting_level == 0 {
-                        self.advance();
-                        return Ok(());
-                    }
-                },
-                TokenType::INDENT => {
-                    if self.syntax_mode == SyntaxMode::Indentation {
-                        nesting_level += 1;
-                    }
-                },
-                TokenType::DEDENT => {
-                    if self.syntax_mode == SyntaxMode::Indentation {
-                        nesting_level = nesting_level.saturating_sub(1);
-                        if nesting_level == 0 {
-                            self.advance();
-                            return Ok(());
-                        }
-                    }
-                },
-                _ => {}
-            }
-
-            // Si on est au niveau 0 et qu'on trouve un début de déclaration
-            if nesting_level == 0 && is_declaration_start(&current_token.token_type) {
-                return Ok(());
-            }
-
-            self.advance();
-        }
-
-        Ok(())
-    }
+    // pub fn synchronize(&mut self) -> Result<(), ParserError> {
+    //     println!("Début de la synchronisation après erreur");
+    //
+    //     let mut nesting_level: i32 = 0;
+    //
+    //     fn is_declaration_start(token_type: &TokenType) -> bool {
+    //         matches!(
+    //             token_type,
+    //             TokenType::KEYWORD(Keywords::FN) |
+    //             TokenType::KEYWORD(Keywords::LET) |
+    //             TokenType::KEYWORD(Keywords::CONST) |
+    //             TokenType::KEYWORD(Keywords::STRUCT) |
+    //             TokenType::KEYWORD(Keywords::ENUM) |
+    //             TokenType::KEYWORD(Keywords::TRAIT) |
+    //             TokenType::KEYWORD(Keywords::IMPL) |
+    //             TokenType::KEYWORD(Keywords::CLASS)
+    //         )
+    //     }
+    //
+    //     while !self.is_at_end() {
+    //         // Gérer le niveau d'imbrication pour les blocs
+    //         let current_token = self.current_token()
+    //             .ok_or_else(|| ParserError::new(
+    //                 ParserErrorType::UnexpectedEOF,
+    //                 self.current_position()
+    //             ))?;
+    //
+    //         match &current_token.token_type {
+    //             TokenType::DELIMITER(Delimiters::LCURBRACE) => {
+    //                 nesting_level += 1;
+    //             },
+    //             TokenType::DELIMITER(Delimiters::RCURBRACE) => {
+    //                 nesting_level = nesting_level.saturating_sub(1);
+    //                 if nesting_level == 0 {
+    //                     self.advance();
+    //                     return Ok(());
+    //                 }
+    //             },
+    //             TokenType::INDENT => {
+    //                 if self.syntax_mode == SyntaxMode::Indentation {
+    //                     nesting_level += 1;
+    //                 }
+    //             },
+    //             TokenType::DEDENT => {
+    //                 if self.syntax_mode == SyntaxMode::Indentation {
+    //                     nesting_level = nesting_level.saturating_sub(1);
+    //                     if nesting_level == 0 {
+    //                         self.advance();
+    //                         return Ok(());
+    //                     }
+    //                 }
+    //             },
+    //             _ => {}
+    //         }
+    //
+    //         // Si on est au niveau 0 et qu'on trouve un début de déclaration
+    //         if nesting_level == 0 && is_declaration_start(&current_token.token_type) {
+    //             return Ok(());
+    //         }
+    //
+    //         self.advance();
+    //     }
+    //
+    //     Ok(())
+    // }
 
     // Helper pour la récupération d'erreur dans les blocs spécifiques
 
-    fn synchronize_block(&mut self) -> Result<(), ParserError> {
-        let mut nesting = 1;
-
-        while !self.is_at_end() {
-            // Convertir l'Option en Result avec gestion d'erreur explicite
-            let current_token = self.current_token()
-                .ok_or_else(|| ParserError::new(
-                    ParserErrorType::UnexpectedEOF,
-                    self.current_position()
-                ))?;
-
-            match self.syntax_mode {
-                SyntaxMode::Braces => {
-                    match &current_token.token_type {
-                        TokenType::DELIMITER(Delimiters::LCURBRACE) => nesting += 1,
-                        TokenType::DELIMITER(Delimiters::RCURBRACE) => {
-                            nesting -= 1;
-                            if nesting == 0 {
-                                self.advance();
-                                return Ok(());
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                SyntaxMode::Indentation => {
-                    match &current_token.token_type {
-                        TokenType::INDENT => nesting += 1,
-                        TokenType::DEDENT => {
-                            nesting -= 1;
-                            if nesting == 0 {
-                                self.advance();
-                                return Ok(());
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            self.advance();
-        }
-        Ok(())
-    }
-
-    // Exemple d'utilisation dans une méthode de parsing
-    fn parse_method_with_recovery(&mut self) -> Result<ImplMethod, ParserError> {
-        let start_pos = self.current_position();
-        match self.parse_impl_method() {
-            Ok(method) => Ok(method),
-            Err(e) => {
-                println!("Erreur lors du parsing de la méthode : {:?}", e);
-                self.synchronize()?;
-
-                // Retourne une méthode "placeholder" pour continuer le parsing
-                Ok(ImplMethod {
-                    name: "error".to_string(),
-                    self_param: None,
-                    parameters: Vec::new(),
-                    return_type: None,
-                    visibility: Visibility::Private,
-                    body: Vec::new(),
-                })
-            }
-        }
-    }
-
+    // fn synchronize_block(&mut self) -> Result<(), ParserError> {
+    //     let mut nesting = 1;
+    //
+    //     while !self.is_at_end() {
+    //         // Convertir l'Option en Result avec gestion d'erreur explicite
+    //         let current_token = self.current_token()
+    //             .ok_or_else(|| ParserError::new(
+    //                 ParserErrorType::UnexpectedEOF,
+    //                 self.current_position()
+    //             ))?;
+    //
+    //         match self.syntax_mode {
+    //             SyntaxMode::Braces => {
+    //                 match &current_token.token_type {
+    //                     TokenType::DELIMITER(Delimiters::LCURBRACE) => nesting += 1,
+    //                     TokenType::DELIMITER(Delimiters::RCURBRACE) => {
+    //                         nesting -= 1;
+    //                         if nesting == 0 {
+    //                             self.advance();
+    //                             return Ok(());
+    //                         }
+    //                     }
+    //                     _ => {}
+    //                 }
+    //             }
+    //             SyntaxMode::Indentation => {
+    //                 match &current_token.token_type {
+    //                     TokenType::INDENT => nesting += 1,
+    //                     TokenType::DEDENT => {
+    //                         nesting -= 1;
+    //                         if nesting == 0 {
+    //                             self.advance();
+    //                             return Ok(());
+    //                         }
+    //                     }
+    //                     _ => {}
+    //                 }
+    //             }
+    //         }
+    //         self.advance();
+    //     }
+    //     Ok(())
+    // }
+    //
+    // // Exemple d'utilisation dans une méthode de parsing
+    // fn parse_method_with_recovery(&mut self) -> Result<ImplMethod, ParserError> {
+    //     let start_pos = self.current_position();
+    //     match self.parse_impl_method() {
+    //         Ok(method) => Ok(method),
+    //         Err(e) => {
+    //             println!("Erreur lors du parsing de la méthode : {:?}", e);
+    //             self.synchronize()?;
+    //
+    //             // Retourne une méthode "placeholder" pour continuer le parsing
+    //             Ok(ImplMethod {
+    //                 name: "error".to_string(),
+    //                 self_param: None,
+    //                 parameters: Vec::new(),
+    //                 return_type: None,
+    //                 visibility: Visibility::Private,
+    //                 body: Vec::new(),
+    //             })
+    //         }
+    //     }
+    // }
+    //
 
 
 }
