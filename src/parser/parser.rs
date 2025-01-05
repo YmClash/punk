@@ -466,12 +466,32 @@ impl Parser {
                     self.advance();
                     Expression::Literal(Literal::Float { value })
                 }
+
+
                 TokenType::STRING { value, .. } => {
                     let value = value.clone();
                     println!("Valeur de chaîne parsée : {}", value);
                     self.advance();
                     Expression::Literal(Literal::String(value))
                 }
+
+
+                TokenType::STRING { value,.. } => {
+                    let value = value.clone();
+                    if value.len() == 1 && self.if_single_quote(&value) {
+                        Expression::Literal(Literal::Char(value.chars().next().unwrap()))
+                    }else {
+                        Expression::Literal(Literal::String(value))
+                    }
+                }
+
+                TokenType::CHAR { value } => {
+                    let value = *value;
+                    println!("Valeur de caractère parsée : {}", value);
+                    self.advance();
+                    Expression::Literal(Literal::Char(value))
+                }
+
                 TokenType::KEYWORD(Keywords::TRUE) => {
                     self.advance(); // Consomme le token
                     Expression::Literal(Literal::Boolean(true))
@@ -2516,6 +2536,16 @@ impl Parser {
     fn is_operator(&self,token_type: &TokenType) -> bool {
 
         todo!()
+    }
+
+
+    fn if_single_quote(&self,s:&str) -> bool {
+        if s.starts_with('\'') && s.ends_with('\'') && s.len() == 3 {
+            true
+        } else {
+            false
+        }
+        // s.chars().next() == Some('\'')
     }
 
     fn get_operator_precedence(&self, operator: &Operator) -> u8 {

@@ -9,6 +9,7 @@ pub enum TokenType {
     FLOAT { value: f64 },
     HEXADECIMAL { value: u64 },
     STRING { value: String, kind: StringKind },
+    CHAR { value: char },
     EOF,
     NEWLINE,
     OPERATOR(Operators),

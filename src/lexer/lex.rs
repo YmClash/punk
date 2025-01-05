@@ -538,7 +538,14 @@ impl<'a> Lexer<'a> {
                 is_escaped = false;
             } else if ch == '\\' {
                 is_escaped = true;
-            } else if ch == quote {
+            }
+            else if ch == '\'' && value.len() == 1 {
+                return TokenType::CHAR {
+                    value: value.chars().next().unwrap()
+                }
+            }
+
+            else if ch == quote {
                 self.current_token_text = value.clone();
                 return TokenType::STRING {
                     value,

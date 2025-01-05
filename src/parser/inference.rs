@@ -42,8 +42,17 @@ impl TypeContext {
         match lit {
             Literal::Integer { .. } => Ok(Type::Int),
             Literal::Float { .. } => Ok(Type::Float),
-            Literal::String(_) => Ok(Type::String),
+            // Literal::String(_) => Ok(Type::String),
+            Literal::String(s) => {
+                // Si c'est un seul caractère entre guillemets simples
+                if s.len() == 1 && s.starts_with('\'') && s.ends_with('\'') {
+                    Ok(Type::Char)
+                } else {
+                    Ok(Type::String)
+                }
+            }
             Literal::Boolean(_) => Ok(Type::Bool),
+            Literal::Char(_) => Ok(Type::Char), // Ajout  l'inference de type pour les caractères
             _ => Ok(Type::Infer),
         }
     }

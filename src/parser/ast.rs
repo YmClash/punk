@@ -509,6 +509,7 @@ pub enum Literal {
     String(String),
     Boolean(bool),
     Array(Vec<Expression>),
+    Char(char),
 }
 
 //fonction parametre

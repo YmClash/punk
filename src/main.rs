@@ -304,7 +304,7 @@ fn get_color(x:int) -> int:
     return self.x+1"#;
 
 
-    let code_test37 = r#"let mut x:float =10.5;"#;
+    let code_test37 = r#"let mut x  = 'm';"#;
 
 
 
@@ -345,6 +345,7 @@ fn get_color(x:int) -> int:
     //     Ok(ast) => {
     //         println!("AST généré pour l'expression :");
     //         println!("{:#?}", ast);
+    //
     //     }
     //     Err(e) => {
     //         println!("Erreur lors du parsing : {}", e);
