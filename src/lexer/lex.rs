@@ -539,7 +539,8 @@ impl<'a> Lexer<'a> {
             } else if ch == '\\' {
                 is_escaped = true;
             }
-            else if ch == '\'' && value.len() == 1 {
+
+            else if ch == '\'' && value.len() == 3 {
                 return TokenType::CHAR {
                     value: value.chars().next().unwrap()
                 }

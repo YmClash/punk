@@ -2542,7 +2542,7 @@ impl Parser {
 
 
     fn if_single_quote(&self,s:&str) -> bool {
-        if s.starts_with('\'') && s.ends_with('\'') /*&& s.len() == 3*/ {
+        if s.starts_with('\'') && s.ends_with('\'') /* && s.len() == 3*/ {
             true
         } else {
             false
