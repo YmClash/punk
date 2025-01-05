@@ -468,19 +468,21 @@ impl Parser {
                 }
 
 
-                TokenType::STRING { value, .. } => {
-                    let value = value.clone();
-                    println!("Valeur de chaîne parsée : {}", value);
-                    self.advance();
-                    Expression::Literal(Literal::String(value))
-                }
+                // TokenType::STRING { value, .. } => {
+                //     let value = value.clone();
+                //     println!("Valeur de chaîne parsée : {}", value);
+                //     self.advance();
+                //     Expression::Literal(Literal::String(value))
+                // }
 
 
                 TokenType::STRING { value,.. } => {
                     let value = value.clone();
                     if value.len() == 1 && self.if_single_quote(&value) {
+                        self.advance();
                         Expression::Literal(Literal::Char(value.chars().next().unwrap()))
                     }else {
+                        self.advance();
                         Expression::Literal(Literal::String(value))
                     }
                 }
@@ -2540,7 +2542,7 @@ impl Parser {
 
 
     fn if_single_quote(&self,s:&str) -> bool {
-        if s.starts_with('\'') && s.ends_with('\'') && s.len() == 3 {
+        if s.starts_with('\'') && s.ends_with('\'') /*&& s.len() == 3*/ {
             true
         } else {
             false
