@@ -76,6 +76,9 @@ pub enum ParserErrorType {
     MissingType,
     MissingParameter,
 
+    //TypeInferenceNotSupported,/
+    TypeInferenceError,
+
 
 
 
@@ -187,6 +190,9 @@ impl Display for ParserErrorType {
             ParserErrorType::MissingParameter => write!(f, "MissingParameter"),
 
 
+            ParserErrorType::TypeInferenceError => write!(f, "TypeInferenceError"),
+
+
 
 
         }
@@ -263,6 +269,8 @@ impl ParserError {
 
             ParserErrorType::MissingType => "Missing type".to_string(),
             ParserErrorType::MissingParameter => "Missing parameter".to_string(),
+
+            ParserErrorType::TypeInferenceError => "Type inference error".to_string(),
 
 
         };

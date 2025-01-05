@@ -6,6 +6,7 @@ use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribu
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName, MissingType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
+use crate::parser::inference::{TypeContext};
 
 use num_bigint::BigInt;
 use crate::parser::ast::Declaration::Variable;
@@ -764,32 +765,69 @@ impl Parser {
 
     pub fn parse_variable_declaration(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de variable");
+
         self.consume(TokenType::KEYWORD(Keywords::LET))?;
 
         let mutability = self.parse_mutability()?;
 
         let  name = self.consume_identifier()?;
         println!("Nom de la variable parsé : {}", name);
-        let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-            self.parse_type()?
 
+        let mut type_context = TypeContext::new();
+
+        // let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+        //     self.parse_type()?
+        //
+        // } else {
+        //     Type::Infer
+        // };
+
+        let explicit_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+            self.parse_type()?
         } else {
             Type::Infer
         };
-        println!("Type de la variable parsé : {:?}", variable_type);
+
+
+        println!("Type de la variable parsé : {:?}", explicit_type);
 
         println!("Debut de la valeur de la variable");
         self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
 
         let value = self.parse_expression(0)?;
 
+        //infere  le txpe si neccessaire
+
+
+        let inferred_type = type_context.infer_expression(&value)
+            .map_err(|msg| ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            ))?;
+
+        let final_type = match explicit_type {
+            Type::Infer => inferred_type,
+            t if t == inferred_type => t,
+            _ => return Err(ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            )),
+        };
+
 
         self.consume_seperator();
         println!("Valeur de la variable parsée : {:?}", value);
 
-        Ok(ASTNode::Declaration(Declaration::Variable(VariableDeclaration{
+        // Ok(ASTNode::Declaration(Declaration::Variable(VariableDeclaration{
+        //     name,
+        //     variable_type: Some(variable_type),
+        //     value: Some(value),
+        //     mutability,
+        // })))
+
+        Ok(ASTNode::Declaration(Variable(VariableDeclaration {
             name,
-            variable_type: Some(variable_type),
+            variable_type: Some(final_type),
             value: Some(value),
             mutability,
         })))
@@ -2672,26 +2710,7 @@ impl Parser {
         println!("");
     }
 
-    // fn synchronize(&mut self) {
-    //     self.advance();
-    //
-    //     while !self.is_at_end() {
-    //         if let Some(previous) = self.previous_token() {
-    //             if previous.token_type == TokenType::DELIMITER(Delimiters::SEMICOLON) {
-    //                 return;
-    //             }
-    //         }
-    //
-    //         match self.current_token().map(|t| &t.token_type) {
-    //             Some(TokenType::KEYWORD(Keywords::STRUCT)) |
-    //             Some(TokenType::KEYWORD(Keywords::FN)) |
-    //             Some(TokenType::KEYWORD(Keywords::LET)) |
-    //             Some(TokenType::KEYWORD(Keywords::CONST)) |
-    //             Some(TokenType::KEYWORD(Keywords::PUB)) => return,
-    //             _ => { self.advance(); }
-    //         }
-    //     }
-    // }
+
 
     fn consume_seperator(&mut self)  {
         println!("Mode de syntaxe : {:?}", self.syntax_mode);
@@ -2764,24 +2783,6 @@ impl Parser {
     //
 
 
-    // pub fn parse_declarations(&mut self) -> Result<Vec<ASTNode>, ParserError> {
-    //     let mut declarations = Vec::new();
-    //
-    //     while !self.is_at_end() {
-    //         match self.parse_declaration() {
-    //             Ok(decl) => {
-    //                 declarations.push(decl);
-    //             },
-    //             Err(e) => {
-    //                 println!("Erreur lors du parsing : {:?}", e);
-    //                 self.synchronize();
-    //                 continue;
-    //             }
-    //         }
-    //     }
-    //
-    //     Ok(declarations)
-    //
 
     // fonction pour checke  le lifetime
     fn check_lifetime_token(&mut self) ->bool{
@@ -2932,19 +2933,10 @@ impl Parser {
 
 
 
-
-
-
-
 }
 
 //by YmC
 
 
-
-
-
-
-///////////////////////fin essai//////////////////////////////
 
 // ////////////////////fin de mon  parse/////////////////////// */
