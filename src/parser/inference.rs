@@ -7,7 +7,7 @@ use crate::parser::ast::{Assignment, BinaryOperation, Expression, Literal, Opera
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeContext {
     type_vars: HashMap<String, Type>,
-    constraints: Vec<(TypeConstraint)>,
+    constraints: Vec<TypeConstraint>,
 }
 
 #[allow(dead_code)]

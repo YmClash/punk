@@ -1,3 +1,4 @@
+
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
@@ -19,6 +20,7 @@ pub struct Parser {
     syntax_mode: SyntaxMode,
     indent_level: Vec<usize>,
 }
+
 
 impl Parser {
     pub fn new(tokens: Vec<Token>, syntax_mode: SyntaxMode) -> Self {
@@ -797,21 +799,14 @@ impl Parser {
 
         let mut type_context = TypeContext::new();
 
-        // let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-        //     self.parse_type()?
-        //
-        // } else {
-        //     Type::Infer
-        // };
-
-        let explicit_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+        let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
+
         } else {
             Type::Infer
         };
 
-
-        println!("Type de la variable parsé : {:?}", explicit_type);
+        println!("Type de la variable parsé : {:?}", variable_type);
 
         println!("Debut de la valeur de la variable");
         self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
@@ -820,32 +815,13 @@ impl Parser {
 
         //infere  le txpe si neccessaire
 
-
-        let inferred_type = type_context.infer_expression(&value)
-            .map_err(|msg| ParserError::new(
-                ParserErrorType::TypeInferenceError,
-                self.current_position()
-            ))?;
-
-        let final_type = match explicit_type {
-            Type::Infer => inferred_type,
-            t if t == inferred_type => t,
-            _ => return Err(ParserError::new(
-                ParserErrorType::TypeInferenceError,
-                self.current_position()
-            )),
-        };
+        // ici  on vas implementer la fonction parse_inference_type pour determiner le type de la variable
+        let final_type = self.parse_inference_type(&variable_type,&value)?;
 
 
         self.consume_seperator();
         println!("Valeur de la variable parsée : {:?}", value);
 
-        // Ok(ASTNode::Declaration(Declaration::Variable(VariableDeclaration{
-        //     name,
-        //     variable_type: Some(variable_type),
-        //     value: Some(value),
-        //     mutability,
-        // })))
 
         Ok(ASTNode::Declaration(Variable(VariableDeclaration {
             name,
@@ -865,45 +841,21 @@ impl Parser {
 
         let name = self.consume_identifier()?;
 
-
-        let mut type_context = TypeContext::new();
-
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
         } else {
             Type::Infer
         };
 
-
         self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
         let value = self.parse_expression(0)?;
 
+        //transfer dan la fonction parse_inference_type
 
-        let inferred_type = type_context.infer_expression(&value)
-            .map_err(|msg| ParserError::new(
-                ParserErrorType::TypeInferenceError,
-                self.current_position()
-            ))?;
-
-        let final_type = match variable_type {
-            Type::Infer => inferred_type,
-            t if t == inferred_type => t,
-            _ => return Err(ParserError::new(
-                ParserErrorType::TypeInferenceError,
-                self.current_position()
-            )),
-        };
-
-
-
-
-
-
-
+        //infere  le type si neccessaire
+        let final_type = self.parse_inference_type(&variable_type,&value)?;
 
         self.consume_seperator();
-
-
 
         println!("la valeur de la constante parse : {:?}", value);
 
@@ -939,6 +891,8 @@ impl Parser {
         }
 
         let body = self.parse_function_body()?;
+
+        // let return_type = self.parse_return_type(return_type, &body)?;
 
         // self.consume_seperator();  plus de ; apres une fonction
 
@@ -1014,7 +968,7 @@ impl Parser {
             None
         };
 
-        /// Parse des supertraits optionnels - ne tente que si c'est vraiment un : pour les supertraits
+        // Parse des supertraits optionnels - ne tente que si c'est vraiment un : pour les super traits
         let mut super_traits = Vec::new();
         if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             let next_token = self.peek_next_token();
@@ -2581,28 +2535,25 @@ impl Parser {
         }
     }
 
-    fn parse_inference_type(&mut self, infer:&Expression) -> Result<Type, ParserError> {
-        // let mut type_context = TypeContext::new();
-        //
-        // let inferred_type = type_context.infer_expression(infer)
-        //     .map_err(|msg| ParserError::new(
-        //         ParserErrorType::TypeInferenceError,
-        //         self.current_position()
-        //     ))?;
-        //
-        // let final_type = match variable_type {
-        //     Type::Infer => inferred_type,
-        //     t if t == inferred_type => t,
-        //     _ => return Err(ParserError::new(
-        //         ParserErrorType::TypeInferenceError,
-        //         self.current_position()
-        //     )),
-        // };
-        // Ok(final_type)
+    fn parse_inference_type(&mut self,xplit_type:&Type, infer:&Expression) -> Result<Type, ParserError> {
+        let mut type_context = TypeContext::new();
 
-        todo!()
+        let inferred_type = type_context.infer_expression(infer)
+            .map_err(|msg| ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            ))?;
 
-
+        let final_type = match xplit_type {
+            Type::Infer => inferred_type,
+            t if t == &inferred_type => t.clone(),
+            // t if t == inferred_type => t,
+            _ => return Err(ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            )),
+        };
+        Ok(final_type)
     }
 
 
