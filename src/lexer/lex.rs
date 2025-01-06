@@ -544,9 +544,12 @@ impl<'a> Lexer<'a> {
                 // petit probleme  ici^  :Si  value.len() == 1 , c'est un caractère est parsé, mais ne
                 //s'affiche pas et si value.len() == 3  le caractère est parsé et s'affiche
 
+                //probleme resolu!!! la ligne suivante resoud le probleme
+
+
+                self.current_token_text = value.clone();
                 return TokenType::CHAR {
                     value: value.chars().next().unwrap()
-
                 }
             }
 
