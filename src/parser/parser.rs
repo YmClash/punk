@@ -1,3 +1,4 @@
+
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
@@ -6,6 +7,7 @@ use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribu
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName, MissingType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
+use crate::parser::inference::{TypeContext};
 
 use num_bigint::BigInt;
 use crate::parser::ast::Declaration::Variable;
@@ -19,6 +21,7 @@ pub struct Parser {
     indent_level: Vec<usize>,
 }
 
+
 impl Parser {
     pub fn new(tokens: Vec<Token>, syntax_mode: SyntaxMode) -> Self {
         Parser {
@@ -29,7 +32,7 @@ impl Parser {
         }
     }
 
-    fn parse_program(&mut self) -> Result<ASTNode, ParserError> {
+    pub fn parse_program(&mut self) -> Result<ASTNode, ParserError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             statements.push(self.parse_statement()?);
@@ -305,12 +308,6 @@ impl Parser {
                 });
             }
 
-
-
-
-
-
-
             // left = Expression::BinaryOperation(BinaryOperation{
             //     left: Box::new(left),
             //     operator,
@@ -471,12 +468,34 @@ impl Parser {
                     self.advance();
                     Expression::Literal(Literal::Float { value })
                 }
-                TokenType::STRING { value, .. } => {
+
+
+                // TokenType::STRING { value, .. } => {
+                //     let value = value.clone();
+                //     println!("Valeur de chaîne parsée : {}", value);
+                //     self.advance();
+                //     Expression::Literal(Literal::String(value))
+                // }
+
+
+                TokenType::STRING { value,.. } => {
                     let value = value.clone();
-                    println!("Valeur de chaîne parsée : {}", value);
-                    self.advance();
-                    Expression::Literal(Literal::String(value))
+                    if value.len() == 1 && self.if_single_quote(&value) {
+                        self.advance();
+                        Expression::Literal(Literal::Char(value.chars().next().unwrap()))
+                    }else {
+                        self.advance();
+                        Expression::Literal(Literal::String(value))
+                    }
                 }
+
+                TokenType::CHAR { value } => {
+                    let value = *value;
+                    println!("Valeur de caractère parsée : {}", value);
+                    self.advance();
+                    Expression::Literal(Literal::Char(value))
+                }
+
                 TokenType::KEYWORD(Keywords::TRUE) => {
                     self.advance(); // Consomme le token
                     Expression::Literal(Literal::Boolean(true))
@@ -573,44 +592,6 @@ impl Parser {
         }))
 
     }
-
-
-    // fn parse_range_expression(&mut self) -> Result<Expression, ParserError> {
-    //     println!("Début du parsing de l'expression de Range");
-    //     let left = if !self.match_token(&[
-    //         TokenType::OPERATOR(Operators::DOTDOT),
-    //         TokenType::OPERATOR(Operators::DOTDOTEQUAL),
-    //     ]) {
-    //         Some(Box::new(self.parse_term()?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     // Vérifie et consomme l'opérateur de plage
-    //     let operator = if self.match_token(&[
-    //         TokenType::OPERATOR(Operators::DOTDOT),
-    //         TokenType::OPERATOR(Operators::DOTDOTEQUAL),
-    //     ]) {
-    //         let token = self.advance_token(); // Consomme le token
-    //         token.token_type
-    //     } else {
-    //         return Err(ParserError::new(ExpectedRangeOperator, self.current_position()));
-    //     };
-    //
-    //     // Parse l'expression de droite si elle existe
-    //     let right = if !self.check(TokenType::DELIMITER(Delimiters::SEMICOLON)) && !self.check(TokenType::EOF) {
-    //         Some(Box::new(self.parse_term()?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     Ok(Expression::RangeExpression(RangeExpression {
-    //         left,
-    //         operator,
-    //         right,
-    //     }))
-    // }
-
 
     /// fonction pour parser les parametres
 
@@ -808,18 +789,23 @@ impl Parser {
 
     pub fn parse_variable_declaration(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de variable");
+
         self.consume(TokenType::KEYWORD(Keywords::LET))?;
 
         let mutability = self.parse_mutability()?;
 
         let  name = self.consume_identifier()?;
         println!("Nom de la variable parsé : {}", name);
+
+        let mut type_context = TypeContext::new();
+
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
 
         } else {
             Type::Infer
         };
+
         println!("Type de la variable parsé : {:?}", variable_type);
 
         println!("Debut de la valeur de la variable");
@@ -827,19 +813,24 @@ impl Parser {
 
         let value = self.parse_expression(0)?;
 
+        //infere  le txpe si neccessaire
+
+        // ici  on vas implementer la fonction parse_inference_type pour determiner le type de la variable
+        let final_type = self.parse_inference_type(&variable_type,&value)?;
+
 
         self.consume_seperator();
         println!("Valeur de la variable parsée : {:?}", value);
 
-        Ok(ASTNode::Declaration(Declaration::Variable(VariableDeclaration{
+
+        Ok(ASTNode::Declaration(Variable(VariableDeclaration {
             name,
-            variable_type: Some(variable_type),
+            variable_type: Some(final_type),
             value: Some(value),
             mutability,
         })))
 
     }
-
 
     pub fn parse_const_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de constante");
@@ -849,20 +840,28 @@ impl Parser {
         self.consume(TokenType::KEYWORD(Keywords::CONST))?;
 
         let name = self.consume_identifier()?;
+
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
         } else {
             Type::Infer
         };
+
         self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
         let value = self.parse_expression(0)?;
+
+        //transfer dan la fonction parse_inference_type
+
+        //infere  le type si neccessaire
+        let final_type = self.parse_inference_type(&variable_type,&value)?;
+
         self.consume_seperator();
 
         println!("la valeur de la constante parse : {:?}", value);
 
         Ok(ASTNode::Declaration(Declaration::Constante(ConstDeclaration{
             name,
-            constant_type: Some(variable_type),
+            constant_type: Some(final_type),
             value,
             visibility,
         })))
@@ -893,6 +892,8 @@ impl Parser {
 
         let body = self.parse_function_body()?;
 
+        // let return_type = self.parse_return_type(return_type, &body)?;
+
         // self.consume_seperator();  plus de ; apres une fonction
 
         Ok(ASTNode::Declaration(Declaration::Function(FunctionDeclaration {
@@ -919,9 +920,6 @@ impl Parser {
         //     vec![]
         //
         // };
-
-
-
         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
 
         let fields = self.parse_struct_fields()?;
@@ -970,7 +968,7 @@ impl Parser {
             None
         };
 
-        /// Parse des supertraits optionnels - ne tente que si c'est vraiment un : pour les supertraits
+        // Parse des supertraits optionnels - ne tente que si c'est vraiment un : pour les super traits
         let mut super_traits = Vec::new();
         if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             let next_token = self.peek_next_token();
@@ -1132,8 +1130,6 @@ impl Parser {
     }
 
 
-
-
     fn parse_class_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de classe");
         self.consume(TokenType::KEYWORD(Keywords::CLASS))?;
@@ -1240,7 +1236,6 @@ impl Parser {
     }
 
 
-
     fn parse_constructor_declaration(&mut self) -> Result<Constructor,ParserError>{
         println!("Debut du parsing du constructeur");
         self.consume(TokenType::KEYWORD(Keywords::DEF))?;
@@ -1344,7 +1339,6 @@ impl Parser {
         println!("Parsing des clauses where OK!!!!!!!!!!!!!!!!!!!!!!!");
         Ok(clauses)
 
-
     }
 
     fn parse_associated_type(&mut self) -> Result<AssociatedType, ParserError> {
@@ -1390,8 +1384,6 @@ impl Parser {
 
         Ok(type_bounds)
     }
-
-
 
 
     fn parse_methode_declaration(&mut self) -> Result<MethodeDeclaration,ParserError>{
@@ -1508,21 +1500,7 @@ impl Parser {
         todo!()
     }
 
-    // fn parse_gen_type_param(&mut self) -> Result<Vec<String>,ParserError> {
-    //     let mut params = Vec::new();
-    //
-    //     loop {
-    //         let param_type = self.consume_identifier()?;
-    //         params.push(param_type);
-    //
-    //         if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
-    //             continue;
-    //         }else { break; }
-    //     }
-    //     Ok(params)
-    // }
 
-    //
     fn parse_generic_parameters(&mut self) -> Result<Vec<GenericParameter>, ParserError> {
         self.consume(TokenType::OPERATOR(Operators::LESS))?; // Consomme '<'
         let mut params = Vec::new();
@@ -1592,69 +1570,6 @@ impl Parser {
             ))
         }
     }
-
-    // fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
-    //     let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
-    //
-    //     let (is_constructor, name) = if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
-    //         self.advance();  // Consomme 'def'
-    //         let name = self.consume_identifier()?;
-    //         if name == "init" {
-    //             (true, name)
-    //         } else {
-    //             return Err(ParserError::new(
-    //                 InvalidConstructorName,
-    //                 self.current_position()
-    //             ));
-    //         }
-    //     } else {
-    //         // Sinon c'est une méthode normale avec 'fn'
-    //         self.consume(TokenType::KEYWORD(Keywords::FN))?;
-    //         let name = self.consume_identifier()?;
-    //         (false, name)
-    //     };
-    //
-    //     let (self_param, parameters) = self.parse_method_parameters()?;
-    //
-    //     // Vérifie le type de retour
-    //     let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
-    //         self.advance();
-    //         if is_constructor {
-    //             // Pour un constructeur, le type de retour doit être Self
-    //             if !self.check(&[TokenType::KEYWORD(Keywords::SELF)]) {
-    //                 return Err(ParserError::new(
-    //                     InvalidConstructorReturn,
-    //                     self.current_position()
-    //                 ));
-    //             }
-    //             self.advance();
-    //             Some(Type::SelfType)
-    //         } else {
-    //             Some(self.parse_type()?)
-    //         }
-    //     } else {
-    //         None
-    //     };
-    //
-    //     // Un constructeur ne doit pas avoir de self_param
-    //     if is_constructor && self_param.is_some() {
-    //         return Err(ParserError::new(
-    //             InvalidConstructorParameter,
-    //             self.current_position()
-    //         ));
-    //     }
-    //
-    //     let body = self.parse_block()?;
-    //
-    //     Ok(ImplMethod {
-    //         name,
-    //         self_param,
-    //         parameters,
-    //         return_type,
-    //         visibility,
-    //         body,
-    //     })
-    // }
 
     fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
         let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
@@ -1880,7 +1795,6 @@ impl Parser {
         }
     }
 
-
     // fn parse_parameter(&mut self) -> Result<Parameter, ParserError> {
     //     println!("Début du parsing d'un paramètre");
     //     let param_name = self.consume_identifier()?;
@@ -1898,7 +1812,6 @@ impl Parser {
     //         parameter_type: param_type.unwrap_or(Type::Infer),
     //     })
     // }
-
     fn parse_parameter(&mut self) -> Result<Parameter, ParserError> {
         println!("Début du parsing d'un paramètre");
 
@@ -1942,7 +1855,6 @@ impl Parser {
     //         parameter_type: param_type,
     //     })
     // }
-
 
 
     /// fonction  pour parser la mutabilité et la visibilité
@@ -2057,7 +1969,6 @@ impl Parser {
 
     }
 
-
     /// fonction pour le gestion de structure de controle
     fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction if");
@@ -2114,7 +2025,6 @@ impl Parser {
         })))
     }
 
-
     fn parse_for_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction for");
 
@@ -2132,7 +2042,6 @@ impl Parser {
         })))
 
     }
-
 
     fn parse_break_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction break");
@@ -2210,7 +2119,6 @@ impl Parser {
     }
 
 
-
     fn parse_indented_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         // On vérifie si on utilise => ou : pour ce bras
         let uses_arrow = self.check(&[TokenType::OPERATOR(Operators::FATARROW)]);
@@ -2238,7 +2146,6 @@ impl Parser {
             Ok(body)
         }
     }
-
 
     fn parse_braced_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         self.consume(TokenType::OPERATOR(Operators::FATARROW))?;
@@ -2268,7 +2175,6 @@ impl Parser {
             Ok(None)
         }
     }
-
     fn parse_match_arm(&mut self) -> Result<MatchArm, ParserError> {
         println!("Début du parsing du bras de match");
         let pattern = self.parse_pattern_complex()?;
@@ -2430,10 +2336,6 @@ impl Parser {
         }))
     }
 
-    fn is_start_of_range(&self) -> bool {
-        todo!()
-
-    }
 
     fn parse_pattern(&mut self) -> Result<Pattern, ParserError> {
         println!("Début du parsing du pattern");
@@ -2485,9 +2387,6 @@ impl Parser {
             Err(ParserError::new(UnexpectedEndOfInput, self.current_position()))
         }
     }
-
-
-
 
 
 
@@ -2558,7 +2457,6 @@ impl Parser {
 
     }
 
-
     fn parse_module_path(&mut self) -> Result<Vec<String>, ParserError> {
         let mut path = Vec::new();
         loop {
@@ -2612,25 +2510,54 @@ impl Parser {
 
     }
 
-
-
-
-
-    // fn parse_annotation(&mut self) -> Result<Attribute, ParserError> {
-    //     todo!()
-    // }
-
-
-
-
-
-
     // fonction utilitaire pour aide au parsing
 
     fn is_operator(&self,token_type: &TokenType) -> bool {
 
         todo!()
     }
+
+
+    fn if_single_quote(&self,s:&str) -> bool {
+        if s.starts_with('\'') && s.ends_with('\'')  && s.len() == 3 {
+            true
+        } else {
+            false
+        }
+
+        // let chars: Vec<char> = s.chars().collect();
+        // if chars.len() != 3 {
+        //     return false;
+        // }
+        //
+        // return chars[0] == '\'' &&
+        //     chars[2] == '\'' &&
+        //     chars[1].is_ascii();
+
+    }
+
+    fn parse_inference_type(&mut self,xplit_type:&Type, infer:&Expression) -> Result<Type, ParserError> {
+        let mut type_context = TypeContext::new();
+
+        let inferred_type = type_context.infer_expression(infer)
+            .map_err(|msg| ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            ))?;
+
+        let final_type = match xplit_type {
+            Type::Infer => inferred_type,
+            t if t == &inferred_type => t.clone(),
+            // t if t == inferred_type => t,
+            _ => return Err(ParserError::new(
+                ParserErrorType::TypeInferenceError,
+                self.current_position()
+            )),
+        };
+        Ok(final_type)
+    }
+
+
 
     fn get_operator_precedence(&self, operator: &Operator) -> u8 {
         match operator {
@@ -2824,26 +2751,7 @@ impl Parser {
         println!("");
     }
 
-    fn synchronize(&mut self) {
-        self.advance();
 
-        while !self.is_at_end() {
-            if let Some(previous) = self.previous_token() {
-                if previous.token_type == TokenType::DELIMITER(Delimiters::SEMICOLON) {
-                    return;
-                }
-            }
-
-            match self.current_token().map(|t| &t.token_type) {
-                Some(TokenType::KEYWORD(Keywords::STRUCT)) |
-                Some(TokenType::KEYWORD(Keywords::FN)) |
-                Some(TokenType::KEYWORD(Keywords::LET)) |
-                Some(TokenType::KEYWORD(Keywords::CONST)) |
-                Some(TokenType::KEYWORD(Keywords::PUB)) => return,
-                _ => { self.advance(); }
-            }
-        }
-    }
 
     fn consume_seperator(&mut self)  {
         println!("Mode de syntaxe : {:?}", self.syntax_mode);
@@ -2917,27 +2825,6 @@ impl Parser {
 
 
 
-
-
-    // pub fn parse_declarations(&mut self) -> Result<Vec<ASTNode>, ParserError> {
-    //     let mut declarations = Vec::new();
-    //
-    //     while !self.is_at_end() {
-    //         match self.parse_declaration() {
-    //             Ok(decl) => {
-    //                 declarations.push(decl);
-    //             },
-    //             Err(e) => {
-    //                 println!("Erreur lors du parsing : {:?}", e);
-    //                 self.synchronize();
-    //                 continue;
-    //             }
-    //         }
-    //     }
-    //
-    //     Ok(declarations)
-    //
-
     // fonction pour checke  le lifetime
     fn check_lifetime_token(&mut self) ->bool{
         if let Some(token) = &self.current_token(){
@@ -2948,10 +2835,143 @@ impl Parser {
         }else { false }
     }
 
+    // fonction pour aider le parsing des erreurs
+    // il syncronise  le parsing apres une erreur
 
+    // pub fn synchronize(&mut self) -> Result<(), ParserError> {
+    //     println!("Début de la synchronisation après erreur");
+    //
+    //     let mut nesting_level: i32 = 0;
+    //
+    //     fn is_declaration_start(token_type: &TokenType) -> bool {
+    //         matches!(
+    //             token_type,
+    //             TokenType::KEYWORD(Keywords::FN) |
+    //             TokenType::KEYWORD(Keywords::LET) |
+    //             TokenType::KEYWORD(Keywords::CONST) |
+    //             TokenType::KEYWORD(Keywords::STRUCT) |
+    //             TokenType::KEYWORD(Keywords::ENUM) |
+    //             TokenType::KEYWORD(Keywords::TRAIT) |
+    //             TokenType::KEYWORD(Keywords::IMPL) |
+    //             TokenType::KEYWORD(Keywords::CLASS)
+    //         )
+    //     }
+    //
+    //     while !self.is_at_end() {
+    //         // Gérer le niveau d'imbrication pour les blocs
+    //         let current_token = self.current_token()
+    //             .ok_or_else(|| ParserError::new(
+    //                 ParserErrorType::UnexpectedEOF,
+    //                 self.current_position()
+    //             ))?;
+    //
+    //         match &current_token.token_type {
+    //             TokenType::DELIMITER(Delimiters::LCURBRACE) => {
+    //                 nesting_level += 1;
+    //             },
+    //             TokenType::DELIMITER(Delimiters::RCURBRACE) => {
+    //                 nesting_level = nesting_level.saturating_sub(1);
+    //                 if nesting_level == 0 {
+    //                     self.advance();
+    //                     return Ok(());
+    //                 }
+    //             },
+    //             TokenType::INDENT => {
+    //                 if self.syntax_mode == SyntaxMode::Indentation {
+    //                     nesting_level += 1;
+    //                 }
+    //             },
+    //             TokenType::DEDENT => {
+    //                 if self.syntax_mode == SyntaxMode::Indentation {
+    //                     nesting_level = nesting_level.saturating_sub(1);
+    //                     if nesting_level == 0 {
+    //                         self.advance();
+    //                         return Ok(());
+    //                     }
+    //                 }
+    //             },
+    //             _ => {}
+    //         }
+    //
+    //         // Si on est au niveau 0 et qu'on trouve un début de déclaration
+    //         if nesting_level == 0 && is_declaration_start(&current_token.token_type) {
+    //             return Ok(());
+    //         }
+    //
+    //         self.advance();
+    //     }
+    //
+    //     Ok(())
+    // }
 
+    // Helper pour la récupération d'erreur dans les blocs spécifiques
 
-
+    // fn synchronize_block(&mut self) -> Result<(), ParserError> {
+    //     let mut nesting = 1;
+    //
+    //     while !self.is_at_end() {
+    //         // Convertir l'Option en Result avec gestion d'erreur explicite
+    //         let current_token = self.current_token()
+    //             .ok_or_else(|| ParserError::new(
+    //                 ParserErrorType::UnexpectedEOF,
+    //                 self.current_position()
+    //             ))?;
+    //
+    //         match self.syntax_mode {
+    //             SyntaxMode::Braces => {
+    //                 match &current_token.token_type {
+    //                     TokenType::DELIMITER(Delimiters::LCURBRACE) => nesting += 1,
+    //                     TokenType::DELIMITER(Delimiters::RCURBRACE) => {
+    //                         nesting -= 1;
+    //                         if nesting == 0 {
+    //                             self.advance();
+    //                             return Ok(());
+    //                         }
+    //                     }
+    //                     _ => {}
+    //                 }
+    //             }
+    //             SyntaxMode::Indentation => {
+    //                 match &current_token.token_type {
+    //                     TokenType::INDENT => nesting += 1,
+    //                     TokenType::DEDENT => {
+    //                         nesting -= 1;
+    //                         if nesting == 0 {
+    //                             self.advance();
+    //                             return Ok(());
+    //                         }
+    //                     }
+    //                     _ => {}
+    //                 }
+    //             }
+    //         }
+    //         self.advance();
+    //     }
+    //     Ok(())
+    // }
+    //
+    // // Exemple d'utilisation dans une méthode de parsing
+    // fn parse_method_with_recovery(&mut self) -> Result<ImplMethod, ParserError> {
+    //     let start_pos = self.current_position();
+    //     match self.parse_impl_method() {
+    //         Ok(method) => Ok(method),
+    //         Err(e) => {
+    //             println!("Erreur lors du parsing de la méthode : {:?}", e);
+    //             self.synchronize()?;
+    //
+    //             // Retourne une méthode "placeholder" pour continuer le parsing
+    //             Ok(ImplMethod {
+    //                 name: "error".to_string(),
+    //                 self_param: None,
+    //                 parameters: Vec::new(),
+    //                 return_type: None,
+    //                 visibility: Visibility::Private,
+    //                 body: Vec::new(),
+    //             })
+    //         }
+    //     }
+    // }
+    //
 
 
 }
@@ -2959,10 +2979,5 @@ impl Parser {
 //by YmC
 
 
-
-
-
-
-///////////////////////fin essai//////////////////////////////
 
 // ////////////////////fin de mon  parse/////////////////////// */

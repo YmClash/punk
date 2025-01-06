@@ -311,8 +311,17 @@ impl<'a> Lexer<'a> {
             Some('\n') => {
                 self.advance(); // Consomme le '\n'
                 self.at_line_start = true;
-                return Some(TokenType::NEWLINE);
+            //    return Some(TokenType::NEWLINE);
+                // retourn NEWLINE  seulement en  mode Indentation
+                if self.syntax_mode == SyntaxMode::Indentation {
+                    return Some(TokenType::NEWLINE);
+                }else {
+                    // en mode Brace, on ignore le newline et passe au token suivant
+                    return self.get_token();
+                }
             }
+
+
             Some('0'..='9') => Some(self.lex_number()),
             Some('a'..='z') | Some('A'..='Z') | Some('_') => Some(self.lex_identifier_or_keyword()),
             Some('"') | Some('\'') => Some(self.lex_string()),
@@ -529,7 +538,22 @@ impl<'a> Lexer<'a> {
                 is_escaped = false;
             } else if ch == '\\' {
                 is_escaped = true;
-            } else if ch == quote {
+            }
+                //But: 'C'->Char, "C"->String
+            else if ch == '\'' && value.len() == 1 {        //Note !!!!!!
+                // petit probleme  ici^  :Si  value.len() == 1 , c'est un caractère est parsé, mais ne
+                //s'affiche pas et si value.len() == 3  le caractère est parsé et s'affiche
+
+                //probleme resolu!!! la ligne suivante resoud le probleme
+
+
+                self.current_token_text = value.clone();
+                return TokenType::CHAR {
+                    value: value.chars().next().unwrap()
+                }
+            }
+
+            else if ch == quote {
                 self.current_token_text = value.clone();
                 return TokenType::STRING {
                     value,
@@ -839,13 +863,30 @@ impl<'a> Lexer<'a> {
 
     /// Methode pour sauter les espaces
     fn skip_whitespace(&mut self) {
-        while let Some(&ch) = self.source.peek() {
-            if ch.is_whitespace() && ch != '\n' {
-                self.advance();
-            } else {
+        // amelioration pour qu'en  mode brace  le NEWLINE soit ignoré
+        while let Some(&ch) = self.source.peek(){
+            if ch.is_whitespace(){
+                if ch == '\n' {
+                    if self.syntax_mode == SyntaxMode::Braces{
+                        self.advance();
+                        self.at_line_start = true;
+                    }else {
+                        break;
+                    }
+                }else { self.advance();
+                }
+            }else {
                 break;
             }
+
         }
+        // while let Some(&ch) = self.source.peek() {
+        //     if ch.is_whitespace() && ch != '\n' {
+        //         self.advance();
+        //     } else {
+        //         break;
+        //     }
+        // }
     }
 
     /// C'est la deuxième methode principal avec get_token() pour obtenir les tokens

@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+
 use crate::lexer::lex::Token;
 use crate::parser::parser_error::ParserError;
-use crate::SyntaxMode;
+
 use num_bigint::BigInt;
 use std::fmt;
 use std::fmt::Formatter;
-use crate::tok::TokenType;
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -509,6 +509,7 @@ pub enum Literal {
     String(String),
     Boolean(bool),
     Array(Vec<Expression>),
+    Char(char),
 }
 
 //fonction parametre
