@@ -1339,7 +1339,6 @@ impl Parser {
         println!("Parsing des clauses where OK!!!!!!!!!!!!!!!!!!!!!!!");
         Ok(clauses)
 
-
     }
 
     fn parse_associated_type(&mut self) -> Result<AssociatedType, ParserError> {

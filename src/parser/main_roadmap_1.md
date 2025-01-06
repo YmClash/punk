@@ -33,9 +33,11 @@
    - [=] Implémentations (impl)  partiellement 
    - [x] Interfaces
 - [ ] Génériques
-   - [ ] Fonctions génériques
+   - [x] Fonctions génériques
    - [x] Types génériques
-   - [ ] Contraintes de traits
+   - [=] Contraintes de traits
+   - [x] Types associés
+   - [x] Inference de types
 
 ## 2. Control Flow
 ### 2.1 Structures de Contrôle ✅
@@ -58,8 +60,8 @@
    - [x] Range
    - [ ] OR patterns
    - [ ] Destructuring de structs
-   - [ ] Deep matching
-- [ ] Optimisation du pattern matching
+   - [x] Deep matching
+- [x] Optimisation du pattern matching
 
 ## 3. Type System
 ### 3.1 Types de Base ✨
@@ -178,22 +180,22 @@
    - [ ] Integration tools
 
 ## Prochaines Étapes Prioritaires
-1. **Q1 2024**
+1. **Q1 2025**
    - Finaliser le pattern matching avancé
    - Implémenter le système de types génériques
    - Améliorer la gestion des erreurs
 
-2. **Q2 2024**
+2. **Q2 2025**
    - Développer le système de modules
    - Implémenter les lifetimes
    - Ajouter les macros basiques
 
-3. **Q3 2024**
+3. **Q3 2025**
    - Optimiser les performances
    - Développer les outils de développement
    - Étendre la documentation
 
-4. **Q4 2024**
+4. **Q4 2025**
    - Implémenter les features avancées
    - Finaliser le système de plugins
    - Préparer la release 1.0
