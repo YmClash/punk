@@ -304,7 +304,16 @@ fn get_color(x:int) -> int:
     return self.x+1"#;
 
 
-    let code_test37 = r#"let x = 10.5;"#;
+    let code_test37 = r#"let c = 'a';let s = "a";"#;
+
+    let code_test38 = r#"let x = 0;
+    match x {
+        n if n > 0 => print("positive"),
+        n if n < 0 => {
+            print("negative");
+            print(n);
+        },
+        _ => print("zero")}"#;
 
 
 
@@ -322,8 +331,24 @@ fn get_color(x:int) -> int:
     // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
     let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
+    // while !parser.is_at_end() {
+    //     match parser.parse_statement() {
+    //         Ok(ast) => {
+    //             println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    //             println!("AST généré pour la déclaration,l'expression ou le statement  :");
+    //             println!("{:#?}", ast);
+    //         }
+    //         Err(e) => {
+    //             println!("Erreur lors du parsing : {}", e);
+    //             break;
+    //         }
+    //     }
+    // }
+
+
+    //parser  le  programme
     while !parser.is_at_end() {
-        match parser.parse_statement() {
+        match parser.parse_program() {
             Ok(ast) => {
                 println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 println!("AST généré pour la déclaration,l'expression ou le statement  :");
@@ -336,21 +361,13 @@ fn get_color(x:int) -> int:
         }
     }
 
+
+
+
     println!("Parsing terminé\n");
     // println!("Sinon, Parsing des Statement \n");
 
 
-    //
-    // match parser.parse_where_clauses() {
-    //     Ok(ast) => {
-    //         println!("AST généré pour l'expression :");
-    //         println!("{:#?}", ast);
-    //
-    //     }
-    //     Err(e) => {
-    //         println!("Erreur lors du parsing : {}", e);
-    //     }
-    // }
 
     println!("\n");
     println!("=========OK==========\n");

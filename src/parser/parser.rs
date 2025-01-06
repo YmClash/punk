@@ -32,7 +32,7 @@ impl Parser {
         }
     }
 
-    fn parse_program(&mut self) -> Result<ASTNode, ParserError> {
+    pub fn parse_program(&mut self) -> Result<ASTNode, ParserError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             statements.push(self.parse_statement()?);
@@ -480,7 +480,7 @@ impl Parser {
 
                 TokenType::STRING { value,.. } => {
                     let value = value.clone();
-                    if value.len() == 1 /* && self.if_single_quote(&value)*/ {
+                    if value.len() == 1 && self.if_single_quote(&value) {
                         self.advance();
                         Expression::Literal(Literal::Char(value.chars().next().unwrap()))
                     }else {
@@ -2527,11 +2527,23 @@ impl Parser {
 
 
     fn if_single_quote(&self,s:&str) -> bool {
-        if s.starts_with('\'') && s.ends_with('\'') /* && s.len() == 3*/ {
-            true
-        } else {
-            false
+        // if s.starts_with('\'') && s.ends_with('\'') /* && s.len() == 3*/ {
+        //     true
+        // } else {
+        //     false
+        // }
+
+        let chars: Vec<char> = s.chars().collect();
+        if chars.len() != 3 {
+            return false;
         }
+
+        return chars[0] == '\'' &&
+            chars[2] == '\'' &&
+            chars[1].is_ascii();
+
+
+
     }
 
     fn parse_inference_type(&mut self,xplit_type:&Type, infer:&Expression) -> Result<Type, ParserError> {
