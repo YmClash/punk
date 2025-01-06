@@ -319,7 +319,7 @@ fn get_color(x:int) -> int:
 
 
     // let mut lexer = Lexer::new(code_test36, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test37, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test38, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
