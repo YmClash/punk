@@ -2336,10 +2336,6 @@ impl Parser {
         }))
     }
 
-    fn is_start_of_range(&self) -> bool {
-        todo!()
-
-    }
 
     fn parse_pattern(&mut self) -> Result<Pattern, ParserError> {
         println!("Début du parsing du pattern");
@@ -2514,10 +2510,6 @@ impl Parser {
 
     }
 
-    // fn parse_annotation(&mut self) -> Result<Attribute, ParserError> {
-    //     todo!()
-    // }
-
     // fonction utilitaire pour aide au parsing
 
     fn is_operator(&self,token_type: &TokenType) -> bool {
@@ -2527,22 +2519,20 @@ impl Parser {
 
 
     fn if_single_quote(&self,s:&str) -> bool {
-        // if s.starts_with('\'') && s.ends_with('\'') /* && s.len() == 3*/ {
-        //     true
-        // } else {
-        //     false
-        // }
-
-        let chars: Vec<char> = s.chars().collect();
-        if chars.len() != 3 {
-            return false;
+        if s.starts_with('\'') && s.ends_with('\'')  && s.len() == 3 {
+            true
+        } else {
+            false
         }
 
-        return chars[0] == '\'' &&
-            chars[2] == '\'' &&
-            chars[1].is_ascii();
-
-
+        // let chars: Vec<char> = s.chars().collect();
+        // if chars.len() != 3 {
+        //     return false;
+        // }
+        //
+        // return chars[0] == '\'' &&
+        //     chars[2] == '\'' &&
+        //     chars[1].is_ascii();
 
     }
 

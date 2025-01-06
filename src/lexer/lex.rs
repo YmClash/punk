@@ -316,7 +316,7 @@ impl<'a> Lexer<'a> {
                 if self.syntax_mode == SyntaxMode::Indentation {
                     return Some(TokenType::NEWLINE);
                 }else {
-                    // en mode Brace , on ignore le newline et passe au token suivant
+                    // en mode Brace, on ignore le newline et passe au token suivant
                     return self.get_token();
                 }
             }
@@ -539,10 +539,14 @@ impl<'a> Lexer<'a> {
             } else if ch == '\\' {
                 is_escaped = true;
             }
+                //But: 'C'->Char, "C"->String
+            else if ch == '\'' && value.len() == 1 {        //Note !!!!!!
+                // petit probleme  ici^  :Si  value.len() == 1 , c'est un caractère est parsé, mais ne
+                //s'affiche pas et si value.len() == 3  le caractère est parsé et s'affiche
 
-            else if ch == '\'' && value.len() == 1 { // Si
                 return TokenType::CHAR {
                     value: value.chars().next().unwrap()
+
                 }
             }
 
@@ -856,6 +860,7 @@ impl<'a> Lexer<'a> {
 
     /// Methode pour sauter les espaces
     fn skip_whitespace(&mut self) {
+        // amelioration pour qu'en  mode brace  le NEWLINE soit ignoré
         while let Some(&ch) = self.source.peek(){
             if ch.is_whitespace(){
                 if ch == '\n' {
@@ -872,8 +877,6 @@ impl<'a> Lexer<'a> {
             }
 
         }
-
-
         // while let Some(&ch) = self.source.peek() {
         //     if ch.is_whitespace() && ch != '\n' {
         //         self.advance();
