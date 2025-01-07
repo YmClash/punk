@@ -169,7 +169,7 @@ pub enum StringKind {
     UNICODE,   // u-string implementation plus tard
 }
 
-//by YmC
+///////////////////////////////by YmC///////////////////////////////
 
 /*
 

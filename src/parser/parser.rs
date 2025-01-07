@@ -412,6 +412,7 @@ impl Parser {
         println!("Début du parsing de l'expression unaire, current_token = {:?}", self.current_token());
         if let Some(token) = self.current_token(){
             match &token.token_type{
+                //Gestion de la Negation (-)
                 TokenType::OPERATOR(Operators::MINUS) => {
                     self.advance();
                     let right = self.parse_unary_expression()?;
@@ -420,6 +421,7 @@ impl Parser {
                         operand: Box::new(right),
                     }));
                 }
+                // Gestion de la Negation  Logique (!)
                 TokenType::OPERATOR(Operators::EXCLAMATION) => {
                     self.advance();
                     let right = self.parse_unary_expression()?;
@@ -428,6 +430,7 @@ impl Parser {
                         operand: Box::new(right),
                     }));
                 }
+                // Gestion de la Reference(Borrowing) (&)
                 TokenType::OPERATOR(Operators::AMPER) => {
                     self.advance();
                     if self.check(&[TokenType::KEYWORD(Keywords::MUT)]){
@@ -797,7 +800,6 @@ impl Parser {
         let  name = self.consume_identifier()?;
         println!("Nom de la variable parsé : {}", name);
 
-        let mut type_context = TypeContext::new();
 
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
@@ -821,7 +823,6 @@ impl Parser {
 
         self.consume_seperator();
         println!("Valeur de la variable parsée : {:?}", value);
-
 
         Ok(ASTNode::Declaration(Variable(VariableDeclaration {
             name,
@@ -2408,6 +2409,8 @@ impl Parser {
 
 
     /// fonction pour la gestion des emprunts
+    /// J'ai deja  implementé la gestion des emprunts dans parse_unary_expression()
+
     fn parse_borrow(&mut self) -> Result<Expression, ParserError> {
         if self.match_token(&[TokenType::OPERATOR(Operators::AMPER)]){
             let mutable = self.match_token(&[TokenType::KEYWORD(Keywords::MUT)]);
@@ -2536,7 +2539,7 @@ impl Parser {
 
     }
 
-    fn parse_inference_type(&mut self,xplit_type:&Type, infer:&Expression) -> Result<Type, ParserError> {
+    fn parse_inference_type(&mut self,explicit_type:&Type, infer:&Expression) -> Result<Type, ParserError> {
         let mut type_context = TypeContext::new();
 
         let inferred_type = type_context.infer_expression(infer)
@@ -2545,16 +2548,25 @@ impl Parser {
                 self.current_position()
             ))?;
 
-        let final_type = match xplit_type {
-            Type::Infer => inferred_type,
-            t if t == &inferred_type => t.clone(),
-            // t if t == inferred_type => t,
-            _ => return Err(ParserError::new(
+        // let final_type = match explicit_type {
+        //     Type::Infer => inferred_type,
+        //     t if t == &inferred_type => t.clone(),
+        //
+        //     _ => return Err(ParserError::new(
+        //         ParserErrorType::TypeInferenceError,
+        //         self.current_position()
+        //     )),
+        // };
+        // Ok(final_type)
+
+        match explicit_type {
+            Type::Infer => Ok(inferred_type),
+            explicit if explicit == &inferred_type => Ok(explicit.clone()),
+            explicit => Err(ParserError::new(
                 ParserErrorType::TypeInferenceError,
-                self.current_position()
+                self.current_position(),
             )),
-        };
-        Ok(final_type)
+        }
     }
 
 
@@ -2976,7 +2988,7 @@ impl Parser {
 
 }
 
-//by YmC
+////////////////////////////////PyRust////Dev////by YmC///////////////////////////////////
 
 
 

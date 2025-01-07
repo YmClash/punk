@@ -5,4 +5,6 @@
 # Added by cargo
 
 /target
+/diagram
+
 ROADMAP.md

@@ -178,12 +178,20 @@ pub enum Type {
     Tuple(Vec<Type>),
     Custom(String),
     Generic(GenericType),
-    Infer, // Type inféré déduire par le compilateur
+    Infer, // Type inféré déduire par le compilateur (Type Inference)
 
     //Trait(String), // pour Type Bounds
     Named(String),
 
     SelfType,
+
+    //BorrowedType(Box<Type>),
+
+    Reference(Box<Type>),
+    ReferenceMutable(Box<Type>),
+
+
+
 }
 
 #[allow(dead_code)]
