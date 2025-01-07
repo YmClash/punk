@@ -328,8 +328,8 @@ match x :
 
 
 
-    // let mut lexer = Lexer::new(code_test39, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test40, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test39, SyntaxMode::Indentation);
+    // let mut lexer = Lexer::new(code_test38, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -338,8 +338,8 @@ match x :
     }
     println!("\n");
 
-    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+    let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    // let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
     // while !parser.is_at_end() {
     //     match parser.parse_statement() {

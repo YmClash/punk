@@ -1971,7 +1971,7 @@ impl Parser {
     }
 
     /// fonction pour le gestion de structure de controle
-    fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
+    pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction if");
 
         self.consume(TokenType::KEYWORD(Keywords::IF))?;
