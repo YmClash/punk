@@ -2763,8 +2763,6 @@ impl Parser {
         println!("");
     }
 
-
-
     fn consume_seperator(&mut self)  {
         println!("Mode de syntaxe : {:?}", self.syntax_mode);
         match self.syntax_mode{
@@ -2848,7 +2846,7 @@ impl Parser {
     }
 
     // fonction pour aider le parsing des erreurs
-    // il syncronise  le parsing apres une erreur
+    // il syncronise  le parsing apres une erreur  a implementer plus tard
 
     // pub fn synchronize(&mut self) -> Result<(), ParserError> {
     //     println!("Début de la synchronisation après erreur");

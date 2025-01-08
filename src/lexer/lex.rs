@@ -311,13 +311,17 @@ impl<'a> Lexer<'a> {
             Some('\n') => {
                 self.advance(); // Consomme le '\n'
                 self.at_line_start = true;
+
+
             //    return Some(TokenType::NEWLINE);
                 // retourn NEWLINE  seulement en  mode Indentation
                 if self.syntax_mode == SyntaxMode::Indentation {
                     return Some(TokenType::NEWLINE);
                 }else {
                     // en mode Brace, on ignore le newline et passe au token suivant
+                    //self.current_line += 1; // Incrementer la ligne  mais a teste plus tard
                     return self.get_token();
+
                 }
             }
 

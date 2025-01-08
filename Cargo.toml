@@ -25,3 +25,7 @@ path = "tests/lex_test.rs"
 [[test]]
 name = "lex_indentation_test"
 path = "tests/lex_indentation_test.rs"
+
+[[test]]
+name = "parse_test"
+path = "tests/parser_test.rs"
