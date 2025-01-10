@@ -11,12 +11,14 @@ use std::fmt::Formatter;
 #[derive(Debug, Clone)]
 pub enum ASTNode {
     Program(Vec<ASTNode>),
-    Block(Block),
+    // Block(Block),
     Declaration(Declaration),
     Expression(Expression),
     Statement(Statement),
 
-    Error(ParserError),
+     Error(ParserError),
+
+
     Body(Body),
 }
 
@@ -27,14 +29,19 @@ pub struct Body {
     pub statements: Vec<ASTNode>,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Block {
-    pub statements: Vec<ASTNode>,
-    pub syntax_mode: BlockSyntax,
-    // pub indent_level: Option<usize>, // Pour le mode Indentation
-    // pub braces: Option<(Token, Token)>, // Pour le mode Braces (ouverture, fermeture)
-}
+
+//pour le moment on utilise vec<ASTNode> pour le corps des fonctions
+// l'idee plus tard c'est d'utilise Body pour les fonctions et les blocs
+
+
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Block {
+//     pub statements: Vec<ASTNode>,
+//     pub syntax_mode: BlockSyntax,
+//     // pub indent_level: Option<usize>, // Pour le mode Indentation
+//     // pub braces: Option<(Token, Token)>, // Pour le mode Braces (ouverture, fermeture)
+// }
 //////
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -85,6 +92,7 @@ pub enum Access {
 pub struct ParseError {
     pub message: String,
     pub position: Position,
+
 }
 
 #[allow(dead_code)]
@@ -93,6 +101,7 @@ pub struct Position {
     pub line: usize,
     pub column: usize,
 }
+
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
@@ -178,12 +187,20 @@ pub enum Type {
     Tuple(Vec<Type>),
     Custom(String),
     Generic(GenericType),
-    Infer, // Type inféré déduire par le compilateur
+    Infer, // Type inféré déduire par le compilateur (Type Inference)
 
     //Trait(String), // pour Type Bounds
     Named(String),
 
     SelfType,
+
+    //BorrowedType(Box<Type>),
+
+    Reference(Box<Type>),
+    ReferenceMutable(Box<Type>),
+
+
+
 }
 
 #[allow(dead_code)]
@@ -344,7 +361,7 @@ pub struct ModuleDeclaration {
 pub struct MacroDeclaration {
     pub name: String,
     pub parameters: Vec<String>,
-    pub body: Block,
+    pub body: Vec<ASTNode>,
 }
 
 #[allow(dead_code)]
@@ -742,11 +759,21 @@ pub struct DelStatement {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TryStatement {
-    pub body: Body,
-    pub except: Vec<(Option<String>, Block)>,
-    pub else_block: Option<Block>,
-    pub finally_block: Option<Block>,
+    // pub body: Body,
+    pub body: Vec<ASTNode>,
+    pub handlers: Vec<ExceptHandler>,
+    pub finally_body: Option<Vec<ASTNode>>,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ExceptHandler{
+    pub exception_type: Option<Expression>,     // None pour le cas 'except:'
+    pub name: Option<String>,       //pour except as error:
+    pub body: Vec<ASTNode>,
+}
+
+
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct WithStatement {
@@ -856,92 +883,64 @@ pub struct  ArrayRest {
     pub after: Vec<Pattern>,
 }
 
-
-
-impl fmt::Display for ASTNode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            ASTNode::Program(statements) => {
-                for statement in statements {
-                    write!(f, "{}", statement)?;
-                }
-                Ok(())
-            }
-            ASTNode::Declaration(decl) => write!(f, "{:?}", decl),
-            ASTNode::Expression(expr) => write!(f, "{:?}", expr),
-            ASTNode::Statement(stmt) => write!(f, "{:?}", stmt),
-            //ASTNode::Function(func) => write!(f, "{:?}", func),
-            ASTNode::Block(block) => write!(f, "{:?}", block),
-            // ASTNode::IfStatement(ifstmt) => write!(f, "{}", ifstmt),
-            // ASTNode::ForStatement(forstmt) => write!(f, "{}", forstmt),
-            // ASTNode::WhileStatement(whilestmt) => write!(f, "{}", whilestmt),
-            // ASTNode::ReturnStatement(retstmt) => write!(f, "{}", retstmt),
-            // ASTNode::BinaryOperation(binop) => write!(f, "{}", binop),
-            // ASTNode::UnaryOperation(unop) => write!(f, "{}", unop),
-            // ASTNode::Identifier(ident) => write!(f, "{}", ident),
-            // ASTNode::Literal(lit) => write!(f, "{}", lit),
-            // ASTNode::Operator(op) => write!(f, "{}", op),
-            ASTNode::Error(err) => write!(f, "{}", err),
-
-            ASTNode::Body(body) => write!(f, "{:?}", body),
-
-        }
-    }
-}
-
-
-
-impl ASTNode{
-    pub fn program(statements: Vec<ASTNode>) -> Self{
-        ASTNode::Program(statements)
-    }
-    pub fn block(block: Block) -> Self{
-        ASTNode::Block(block)
-    }
-    pub fn declaration(declaration: Declaration) -> Self{
-        ASTNode::Declaration(declaration)
-    }
-    pub fn expression(expression: Expression) -> Self{
-        ASTNode::Expression(expression)
-    }
-    pub fn statement(statement: Statement) -> Self{
-        ASTNode::Statement(statement)
-    }
-    // pub fn function(function: Function) -> Self{ ASTNode::Function(function)
-    // }
-    pub fn error(error: ParserError) -> Self{
-        ASTNode::Error(error)
-    }
-
-    pub fn body(body: Body) -> Self{ ASTNode::Body(body) }
-}
-
-// by YmC
-
-
-
-
-
-
-
-
-
-// impl Block {
-//     pub fn is_indentation_mode(&self) -> bool{
-//         matches!(self.syntax_mode, BlockSyntax::Indentation)
-//     }
-//     // pub fn validate(&self) -> Result<(),String>{
-//     //     match self.syntax_mode {
-//     //         BlockSyntax::Indentation if self.indent_level.is_none() => {
-//     //             Err("Indentation level is missing".to_string())
-//     //         }
-//     //         BlockSyntax::Braces if self.braces.is_none() => {
-//     //             Err("Braces are missing".to_string())
-//     //         }
-//     //         _ => Ok(()),
-//     //     }
-//     // }
 //
+//
+// impl fmt::Display for ASTNode {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+//         match self {
+//             ASTNode::Program(statements) => {
+//                 for statement in statements {
+//                     write!(f, "{}", statement)?;
+//                 }
+//                 Ok(())
+//             }
+//             ASTNode::Declaration(decl) => write!(f, "{:?}", decl),
+//             ASTNode::Expression(expr) => write!(f, "{:?}", expr),
+//             ASTNode::Statement(stmt) => write!(f, "{:?}", stmt),
+//             //ASTNode::Function(func) => write!(f, "{:?}", func),
+//             ASTNode::Block(block) => write!(f, "{:?}", block),
+//             // ASTNode::IfStatement(ifstmt) => write!(f, "{}", ifstmt),
+//             // ASTNode::ForStatement(forstmt) => write!(f, "{}", forstmt),
+//             // ASTNode::WhileStatement(whilestmt) => write!(f, "{}", whilestmt),
+//             // ASTNode::ReturnStatement(retstmt) => write!(f, "{}", retstmt),
+//             // ASTNode::BinaryOperation(binop) => write!(f, "{}", binop),
+//             // ASTNode::UnaryOperation(unop) => write!(f, "{}", unop),
+//             // ASTNode::Identifier(ident) => write!(f, "{}", ident),
+//             // ASTNode::Literal(lit) => write!(f, "{}", lit),
+//             // ASTNode::Operator(op) => write!(f, "{}", op),
+//             ASTNode::Error(err) => write!(f, "{}", err),
+//
+//             ASTNode::Body(body) => write!(f, "{:?}", body),
+//
+//         }
+//     }
+// }
+//
+//
+//
+// impl ASTNode{
+//     pub fn program(statements: Vec<ASTNode>) -> Self{
+//         ASTNode::Program(statements)
+//     }
+//     pub fn block(block: Block) -> Self{
+//         ASTNode::Block(block)
+//     }
+//     pub fn declaration(declaration: Declaration) -> Self{
+//         ASTNode::Declaration(declaration)
+//     }
+//     pub fn expression(expression: Expression) -> Self{
+//         ASTNode::Expression(expression)
+//     }
+//     pub fn statement(statement: Statement) -> Self{
+//         ASTNode::Statement(statement)
+//     }
+//     // pub fn function(function: Function) -> Self{ ASTNode::Function(function)
+//     // }
+//     pub fn error(error: ParserError) -> Self{
+//         ASTNode::Error(error)
+//     }
+//
+//     pub fn body(body: Body) -> Self{ ASTNode::Body(body) }
 // }
 
-////////////////////////////////////////////////////////////////
+///////////////////////////////// by YmC////////////////////////////////////////////////////////////

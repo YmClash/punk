@@ -304,9 +304,9 @@ fn get_color(x:int) -> int:
     return self.x+1"#;
 
 
-    let code_test37 = r#"let c = 'a';let s = "a";"#;
+    let code_test37 = r#"let mut c = &mut 10;"#;
 
-    let code_test38 = r#"let x = 0;
+    let code_test38 = r#"let x = 10 ;
     match x {
         n if n > 0 => print("positive"),
         n if n < 0 => {
@@ -315,11 +315,27 @@ fn get_color(x:int) -> int:
         },
         _ => print("zero")}"#;
 
+    let code_test39 = r#"let x = 10
+match x :
+    n if n > 0 => print("positive")
+    (x, y) => print("tuple simple")
+    [1, 2] => print("array simple")
+    _ => print("default")
+"#;
+
+    let code_test40 = r#"try {
+            risky_function();
+        } except Error {
+            handle_error();
+        } finally {
+            cleanup();
+        }"#;
 
 
 
-    // let mut lexer = Lexer::new(code_test36, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test38, SyntaxMode::Braces);
+
+    // let mut lexer = Lexer::new(code_test39, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test40, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification

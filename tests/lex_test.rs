@@ -1,4 +1,6 @@
+
 use num_bigint::BigInt;
+
 use pyrust::lexer::lex::Lexer;
 use pyrust::lexer::tok::{Delimiters, Keywords, Operators, StringKind, TokenType};
 use pyrust::lexer_error::{LexerError, LexerErrorType, Position};
@@ -606,7 +608,7 @@ mod tests {
         "#;
 
         let expected_tokens = vec![
-            TokenType::NEWLINE,
+            // TokenType::NEWLINE,
             TokenType::KEYWORD(Keywords::FN),
             TokenType::IDENTIFIER {
                 name: "main".to_string(),
@@ -614,7 +616,7 @@ mod tests {
             TokenType::DELIMITER(Delimiters::LPAR),
             TokenType::DELIMITER(Delimiters::RPAR),
             TokenType::DELIMITER(Delimiters::LCURBRACE),
-            TokenType::NEWLINE,
+            // TokenType::NEWLINE,
             TokenType::KEYWORD(Keywords::LET),
             TokenType::IDENTIFIER {
                 name: "x".to_string(),
@@ -624,7 +626,7 @@ mod tests {
                 value: BigInt::from(5),
             },
             TokenType::DELIMITER(Delimiters::SEMICOLON),
-            TokenType::NEWLINE,
+            // TokenType::NEWLINE,
             TokenType::KEYWORD(Keywords::IF),
             TokenType::DELIMITER(Delimiters::LPAR),
             TokenType::IDENTIFIER {
@@ -636,7 +638,7 @@ mod tests {
             },
             TokenType::DELIMITER(Delimiters::RPAR),
             TokenType::DELIMITER(Delimiters::LCURBRACE),
-            TokenType::NEWLINE,
+            // TokenType::NEWLINE,
             TokenType::IDENTIFIER {
                 name: "println".to_string(),
             },
@@ -648,11 +650,11 @@ mod tests {
             },
             TokenType::DELIMITER(Delimiters::RPAR),
             TokenType::DELIMITER(Delimiters::SEMICOLON),
-            TokenType::NEWLINE,
+            // TokenType::NEWLINE,
             TokenType::DELIMITER(Delimiters::RCURBRACE),
-            TokenType::NEWLINE,
+            // TokenType::NEWLINE,
             TokenType::DELIMITER(Delimiters::RCURBRACE),
-            TokenType::NEWLINE,
+            // TokenType::NEWLINE,
             TokenType::EOF,
         ];
 
@@ -1574,6 +1576,17 @@ def main():
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
 // #[test]
 // fn test_indentation_mode() {
 //     let code = r#"
@@ -2437,3 +2450,7 @@ def main():
 // }
 
 // //by YmC
+
+
+
+

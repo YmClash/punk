@@ -7,10 +7,10 @@
 - [x] Appels de fonction
 - [x] Accès aux membres (dot notation)
 - [x] Expressions lambda basiques
-- [ ] Expressions lambda avancées
-   - [ ] Capture de variables
-   - [ ] Support des closures
-   - [ ] Paramètres par défaut
+- [x] Expressions lambda avancées
+   - [x] Capture de variables
+   - [x] Support des closures
+   - [x] Paramètres par défaut
 - [ ] Expressions d'accès
    - [x] Indexation
    - [ ] Slicing
@@ -47,7 +47,7 @@
 - [x] Boucles avec labels
 - [x] Break/Continue avec labels
 - [ ] Gestion d'erreurs
-   - [ ] Try/Catch
+   - [x] Try/Except
    - [ ] Result/Option
    - [ ] Propagation d'erreurs
 
@@ -59,7 +59,7 @@
    - [x] Rest (...)
    - [x] Range
    - [ ] OR patterns
-   - [ ] Destructuring de structs
+   - [x] Destructuring de structs
    - [x] Deep matching
 - [x] Optimisation du pattern matching
 
@@ -69,12 +69,13 @@
 - [x] Arrays et tuples
 - [ ] Types avancés
    - [ ] Slices
-   - [ ] Références
+   - [x] Références
    - [ ] Smart pointers
-   - [ ] Type aliases
+   - [x] Type aliases
+   - [x] Type inference
 
 ### 3.2 Système de Types Avancé 🔄
-- [ ] Génériques
+- [x] Génériques
    - [x] Bounds de traits
    - [x] Where clauses
    - [x] Associated types
@@ -86,6 +87,11 @@
    - [ ] Sum types
    - [ ] Product types
    - [ ] Type refinement
+- [x] Traits
+   - [x] Définition de traits
+   - [x] Implémentation de traits
+   - [x] Trait objects
+   - [x] Trait bounds
 
 ## 4. Syntax Modes
 ### 4.1 Mode Support ✅

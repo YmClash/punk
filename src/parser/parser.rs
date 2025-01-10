@@ -2,7 +2,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, Block, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName, MissingType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -53,7 +53,7 @@ impl Parser {
         self.syntax_mode
     }
 
-    fn parse_block(&mut self) -> Result<Vec<ASTNode>, ParserError> {
+    pub(crate) fn parse_block(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         match self.syntax_mode{
             SyntaxMode::Indentation => self.parse_indented_block(),
             SyntaxMode::Braces => self.parse_braced_block(),
@@ -214,8 +214,8 @@ impl Parser {
         }else if self.check(&[TokenType::KEYWORD(Keywords::IMPL)]) {
             let visibility = visibility.unwrap_or(Visibility::Private);
             self.parse_impl_declaration(visibility)
-        // }else if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
-        //     self.parse_loop_statement()
+        }else if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
+            self.parse_loop_statement()
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::IMPORT),TokenType::KEYWORD(Keywords::USE)]){
             self.parse_module_import_statement()
         }else if self.check(&[TokenType::KEYWORD(Keywords::RETURN)]) {
@@ -228,8 +228,12 @@ impl Parser {
             self.parse_for_statement()
         }else if self.check(&[TokenType::KEYWORD(Keywords::MATCH)]) {
             self.parse_match_statement()
+        }else if self.check(&[TokenType::KEYWORD(Keywords::TRY)]) {
+            self.parse_try_statement()
+
         // }else if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]){
         //     self.parse_where_clauses()
+
         }else if self.match_token(&[TokenType::KEYWORD(Keywords::BREAK)]){
             self.consume_seperator();
             Ok(ASTNode::Statement(Statement::Break))
@@ -242,6 +246,8 @@ impl Parser {
         }else {
             self.parse_expression_statement()
         }
+
+
 
     }
 
@@ -412,6 +418,7 @@ impl Parser {
         println!("Début du parsing de l'expression unaire, current_token = {:?}", self.current_token());
         if let Some(token) = self.current_token(){
             match &token.token_type{
+                //Gestion de la Negation (-)
                 TokenType::OPERATOR(Operators::MINUS) => {
                     self.advance();
                     let right = self.parse_unary_expression()?;
@@ -420,6 +427,7 @@ impl Parser {
                         operand: Box::new(right),
                     }));
                 }
+                // Gestion de la Negation  Logique (!)
                 TokenType::OPERATOR(Operators::EXCLAMATION) => {
                     self.advance();
                     let right = self.parse_unary_expression()?;
@@ -428,6 +436,7 @@ impl Parser {
                         operand: Box::new(right),
                     }));
                 }
+                // Gestion de la Reference(Borrowing) (&)
                 TokenType::OPERATOR(Operators::AMPER) => {
                     self.advance();
                     if self.check(&[TokenType::KEYWORD(Keywords::MUT)]){
@@ -797,7 +806,6 @@ impl Parser {
         let  name = self.consume_identifier()?;
         println!("Nom de la variable parsé : {}", name);
 
-        let mut type_context = TypeContext::new();
 
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
@@ -821,7 +829,6 @@ impl Parser {
 
         self.consume_seperator();
         println!("Valeur de la variable parsée : {:?}", value);
-
 
         Ok(ASTNode::Declaration(Variable(VariableDeclaration {
             name,
@@ -1970,7 +1977,7 @@ impl Parser {
     }
 
     /// fonction pour le gestion de structure de controle
-    fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
+    pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction if");
 
         self.consume(TokenType::KEYWORD(Keywords::IF))?;
@@ -2408,6 +2415,8 @@ impl Parser {
 
 
     /// fonction pour la gestion des emprunts
+    /// J'ai deja  implementé la gestion des emprunts dans parse_unary_expression()
+
     fn parse_borrow(&mut self) -> Result<Expression, ParserError> {
         if self.match_token(&[TokenType::OPERATOR(Operators::AMPER)]){
             let mutable = self.match_token(&[TokenType::KEYWORD(Keywords::MUT)]);
@@ -2518,7 +2527,7 @@ impl Parser {
     }
 
 
-    fn if_single_quote(&self,s:&str) -> bool {
+    pub fn if_single_quote(&self,s:&str) -> bool {
         if s.starts_with('\'') && s.ends_with('\'')  && s.len() == 3 {
             true
         } else {
@@ -2536,7 +2545,7 @@ impl Parser {
 
     }
 
-    fn parse_inference_type(&mut self,xplit_type:&Type, infer:&Expression) -> Result<Type, ParserError> {
+    pub fn parse_inference_type(&mut self,explicit_type:&Type, infer:&Expression) -> Result<Type, ParserError> {
         let mut type_context = TypeContext::new();
 
         let inferred_type = type_context.infer_expression(infer)
@@ -2545,16 +2554,25 @@ impl Parser {
                 self.current_position()
             ))?;
 
-        let final_type = match xplit_type {
-            Type::Infer => inferred_type,
-            t if t == &inferred_type => t.clone(),
-            // t if t == inferred_type => t,
-            _ => return Err(ParserError::new(
+        // let final_type = match explicit_type {
+        //     Type::Infer => inferred_type,
+        //     t if t == &inferred_type => t.clone(),
+        //
+        //     _ => return Err(ParserError::new(
+        //         ParserErrorType::TypeInferenceError,
+        //         self.current_position()
+        //     )),
+        // };
+        // Ok(final_type)
+
+        match explicit_type {
+            Type::Infer => Ok(inferred_type),
+            explicit if explicit == &inferred_type => Ok(explicit.clone()),
+            explicit => Err(ParserError::new(
                 ParserErrorType::TypeInferenceError,
-                self.current_position()
+                self.current_position(),
             )),
-        };
-        Ok(final_type)
+        }
     }
 
 
@@ -2586,7 +2604,7 @@ impl Parser {
     }
 
 
-    fn peek_operator(&self) -> Option<Operator> {
+    pub fn peek_operator(&self) -> Option<Operator> {
         let token = self.current_token()?;
         println!("Token: {:?}", token);
         match &token.token_type {
@@ -2621,14 +2639,14 @@ impl Parser {
     fn current_token(&self) -> Option<&Token> {
         self.tokens.get(self.current)
     }
-    fn advance(&mut self) -> Option<&Token> {
+    pub fn advance(&mut self) -> Option<&Token> {
         if !self.is_at_end() {
             self.current += 1;
         }
         self.previous_token()
     }
 
-    fn peek_token(&self) -> Option<&Token>{
+    pub fn peek_token(&self) -> Option<&Token>{
         self.tokens.get(self.current)
     }
     fn peek_next_token(&self) -> Option<&Token>{
@@ -2650,7 +2668,7 @@ impl Parser {
 
     ///  Fonctions de Vérification et de Correspondance des Tokens
 
-    fn match_token(&mut self,expected:&[TokenType]) -> bool {
+    pub(crate) fn match_token(&mut self, expected:&[TokenType]) -> bool {
         if self.check(expected){
             self.advance();
             return true
@@ -2659,7 +2677,7 @@ impl Parser {
         }
     }
 
-    fn check(&self,expected:&[TokenType]) -> bool {
+    pub(crate) fn check(&self, expected:&[TokenType]) -> bool {
         if let Some(token) = self.current_token(){
             expected.contains(&token.token_type)
         } else {
@@ -2667,7 +2685,7 @@ impl Parser {
         }
     }
 
-    fn consume(&mut self, expected: TokenType) -> Result<(), ParserError> {
+    pub fn consume(&mut self, expected: TokenType) -> Result<(), ParserError> {
         if let Some(token) = self.current_token() {
             if token.token_type == expected {
                 println!("Consommation du token {:?}", token);
@@ -2703,7 +2721,7 @@ impl Parser {
 
     /// fonctontion  pour aider a comsume les tokens
 
-    fn consume_identifier(&mut self) -> Result<String, ParserError> {
+    pub(crate) fn consume_identifier(&mut self) -> Result<String, ParserError> {
         let current_token = self.current_token().ok_or_else(|| ParserError::new(UnexpectedEOF,self.current_position()))?;
         if let TokenType::IDENTIFIER {name:_} = &current_token.token_type{
             let name = current_token.text.clone();
@@ -2750,8 +2768,6 @@ impl Parser {
         println!("----------------------------------------------------------");
         println!("");
     }
-
-
 
     fn consume_seperator(&mut self)  {
         println!("Mode de syntaxe : {:?}", self.syntax_mode);
@@ -2812,18 +2828,6 @@ impl Parser {
         Ok(None)
     }
 
-    // methode utilitaire pour consommer un token s'il est present
-    // sans generé d'erreur s'il n'est pas present
-    // fn consume_if(&mut self,expected:TokenType) -> bool{
-    //     if self.match_token(&[expected.clone()]){
-    //         self.advance();
-    //         true
-    //     }else { false }
-    // }
-    //
-    //
-
-
 
     // fonction pour checke  le lifetime
     fn check_lifetime_token(&mut self) ->bool{
@@ -2835,149 +2839,12 @@ impl Parser {
         }else { false }
     }
 
-    // fonction pour aider le parsing des erreurs
-    // il syncronise  le parsing apres une erreur
-
-    // pub fn synchronize(&mut self) -> Result<(), ParserError> {
-    //     println!("Début de la synchronisation après erreur");
-    //
-    //     let mut nesting_level: i32 = 0;
-    //
-    //     fn is_declaration_start(token_type: &TokenType) -> bool {
-    //         matches!(
-    //             token_type,
-    //             TokenType::KEYWORD(Keywords::FN) |
-    //             TokenType::KEYWORD(Keywords::LET) |
-    //             TokenType::KEYWORD(Keywords::CONST) |
-    //             TokenType::KEYWORD(Keywords::STRUCT) |
-    //             TokenType::KEYWORD(Keywords::ENUM) |
-    //             TokenType::KEYWORD(Keywords::TRAIT) |
-    //             TokenType::KEYWORD(Keywords::IMPL) |
-    //             TokenType::KEYWORD(Keywords::CLASS)
-    //         )
-    //     }
-    //
-    //     while !self.is_at_end() {
-    //         // Gérer le niveau d'imbrication pour les blocs
-    //         let current_token = self.current_token()
-    //             .ok_or_else(|| ParserError::new(
-    //                 ParserErrorType::UnexpectedEOF,
-    //                 self.current_position()
-    //             ))?;
-    //
-    //         match &current_token.token_type {
-    //             TokenType::DELIMITER(Delimiters::LCURBRACE) => {
-    //                 nesting_level += 1;
-    //             },
-    //             TokenType::DELIMITER(Delimiters::RCURBRACE) => {
-    //                 nesting_level = nesting_level.saturating_sub(1);
-    //                 if nesting_level == 0 {
-    //                     self.advance();
-    //                     return Ok(());
-    //                 }
-    //             },
-    //             TokenType::INDENT => {
-    //                 if self.syntax_mode == SyntaxMode::Indentation {
-    //                     nesting_level += 1;
-    //                 }
-    //             },
-    //             TokenType::DEDENT => {
-    //                 if self.syntax_mode == SyntaxMode::Indentation {
-    //                     nesting_level = nesting_level.saturating_sub(1);
-    //                     if nesting_level == 0 {
-    //                         self.advance();
-    //                         return Ok(());
-    //                     }
-    //                 }
-    //             },
-    //             _ => {}
-    //         }
-    //
-    //         // Si on est au niveau 0 et qu'on trouve un début de déclaration
-    //         if nesting_level == 0 && is_declaration_start(&current_token.token_type) {
-    //             return Ok(());
-    //         }
-    //
-    //         self.advance();
-    //     }
-    //
-    //     Ok(())
-    // }
-
-    // Helper pour la récupération d'erreur dans les blocs spécifiques
-
-    // fn synchronize_block(&mut self) -> Result<(), ParserError> {
-    //     let mut nesting = 1;
-    //
-    //     while !self.is_at_end() {
-    //         // Convertir l'Option en Result avec gestion d'erreur explicite
-    //         let current_token = self.current_token()
-    //             .ok_or_else(|| ParserError::new(
-    //                 ParserErrorType::UnexpectedEOF,
-    //                 self.current_position()
-    //             ))?;
-    //
-    //         match self.syntax_mode {
-    //             SyntaxMode::Braces => {
-    //                 match &current_token.token_type {
-    //                     TokenType::DELIMITER(Delimiters::LCURBRACE) => nesting += 1,
-    //                     TokenType::DELIMITER(Delimiters::RCURBRACE) => {
-    //                         nesting -= 1;
-    //                         if nesting == 0 {
-    //                             self.advance();
-    //                             return Ok(());
-    //                         }
-    //                     }
-    //                     _ => {}
-    //                 }
-    //             }
-    //             SyntaxMode::Indentation => {
-    //                 match &current_token.token_type {
-    //                     TokenType::INDENT => nesting += 1,
-    //                     TokenType::DEDENT => {
-    //                         nesting -= 1;
-    //                         if nesting == 0 {
-    //                             self.advance();
-    //                             return Ok(());
-    //                         }
-    //                     }
-    //                     _ => {}
-    //                 }
-    //             }
-    //         }
-    //         self.advance();
-    //     }
-    //     Ok(())
-    // }
-    //
-    // // Exemple d'utilisation dans une méthode de parsing
-    // fn parse_method_with_recovery(&mut self) -> Result<ImplMethod, ParserError> {
-    //     let start_pos = self.current_position();
-    //     match self.parse_impl_method() {
-    //         Ok(method) => Ok(method),
-    //         Err(e) => {
-    //             println!("Erreur lors du parsing de la méthode : {:?}", e);
-    //             self.synchronize()?;
-    //
-    //             // Retourne une méthode "placeholder" pour continuer le parsing
-    //             Ok(ImplMethod {
-    //                 name: "error".to_string(),
-    //                 self_param: None,
-    //                 parameters: Vec::new(),
-    //                 return_type: None,
-    //                 visibility: Visibility::Private,
-    //                 body: Vec::new(),
-    //             })
-    //         }
-    //     }
-    // }
-    //
 
 
 }
 
-//by YmC
+////////////////////////////////PyRust////Dev////by YmC///////////////////////////////////
 
 
 
-// ////////////////////fin de mon  parse/////////////////////// */
+/////////////////////////////////fin de mon  parse///////////////////////////////////// */

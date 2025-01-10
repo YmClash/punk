@@ -96,6 +96,7 @@ pub enum Keywords {
     ENUM,
     EXCEPT,
     FALSE,
+    FINALLY,
     FN,
     FOR,
     FROM,
@@ -169,7 +170,7 @@ pub enum StringKind {
     UNICODE,   // u-string implementation plus tard
 }
 
-//by YmC
+///////////////////////////////by YmC///////////////////////////////
 
 /*
 

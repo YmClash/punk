@@ -7,7 +7,23 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, PartialEq, Clone)]
 pub struct Position {
     pub index: usize,
+    // pub line: usize,  feature  for future  with span
+    // pub column: usize,
+
 }
+/////////////////////////////////////////
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Span{
+//     pub start: Position,
+//     pub end: Position,
+// }
+
+
+//////////////////////////////////////////
+
+
+
 
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
@@ -78,6 +94,11 @@ pub enum ParserErrorType {
 
     //TypeInferenceNotSupported,/
     TypeInferenceError,
+
+    MissingExceptHandler
+
+
+
 
 
 
@@ -191,6 +212,7 @@ impl Display for ParserErrorType {
 
 
             ParserErrorType::TypeInferenceError => write!(f, "TypeInferenceError"),
+            ParserErrorType::MissingExceptHandler => write!(f, "MissingExceptHandler"),
 
 
 
@@ -271,6 +293,9 @@ impl ParserError {
             ParserErrorType::MissingParameter => "Missing parameter".to_string(),
 
             ParserErrorType::TypeInferenceError => "Type inference error".to_string(),
+
+            ParserErrorType::MissingExceptHandler => "Missing except handler".to_string(),
+
 
 
         };
