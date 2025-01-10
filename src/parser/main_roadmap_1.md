@@ -47,7 +47,7 @@
 - [x] Boucles avec labels
 - [x] Break/Continue avec labels
 - [ ] Gestion d'erreurs
-   - [ ] Try/Catch
+   - [x] Try/Except
    - [ ] Result/Option
    - [ ] Propagation d'erreurs
 
