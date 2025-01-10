@@ -11,7 +11,7 @@ use std::fmt::Formatter;
 #[derive(Debug, Clone)]
 pub enum ASTNode {
     Program(Vec<ASTNode>),
-    Block(Block),
+    // Block(Block),
     Declaration(Declaration),
     Expression(Expression),
     Statement(Statement),
@@ -361,7 +361,7 @@ pub struct ModuleDeclaration {
 pub struct MacroDeclaration {
     pub name: String,
     pub parameters: Vec<String>,
-    pub body: Block,
+    pub body: Vec<ASTNode>,
 }
 
 #[allow(dead_code)]

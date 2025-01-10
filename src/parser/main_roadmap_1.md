@@ -59,7 +59,7 @@
    - [x] Rest (...)
    - [x] Range
    - [ ] OR patterns
-   - [ ] Destructuring de structs
+   - [x] Destructuring de structs
    - [x] Deep matching
 - [x] Optimisation du pattern matching
 

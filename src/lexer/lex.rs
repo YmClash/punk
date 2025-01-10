@@ -110,6 +110,9 @@ impl<'a> Lexer<'a> {
         keywords.insert("enum".to_string(), Keywords::ENUM);
         keywords.insert("except".to_string(), Keywords::EXCEPT);
         keywords.insert("false".to_string(), Keywords::FALSE);
+
+        keywords.insert("finally".to_string(), Keywords::FINALLY);
+
         keywords.insert("fn".to_string(), Keywords::FN);
         keywords.insert("for".to_string(), Keywords::FOR);
         keywords.insert("from".to_string(), Keywords::FROM);
@@ -228,10 +231,6 @@ impl<'a> Lexer<'a> {
         delimiters.insert(".".to_string(), Delimiters::DOT);
         delimiters.insert("...".to_string(), Delimiters::ELLIPSIS);
         delimiters.insert("::".to_string(), Delimiters::DOUBLECOLON);
-
-
-        // delimiters.insert("..=".to_string(), Delimiters::DOTDOTEQUAL);
-        // delimiters.insert("..".to_string(), Delimiters::DOTDOT);
 
         return delimiters;
     }

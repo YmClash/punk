@@ -323,7 +323,13 @@ match x :
     _ => print("default")
 "#;
 
-    let code_test40 = r#"momo:loop {let x = 10;}"#;
+    let code_test40 = r#"try {
+            risky_function();
+        } except Error {
+            handle_error();
+        } finally {
+            cleanup();
+        }"#;
 
 
 

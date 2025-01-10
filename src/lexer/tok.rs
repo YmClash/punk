@@ -96,6 +96,7 @@ pub enum Keywords {
     ENUM,
     EXCEPT,
     FALSE,
+    FINALLY,
     FN,
     FOR,
     FROM,
