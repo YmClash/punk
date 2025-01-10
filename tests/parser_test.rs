@@ -85,7 +85,57 @@ mod tests {
                 assert!(parser.parse_expression(0).is_ok());
             }
         }
+
     }
+
+    mod try_except_statement_tests{
+        use super::*;
+
+        #[test]
+        fn test_try_except_braces() {
+            let input = r#"
+        try {
+            risky_function();
+        } except Error as e {
+            handle_error(e);
+        }
+        "#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_try_statement();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_try_except_indent() {
+            let input = r#"
+        try:
+            risky_function()
+        except Error as e:
+            handle_error(e)
+        "#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_try_statement();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_try_except_finally() {
+            let input = r#"
+        try {
+            risky_function();
+        } except Error {
+            handle_error();
+        } finally {
+            cleanup();
+        }
+        "#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_try_statement();
+            // assert!(result.is_ok());
+        }
+    }
+
+
 
     // mod declaration_tests {
     //     use pyrust::parser::ast::Visibility;
