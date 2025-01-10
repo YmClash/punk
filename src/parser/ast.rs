@@ -29,14 +29,19 @@ pub struct Body {
     pub statements: Vec<ASTNode>,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Block {
-    pub statements: Vec<ASTNode>,
-    pub syntax_mode: BlockSyntax,
-    // pub indent_level: Option<usize>, // Pour le mode Indentation
-    // pub braces: Option<(Token, Token)>, // Pour le mode Braces (ouverture, fermeture)
-}
+
+//pour le moment on utilise vec<ASTNode> pour le corps des fonctions
+// l'idee plus tard c'est d'utilise Body pour les fonctions et les blocs
+
+
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Block {
+//     pub statements: Vec<ASTNode>,
+//     pub syntax_mode: BlockSyntax,
+//     // pub indent_level: Option<usize>, // Pour le mode Indentation
+//     // pub braces: Option<(Token, Token)>, // Pour le mode Braces (ouverture, fermeture)
+// }
 //////
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -754,11 +759,21 @@ pub struct DelStatement {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TryStatement {
-    pub body: Body,
-    pub except: Vec<(Option<String>, Block)>,
-    pub else_block: Option<Block>,
-    pub finally_block: Option<Block>,
+    // pub body: Body,
+    pub body: Vec<ASTNode>,
+    pub handlers: Vec<ExceptHandler>,
+    pub finally_body: Option<Vec<ASTNode>>,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ExceptHandler{
+    pub exception_type: Option<Expression>,     // None pour le cas 'except:'
+    pub name: Option<String>,       //pour except as error:
+    pub body: Vec<ASTNode>,
+}
+
+
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct WithStatement {
