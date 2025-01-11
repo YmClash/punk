@@ -8,3 +8,4 @@ mod test_main;
 mod inference;
 mod synchronizer;
 mod statements;
+mod declarations;
