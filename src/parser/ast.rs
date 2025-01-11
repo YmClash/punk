@@ -685,7 +685,7 @@ pub struct ReturnStatement {
 #[derive(Clone, Debug)]
 pub struct IfStatement {
     pub condition: Expression,
-    pub then_block: Vec<ASTNode>,
+    pub elif_block: Vec<ASTNode>,
     pub else_block: Option<Vec<ASTNode>>,
 }
 

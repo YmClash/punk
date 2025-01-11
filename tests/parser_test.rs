@@ -134,6 +134,54 @@ mod tests {
             // assert!(result.is_ok());
         }
     }
+    mod if_elif_else_statement_tests{
+        use super::*;
+
+        #[test]
+        fn test_if_elif_else_brace() {
+            let input = r#"if x > 0 { print(x); } elif x < 0 { print(); } else { print(\"0\"); }"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+        #[test]
+        fn test_if_elif_else_indent() {
+            let input = r#"if x > 0 :
+    print(x)
+elif x < 0 :
+    print()
+else :
+    print(\"0\")
+"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_multiple_elif_braces() {
+            let input = r#"if x > 0 { a(); } elif x < 0 { b(); } elif x == 0 { c(); } else { d(); }"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+        #[test]
+        fn test_multiple_elif_indent() {
+            let input = r#"if x > 0:
+    a()
+elif x < 0:
+    b()
+elif x == 0:
+    c()
+else :
+    d()
+"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+
+    }
 
 
 

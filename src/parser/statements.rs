@@ -14,13 +14,34 @@ impl Parser{
         self.consume(TokenType::KEYWORD(Keywords::IF))?;
         let condition = self.parse_expression(0)?;
         //let then_block = self.parse_body_block()?;; // block_expression
-        let then_block = self.parse_block()?;
+        let elif_block = self.parse_block()?;
 
-        let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELSE)]) {
-            self.advance();
-            let elif_statement = self.parse_if_statement()?;
-            Some(vec![elif_statement])
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::ELIF)]){
+        let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]) {
+            // self.advance();
+            self.consume(TokenType::KEYWORD(Keywords::ELIF))?;
+
+            let elif_condition = self.parse_expression(0)?;
+            let elif_then_block = self.parse_block()?;
+
+            let elif_else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]){
+                Some(self.parse_block()?)
+            }else { None };
+
+
+            Some(vec![ASTNode::Statement(Statement::IfStatement(IfStatement{
+                condition: elif_condition,
+                elif_block: elif_then_block,
+                else_block: elif_else_block,
+            }))])
+
+
+            //
+            // let elif_statement = self.parse_if_statement()?;
+            // Some(vec![elif_statement])
+            //
+
+        }else if self.check(&[TokenType::KEYWORD(Keywords::ELSE)]){
+            self.consume(TokenType::KEYWORD(Keywords::ELSE))?;
             //Some(self.parse_body_block()?)
             Some(self.parse_block()?)
         }else { None };
@@ -28,7 +49,7 @@ impl Parser{
         println!("Fin du parsing de l'instruction if");
         Ok(ASTNode::Statement(Statement::IfStatement(IfStatement{
             condition,
-            then_block,
+            elif_block,
             else_block,
         })))
 
