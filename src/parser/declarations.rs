@@ -1,4 +1,4 @@
-use crate::parser::ast::{ASTNode, Attribute, ClassDeclaration, ConstDeclaration, Constructor, Declaration, EnumDeclaration, EnumVariant, Field, FunctionDeclaration, GenericType, ImplDeclaration, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
+use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ASTNode, Attribute, ClassDeclaration, ConstDeclaration, Constructor, Declaration, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
 use crate::parser::ast::Declaration::Variable;
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
@@ -728,6 +728,68 @@ impl Parser{
 
     }
 
+
+
+
+
+    // Declaration des Array
+
+
+    pub fn parse_array_expression(&mut self) -> Result<Expression, ParserError> {
+        println!("Début du parsing d'un tableau");
+
+        // Consommer '['
+        self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
+
+        let mut elements = Vec::new();
+
+        // Vérifier si le tableau est vide
+        if self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
+            self.advance();
+            return Ok(Expression::Array(ArrayExpression { elements }));
+        }
+
+        // Parser le premier élément
+        elements.push(self.parse_expression(0)?);
+
+        // Vérifier si c'est une initialisation répétée [value; size]
+        if self.check(&[TokenType::DELIMITER(Delimiters::SEMICOLON)]) {
+            self.advance();
+            let size = self.parse_expression(0)?;
+            self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+            return Ok(Expression::ArrayRepeat(ArrayRepeatExpression {
+                value: Box::new(elements.remove(0)),
+                size: Box::new(size),
+            }));
+        }
+
+        // Parser le reste des éléments
+        while self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+            self.advance();
+            if self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
+                break;
+            }
+            elements.push(self.parse_expression(0)?);
+        }
+
+        // Consommer ']'
+        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+
+        println!("Fin du parsing d'un tableau");
+        Ok(Expression::Array(ArrayExpression { elements }))
+    }
+
+
+
+    pub fn parse_array_access(&mut self,array:Expression)  -> Result<Expression,ParserError>{
+        self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
+        let index = self.parse_expression(0)?;
+        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+        Ok(Expression::ArrayAccess(ArrayAccess {
+            array: Box::new(array),
+            index: Box::new(index),
+        }))
+    }
 
 
 

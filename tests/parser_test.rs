@@ -184,6 +184,63 @@ else :
     }
 
 
+    mod test_array_declaration_tests{
+        use super::*;
+
+        #[test]
+        fn test_array_declaration_braces() {
+            let input = r#"let arr = [1, 2, 3];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_array_declaration_indent() {
+            let input = r#"let arr = [1, 2, 3]"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_array_declaration_braces() {
+            let input = r#"let arr = [[1, 2], [3, 4]];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_array_declaration_indent() {
+            let input = r#"let arr = [[1, 2], [3, 4]]"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_array_declaration_braces() {
+            let input = r#"let arr = [];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_array_declaration_indent() {
+            let input = r#"let arr = []"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+
+
+
+    }
+
+
 
     // mod declaration_tests {
     //     use pyrust::parser::ast::Visibility;

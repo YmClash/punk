@@ -218,6 +218,7 @@ pub enum Declaration {
     Macro(MacroDeclaration),
     Attributes(Attribute),
     Constructor(Constructor),
+    Array(ArrayDeclaration),
 }
 
 #[allow(dead_code)]
@@ -366,6 +367,21 @@ pub struct MacroDeclaration {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
+pub struct ArrayDeclaration {
+    //pub name: String,
+    pub array_type: Type,
+    pub size: usize,
+    pub array_elements: Vec<Expression>,
+    pub is_repeated: bool,
+
+}
+
+
+
+
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub enum SelfKind{
     Value,                  // self
     Reference,              // &self
@@ -444,7 +460,9 @@ pub enum Expression {
     BinaryOperation(BinaryOperation),
     UnaryOperation(UnaryOperation),
     FunctionCall(FunctionCall),
-    //ArrayAccess(ArrayAccess), // transfere dans IndexAccess
+
+    ArrayAccess(ArrayAccess), // transfere dans IndexAccess
+
     MemberAccess(MemberAccess),
     LambdaExpression(LambdaExpression),
     MatchExpression(MatchExpression),
@@ -460,8 +478,26 @@ pub enum Expression {
     DestructuringAssignment(DestructuringAssignment),
 
     RangeExpression(RangeExpression),
+    Array(ArrayExpression),
+    ArrayRepeat(ArrayRepeatExpression),
 
 }
+
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ArrayExpression{
+    pub elements: Vec<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ArrayRepeatExpression{
+    pub value: Box<Expression>,
+    pub size: Box<Expression>,
+}
+
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -792,12 +828,12 @@ pub struct AssignmentStatement {
     pub value: Expression,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Function {
-    pub declaration: FunctionDeclaration,
-    pub body: Body,
-}
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Function {
+//     pub declaration: FunctionDeclaration,
+//     pub body: Body,
+// }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
