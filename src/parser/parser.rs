@@ -330,6 +330,7 @@ impl Parser {
                 break;
             }
         }
+
         self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
 
 
