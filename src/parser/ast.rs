@@ -218,7 +218,7 @@ pub enum Declaration {
     Macro(MacroDeclaration),
     Attributes(Attribute),
     Constructor(Constructor),
-    Array(ArrayDeclaration),
+    // Array(ArrayDeclaration),
 }
 
 #[allow(dead_code)]
@@ -462,6 +462,7 @@ pub enum Expression {
     FunctionCall(FunctionCall),
 
     ArrayAccess(ArrayAccess), // transfere dans IndexAccess
+    ArraySlice(ArraySlice), // transfere dans IndexAccess
 
     MemberAccess(MemberAccess),
     LambdaExpression(LambdaExpression),
@@ -601,6 +602,16 @@ pub struct ArrayAccess {
     pub array: Box<Expression>,
     pub index: Box<Expression>,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ArraySlice{
+    pub array: Box<Expression>,
+    pub start: Option<Box<Expression>>,
+    pub end: Option<Box<Expression>>,
+}
+
+
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct MemberAccess {

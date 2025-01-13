@@ -2,7 +2,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ArrayExpression, ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName, MissingType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -331,13 +331,24 @@ impl Parser {
             }
         }
         self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-        self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
-        let value = self.parse_expression(0)?;
-        println!("Fin du parsing de l'assignation destructuree OK!!!!");
-        Ok(Expression::DestructuringAssignment(DestructuringAssignment{
-            targets,
-            value: Box::new(value),
-        }))
+
+
+        if self.check(&[TokenType::OPERATOR(Operators::EQUAL)]){
+            self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
+            let value = self.parse_expression(0)?;
+
+            println!("Fin du parsing de l'assignation destructuree OK!!!!");
+            Ok(Expression::DestructuringAssignment(DestructuringAssignment {
+                targets,
+                value: Box::new(value),
+            }))
+        } else {
+            // C'est un tableau littéral
+            println!("Fin du parsing d'un tableau");
+            Ok(Expression::Array(ArrayExpression {
+                elements: targets
+            }))
+        }
     }
 
     fn parse_unary_expression(&mut self) -> Result<Expression, ParserError> {
