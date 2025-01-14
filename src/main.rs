@@ -338,13 +338,13 @@ match x :
     let code_test42 = r#"[1,2.5,"momo",'c'];"#;
     let code_test43 = r#"array[1..4][1][0]"#;
     let code_test44 = r#"array[1..10:2];"#;
-    let code_test45 = r#"[x + y for x in array1 if x > 0 for y in array2 if y < 10];"#;
+    let code_test45 = r#"let mut listcomprehension =[x + y for x in array1 if x > 0 for y in array2 if y < 10]"#;
 
 
 
 
     // let mut lexer = Lexer::new(code_test44, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test44, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test45, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
