@@ -169,6 +169,10 @@ impl Parser {
     pub fn parse_expression(&mut self,precedence:u8) -> Result<Expression, ParserError> {
         println!("Début du parsing de l'expression");
 
+        if self.is_list_comprehension()?{
+            return self.parse_list_comprehension();
+        }
+
         if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
             // Si nous avons un token précédent et que c'est un '=', alors c'est une expression de tableau
             // Sinon, c'est une destructuration
@@ -306,13 +310,24 @@ impl Parser {
             } else if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
                 //Acces à un élément d'un tableau par indice
                 self.advance();
-                let index = self.parse_expression(0)?;
-                self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-                println!("Index parsé : {:?}", index);
-                expr = Expression::IndexAccess(IndexAccess{
-                    array: Box::new(expr),
-                    index: Box::new(index),
-                });
+                if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)]){
+                    expr = self.parse_array_slice(expr)?;
+                }else {
+                    let index = self.parse_expression(0)?;
+                    self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+                    println!("Index parsé : {:?}", index);
+                    expr = Expression::IndexAccess(IndexAccess{
+                        array: Box::new(expr),
+                        index: Box::new(index),
+                    });  }
+
+                // let index = self.parse_expression(0)?;
+                // self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+                // println!("Index parsé : {:?}", index);
+                // expr = Expression::IndexAccess(IndexAccess{
+                //     array: Box::new(expr),
+                //     index: Box::new(index),
+                // });
 
             } else { break; }
         }

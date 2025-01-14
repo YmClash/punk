@@ -235,6 +235,22 @@ else :
             // assert!(result.is_ok());
         }
 
+        #[test]
+        fn test_list_comprehension() {
+            let tests = vec![
+                ("[x * 2 for x in range(10)]", "Simple comprehension"),
+                ("[x for x in array if x > 0]", "With condition"),
+                ("[x + y for x in a for y in b]", "Multiple for"),
+                ("[x for x in a if x > 0 if x < 10]", "Multiple conditions"),
+                ("[(x, y) for x in a for y in b]", "Tuple pattern"),
+            ];
+
+            for (input, test_name) in tests {
+                let result = create_parser(input, SyntaxMode::Indentation);
+                // assert!(result.is_ok(), "Failed to parse {}: {:?}", test_name, result.err());
+            }
+        }
+
 
 
 

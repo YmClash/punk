@@ -481,7 +481,23 @@ pub enum Expression {
     RangeExpression(RangeExpression),
     Array(ArrayExpression),
     ArrayRepeat(ArrayRepeatExpression),
+    ListComprehension(ListComprehension),
 
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ListComprehension{
+    pub elements: Box<Expression>,
+    pub iterators: Vec<ComprehensionFor>,
+    pub conditions: Vec<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ComprehensionFor{
+    pub pattern: Pattern,
+    pub iterator: Expression,
 }
 
 
@@ -609,6 +625,8 @@ pub struct ArraySlice{
     pub array: Box<Expression>,
     pub start: Option<Box<Expression>>,
     pub end: Option<Box<Expression>>,
+    pub step: Option<Box<Expression>>,
+    pub inclusive: bool,
 }
 
 

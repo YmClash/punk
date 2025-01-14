@@ -1,4 +1,4 @@
-use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ASTNode, Attribute, ClassDeclaration, ConstDeclaration, Constructor, Declaration, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
+use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, ComprehensionFor, ConstDeclaration, Constructor, Declaration, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
 use crate::parser::ast::Declaration::Variable;
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
@@ -778,6 +778,155 @@ impl Parser{
         println!("Fin du parsing d'un tableau");
         Ok(Expression::Array(ArrayExpression { elements }))
     }
+
+
+
+    pub fn parse_array_slice(&mut self, array: Expression) -> Result<Expression, ParserError>{
+
+        let start = if !self.check(&[
+            TokenType::OPERATOR(Operators::DOTDOT),
+            TokenType::OPERATOR(Operators::DOTDOTEQUAL)
+        ]) {
+            Some(Box::new(self.parse_expression(0)?))
+        } else {
+            None
+        };
+
+        let inclusive = if self.check(&[TokenType::OPERATOR(Operators::DOTDOTEQUAL)]) {
+            self.consume(TokenType::OPERATOR(Operators::DOTDOTEQUAL))?;
+            true
+        } else {
+            self.consume(TokenType::OPERATOR(Operators::DOTDOT))?;
+            false
+        };
+
+        let end = if !self.check(&[
+            TokenType::DELIMITER(Delimiters::RSBRACKET),
+            TokenType::DELIMITER(Delimiters::COLON)
+        ]) {
+            Some(Box::new(self.parse_expression(0)?))
+        } else {
+            None
+        };
+
+        let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+            Some(Box::new(self.parse_expression(0)?))
+        } else {
+            None
+        };
+
+        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+
+        println!("Fin du parsing d'une tranche de tableau OK!!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(Expression::ArraySlice(ArraySlice{
+            array: Box::new(array),
+            start,
+            end,
+            step,
+            inclusive,
+        }))
+
+
+
+    }
+
+
+    pub fn parse_list_comprehension(&mut self) -> Result<Expression, ParserError> {
+        println!("Début du parsing de list comprehension");
+
+        // Consommer '['
+        self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
+
+        // Parser l'expression à générer
+        let elements = Box::new(self.parse_expression(0)?);
+
+        // Doit être suivi par 'for'
+        self.consume(TokenType::KEYWORD(Keywords::FOR))?;
+
+        let mut iterators = Vec::new();
+        let mut conditions = Vec::new();
+
+        // Parser la première boucle for (obligatoire)
+        iterators.push(self.parse_comprehension_for()?);
+
+        // Parser les boucles for et conditions supplémentaires
+        while !self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
+            match self.current_token() {
+                Some(token) => match &token.token_type {
+                    TokenType::KEYWORD(Keywords::FOR) => {
+                        self.advance();
+                        iterators.push(self.parse_comprehension_for()?);
+                    }
+                    TokenType::KEYWORD(Keywords::IF) => {
+                        self.advance();
+                        conditions.push(self.parse_expression(0)?);
+                    }
+                    _ => return Err(ParserError::new(UnexpectedToken, self.current_position())),
+                },
+                None => return Err(ParserError::new(UnexpectedToken, self.current_position())),
+            }
+        }
+
+        // Consommer ']'
+        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+
+        println!("Fin du parsing de list comprehension");
+
+        Ok(Expression::ListComprehension(ListComprehension{
+            elements,
+            iterators,
+            conditions,
+        }))
+    }
+
+    fn parse_comprehension_for(&mut self) -> Result<ComprehensionFor, ParserError> {
+        println!("Début du parsing de la boucle for de list comprehension");
+        let pattern = self.parse_pattern()?;
+        self.consume(TokenType::KEYWORD(Keywords::IN))?;
+        let iterator = self.parse_expression(0)?;
+        println!("Fin du parsing de la boucle for de list comprehension");
+        Ok(ComprehensionFor {
+            pattern,
+            iterator })
+
+    }
+
+
+    pub fn is_list_comprehension(&mut self) -> Result<bool, ParserError> {
+        // Sauvegarder la position actuelle
+        let current = self.current;
+
+        // Vérifier si c'est une list comprehension
+        let mut is_comprehension = false;
+
+        // Consommer '['
+        if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
+            self.advance();
+
+            // Chercher un 'for' après une expression
+            while let Some(token) = self.current_token() {
+                if matches!(token.token_type, TokenType::KEYWORD(Keywords::FOR)) {
+                    is_comprehension = true;
+                    break;
+                }
+                if matches!(token.token_type, TokenType::DELIMITER(Delimiters::RSBRACKET)) {
+                    break;
+                }
+                self.advance();
+            }
+        }
+
+        // Restaurer la position
+        self.current = current;
+
+        Ok(is_comprehension)
+    }
+
+
+
+
 
 
 
