@@ -344,7 +344,7 @@ match x :
 
 
     // let mut lexer = Lexer::new(code_test44, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test45, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test44, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
