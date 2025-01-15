@@ -2,7 +2,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayExpression, ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ArrayExpression, ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, DictAccess, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName, MissingType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -169,6 +169,11 @@ impl Parser {
     pub fn parse_expression(&mut self,precedence:u8) -> Result<Expression, ParserError> {
         println!("Début du parsing de l'expression");
 
+        if self.check(&[TokenType::DELIMITER(Delimiters::LCURBRACE)]){
+            return self.parse_dict_literal();
+        }
+
+
         if self.is_list_comprehension()?{
             return self.parse_list_comprehension();
         }
@@ -312,27 +317,40 @@ impl Parser {
                 self.advance();
                 if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)]){
                     expr = self.parse_array_slice(expr)?;
-                }else {
+                } else {
                     let index = self.parse_expression(0)?;
                     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-                    println!("Index parsé : {:?}", index);
-                    expr = Expression::IndexAccess(IndexAccess{
-                        array: Box::new(expr),
-                        index: Box::new(index),
-                    });  }
 
-                // let index = self.parse_expression(0)?;
-                // self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-                // println!("Index parsé : {:?}", index);
-                // expr = Expression::IndexAccess(IndexAccess{
-                //     array: Box::new(expr),
-                //     index: Box::new(index),
-                // });
-
-            } else { break; }
+                    // Si l'index est une string, on considère que c'est un accès dictionnaire
+                    match &index {
+                        Expression::Literal(Literal::String(_)) => {
+                            println!("Accès dictionnaire parsé avec la clé : {:?}", index);
+                            expr = Expression::DictAccess(DictAccess {
+                                dict: Box::new(expr),
+                                key: Box::new(index),
+                            });
+                        },
+                        _ => {
+                            println!("Accès tableau parsé avec l'index : {:?}", index);
+                            expr = Expression::IndexAccess(IndexAccess {
+                                array: Box::new(expr),
+                                index: Box::new(index),
+                            });
+                        }
+                    }
+                }
+            } else {
+                break;
+            }
         }
         Ok(expr)
     }
+
+
+
+
+
+
 
     fn parse_destructuring_assignment(&mut self) -> Result<Expression,ParserError>{
         println!("Début du parsing de l'assignation destructuree[");

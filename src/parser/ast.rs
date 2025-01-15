@@ -483,7 +483,46 @@ pub enum Expression {
     ArrayRepeat(ArrayRepeatExpression),
     ListComprehension(ListComprehension),
 
+    DictLiteral(DictLiteral),
+    DictAccess(DictAccess),
+    DictComprehension(DictComprehension),
+
+    CollectionAccess(CollectionAccess),
+
 }
+//*********************************
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum CollectionAccess {
+    Dict(Box<Expression>, Box<Expression>),   // (dict, key)
+    Array(Box<Expression>, Box<Expression>),  // (array, index)
+    Unknown(Box<Expression>, Box<Expression>) // à résoudre pendant le type checking
+}
+
+//**********************************
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictLiteral{
+    pub entries: Vec<DictEntry>
+}
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictEntry {
+    pub key : Box<Expression>,
+    pub value : Box<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictAccess{
+    pub dict: Box<Expression>,
+    pub key: Box<Expression>,
+}
+
+
+
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -492,6 +531,16 @@ pub struct ListComprehension{
     pub iterators: Vec<ComprehensionFor>,
     pub conditions: Vec<Expression>,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictComprehension{
+    pub key_expr: Box<Expression>,
+    pub value_expr: Box<Expression>,
+    pub iterators: Vec<ComprehensionFor>,
+    pub conditions: Vec<Expression>,
+}
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]

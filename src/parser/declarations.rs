@@ -1,4 +1,4 @@
-use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, ComprehensionFor, ConstDeclaration, Constructor, Declaration, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
+use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, ComprehensionFor, ConstDeclaration, Constructor, Declaration, DictAccess, DictEntry, DictLiteral, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
 use crate::parser::ast::Declaration::Variable;
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
@@ -924,12 +924,6 @@ impl Parser{
         Ok(is_comprehension)
     }
 
-
-
-
-
-
-
     pub fn parse_array_access(&mut self,array:Expression)  -> Result<Expression,ParserError>{
         self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
         let index = self.parse_expression(0)?;
@@ -940,9 +934,60 @@ impl Parser{
         }))
     }
 
+    pub fn parse_dict_literal(&mut self) -> Result<Expression,ParserError> {
+        println!("Debut du parsing d'un dictionnaire");
+        self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+
+        let mut entries = Vec::new();
+
+        // if
+
+
+        while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
+            if !entries.is_empty(){
+                self.consume(TokenType::DELIMITER(Delimiters::COMMA))?;
+            }
+            if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
+                break;
+            }
+
+            let key = self.parse_expression(0)?;
+            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+
+            let value = self.parse_expression(0)?;
+
+            entries.push(DictEntry {
+                key: Box::new(key),
+                value: Box::new(value),
+            });
+        }
+
+        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+
+        println!("Fin du parsing d'un dictionnaire OK!!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(Expression::DictLiteral(DictLiteral { entries }))
+    }
+
+    pub fn parse_dict_access(&mut self,dict:Expression) -> Result<Expression,ParserError>{
+        println!("Debut du parsing d'un accès à un dictionnaire");
+        self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
+        let key = self.parse_expression(0)?;
+        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+        Ok(Expression::DictAccess(DictAccess {
+            dict: Box::new(dict),
+            key: Box::new(key),
+        }))
+    }
+
+
+
+
 
 
 
 
 
 }
+
+

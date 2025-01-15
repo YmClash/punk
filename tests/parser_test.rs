@@ -235,6 +235,10 @@ else :
             // assert!(result.is_ok());
         }
 
+    }
+
+    mod test_list_comprehesion {
+        use super::*;
         #[test]
         fn test_list_comprehension() {
             let tests = vec![
@@ -251,10 +255,62 @@ else :
             }
         }
 
+    }
 
+    mod test_Dictionary_declaration_tests{
+        use super::*;
 
+        #[test]
+        fn test_dictionary_declaration_braces() {
+            let input = r#"let dict = {2 + 2: "four", "array": [1, 2, 3]};"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_dictionary_declaration_indent() {
+            let input = r#"let dict = {2 + 2: "four", "array": [1, 2, 3]}"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_dictionary_declaration_braces() {
+            let input = r#"let dict = { "key": { "nested": "value" } };"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_dictionary_declaration_indent() {
+            let input = r#"let dict = { "key": { "nested": "value" } }"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_dictionary_declaration_braces() {
+            let input = r#"let dict = {};"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_dictionary_declaration_indent() {
+            let input = r#"let dict = {}"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
 
     }
+
+
 
 
 
