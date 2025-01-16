@@ -337,16 +337,16 @@ match x :
     let code_test41 = r#"let mut array = [1,2.5,"momo",'c'];[1,2.5,"momo",'c'] = array ;[1,2.5,"momo",'c'];"#;
     let code_test42 = r#"[1,2.5,"momo",'c'];"#;
     let code_test43 = r#"array[1..4][1][0]"#;
-    let code_test44 = r#"array[1..10:2];"#;
+    let code_test44 = r#"[1,10:10];"#;
     let code_test45 = r#"let mut listcomprehension =[x + y for x in array1 if x > 0 for y in array2 if y < 10]"#;
 
-    let code_test46 = r#"dict.values()"#;
+    let code_test46 = r#"{k: v for k, v in items}"#;
 
 
 
 
-    let mut lexer = Lexer::new(code_test46, SyntaxMode::Indentation);
-    // let mut lexer = Lexer::new(code_test43, SyntaxMode::Braces);
+    // let mut lexer = Lexer::new(code_test44, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test44, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -355,8 +355,8 @@ match x :
     }
     println!("\n");
 
-    let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    // let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
 
     // while !parser.is_at_end() {
     //     match parser.parse_statement() {

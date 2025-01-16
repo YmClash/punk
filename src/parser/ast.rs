@@ -537,8 +537,17 @@ pub struct ListComprehension{
 pub struct DictComprehension{
     pub key_expr: Box<Expression>,
     pub value_expr: Box<Expression>,
-    pub iterators: Vec<ComprehensionFor>,
+    pub iterators: Vec<CompFor>,
     pub conditions: Vec<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct CompFor {
+    pub targets:Vec<Pattern>,
+    pub iterator: Expression,
+    pub conditions: Vec<Expression>,
+
 }
 
 

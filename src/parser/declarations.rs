@@ -1,4 +1,4 @@
-use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, ComprehensionFor, ConstDeclaration, Constructor, Declaration, DictAccess, DictEntry, DictLiteral, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
+use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, CompFor, ComprehensionFor, ConstDeclaration, Constructor, Declaration, DictAccess, DictComprehension, DictEntry, DictLiteral, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
 use crate::parser::ast::Declaration::Variable;
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
@@ -762,6 +762,12 @@ impl Parser{
                 size: Box::new(size),
             }));
         }
+        // if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+        //     self.advance();
+        //     let slice = self.parse_array_slice(elements.remove(0))?;
+        //     return Ok(slice);
+        //
+        // }
 
         // Parser le reste des éléments
         while self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
@@ -977,6 +983,67 @@ impl Parser{
         Ok(Expression::DictAccess(DictAccess {
             dict: Box::new(dict),
             key: Box::new(key),
+        }))
+    }
+
+
+    pub fn parse_dict_comprehension(&mut self) -> Result<Expression,ParserError>{
+        println!("Début du parsing de la compréhension de dictionnaire");
+
+        let key_expr = self.parse_expression(0)?;
+
+        self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+
+        let value_expr = self.parse_expression(0)?;
+
+        self.consume(TokenType::KEYWORD(Keywords::FOR))?;
+
+        let mut iterators = Vec::new();
+        let mut conditions = Vec::new();
+
+        loop {
+            let mut targets = Vec::new();
+            loop {
+                let target = self.parse_pattern()?;
+                targets.push(target);
+
+                if !self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+                    break;
+                }
+                self.advance();
+            }
+
+            self.consume(TokenType::KEYWORD(Keywords::IN))?;
+
+            let iterator = self.parse_expression(0)?;
+
+            let mut for_condition = Vec::new();
+            while self.check(&[TokenType::KEYWORD(Keywords::IF)]) {
+                self.advance();
+                let condition = self.parse_expression(0)?;
+                for_condition.push(condition);
+            }
+
+            iterators.push(CompFor{
+                targets,
+                iterator,
+                conditions: for_condition,
+            });
+
+            if !self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
+                break;
+            }
+            self.advance(); // Consomme 'for'
+        }
+        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+
+        println!("Fin du parsing de la compréhension de dictionnaire OK!!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(Expression::DictComprehension(DictComprehension{
+            key_expr: Box::new(key_expr),
+            value_expr: Box::new(value_expr),
+            iterators,
+            conditions,
         }))
     }
 
