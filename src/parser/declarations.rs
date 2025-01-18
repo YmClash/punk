@@ -1,3 +1,4 @@
+use crate::lexer::lex::Token;
 use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, CompFor, ComprehensionFor, ConstDeclaration, Constructor, Declaration, DictAccess, DictComprehension, DictEntry, DictLiteral, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
 use crate::parser::ast::Declaration::Variable;
 use crate::parser::parser::Parser;
@@ -962,6 +963,11 @@ impl Parser{
 
             let value = self.parse_expression(0)?;
 
+            if self.match_token(&[TokenType::KEYWORD(Keywords::FOR)]){
+                return self.parse_dict_comprehension();
+            }
+
+
             entries.push(DictEntry {
                 key: Box::new(key),
                 value: Box::new(value),
@@ -987,15 +993,24 @@ impl Parser{
     }
 
 
-    pub fn parse_dict_comprehension(&mut self) -> Result<Expression,ParserError>{
-        println!("Début du parsing de la compréhension de dictionnaire");
 
+
+
+    pub fn parse_dict_comprehension(&mut self) -> Result<Expression, ParserError> {
+        println!("Début du parsing d'une dict comprehension");
+
+        // On a déjà consommé le '{'
+
+        // Parse l'expression de la clé
         let key_expr = self.parse_expression(0)?;
 
+        // Consomme ':'
         self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
 
+        // Parse l'expression de la valeur
         let value_expr = self.parse_expression(0)?;
 
+        // Consomme 'for'
         self.consume(TokenType::KEYWORD(Keywords::FOR))?;
 
         let mut iterators = Vec::new();
@@ -1004,42 +1019,96 @@ impl Parser{
         loop {
             let mut targets = Vec::new();
             loop {
-                let target = self.parse_pattern()?;
-                targets.push(target);
+                // Correction ici : utilisation de la variante tuple Identifier
+                match self.current_token() {
+                    Some(Token { token_type: TokenType::IDENTIFIER { name }, .. }) => {
+                        targets.push(Expression::Identifier(name.clone()));  // Correction ici
+                        self.advance();
+                    }
+                    _ => return Err(ParserError::new(UnexpectedToken, self.current_position())),
+                    // _ => return Err(ParserError::unexpected_token(self.current_position())),
+                }
 
-                if !self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+                if !self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
                     break;
                 }
-                self.advance();
+                self.advance(); // Consomme la virgule
             }
 
             self.consume(TokenType::KEYWORD(Keywords::IN))?;
-
             let iterator = self.parse_expression(0)?;
 
-            let mut for_condition = Vec::new();
+            let mut for_conditions = Vec::new();
             while self.check(&[TokenType::KEYWORD(Keywords::IF)]) {
                 self.advance();
                 let condition = self.parse_expression(0)?;
-                for_condition.push(condition);
+                for_conditions.push(condition);
             }
 
-            iterators.push(CompFor{
+            iterators.push(CompFor {
                 targets,
-                iterator,
-                conditions: for_condition,
+                iterator: Box::new(iterator),
+                conditions: for_conditions,
             });
 
             if !self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
                 break;
             }
-            self.advance(); // Consomme 'for'
+            self.advance();
         }
+
+
+
+
+
+        // Parse les clauses for et if
+        // loop {
+        //     // Parse les targets (variables)
+        //     let mut targets = Vec::new();
+        //     loop {
+        //         let target = self.parse_pattern()?;
+        //         targets.push(target);
+        //
+        //         if !self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+        //             break;
+        //         }
+        //         self.advance(); // Consomme la virgule
+        //     }
+        //
+        //     // Consomme 'in'
+        //     self.consume(TokenType::KEYWORD(Keywords::IN))?;
+        //
+        //     // Parse l'itérateur
+        //     let iterator = self.parse_expression(0)?;
+        //
+        //     // Parse les conditions if optionnelles
+        //     let mut for_conditions = Vec::new();
+        //     while self.check(&[TokenType::KEYWORD(Keywords::IF)]) {
+        //         self.advance(); // Consomme 'if'
+        //         let condition = self.parse_expression(0)?;
+        //         for_conditions.push(condition);
+        //     }
+        //
+        //     iterators.push(CompFor {
+        //         targets,
+        //         iterator: Box::new(iterator),
+        //         // iterator: Box::new(*Box::new(iterator)),
+        //         conditions: for_conditions,
+        //     });
+        //
+        //     // Vérifie s'il y a un autre 'for'
+        //     if !self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
+        //         break;
+        //     }
+        //     self.advance(); // Consomme 'for'
+        // }
+
+        // Consomme '}'
         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
 
-        println!("Fin du parsing de la compréhension de dictionnaire OK!!!!!!!!!!!!!!!!!!!!!!!");
+        println!("Fin du parsing de la dict comprehension");
 
-        Ok(Expression::DictComprehension(DictComprehension{
+        Ok(Expression::DictComprehension(DictComprehension {
             key_expr: Box::new(key_expr),
             value_expr: Box::new(value_expr),
             iterators,

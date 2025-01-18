@@ -462,7 +462,7 @@ pub enum Expression {
     FunctionCall(FunctionCall),
 
     ArrayAccess(ArrayAccess), // transfere dans IndexAccess
-    ArraySlice(ArraySlice), // transfere dans IndexAccess
+    ArraySlice(ArraySlice), // pas encore completement implementé
 
     MemberAccess(MemberAccess),
     LambdaExpression(LambdaExpression),
@@ -544,8 +544,8 @@ pub struct DictComprehension{
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CompFor {
-    pub targets:Vec<Pattern>,
-    pub iterator: Expression,
+    pub targets:Vec<Expression>,
+    pub iterator: Box<Expression>,
     pub conditions: Vec<Expression>,
 
 }

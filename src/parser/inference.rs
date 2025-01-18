@@ -156,4 +156,7 @@ impl TypeContext {
             .cloned()
             .ok_or_else(|| format!("Undefined variable: {}", name))
     }
+
+
+
 }
