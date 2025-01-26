@@ -1,5 +1,5 @@
 use crate::lexer::lex::Token;
-use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, CompFor, ComprehensionFor, ConstDeclaration, Constructor, Declaration, DictAccess, DictComprehension, DictEntry, DictLiteral, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
+use crate::parser::ast::{ArrayAccess, ArrayDeclaration, ArrayExpression, ArrayRepeatExpression, ArraySlice, ASTNode, Attribute, ClassDeclaration, CompFor, ComprehensionFor, ConstDeclaration, Constructor, Declaration, DictAccess, DictComprehension, DictEntry, DictLiteral, EnumDeclaration, EnumVariant, Expression, Field, FunctionDeclaration, GenericType, ImplDeclaration, ListComprehension, MethodeDeclaration, Mutability, Slice, StructDeclaration, TraitDeclaration, TraitMethod, Type, VariableDeclaration, Visibility, WhereClause};
 use crate::parser::ast::Declaration::Variable;
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
@@ -788,36 +788,67 @@ impl Parser{
 
 
 
-    pub fn parse_array_slice(&mut self, array: Expression) -> Result<Expression, ParserError>{
+    // pub fn parse_array_slice(&mut self, array: Expression) -> Result<Expression, ParserError>{
+    //
+    //     let start = if !self.check(&[
+    //         TokenType::OPERATOR(Operators::DOTDOT),
+    //         TokenType::OPERATOR(Operators::DOTDOTEQUAL)
+    //     ]) {
+    //         Some(Box::new(self.parse_expression(0)?))
+    //     } else {
+    //         None
+    //     };
+    //
+    //     let inclusive = if self.check(&[TokenType::OPERATOR(Operators::DOTDOTEQUAL)]) {
+    //         self.consume(TokenType::OPERATOR(Operators::DOTDOTEQUAL))?;
+    //         true
+    //     } else {
+    //         self.consume(TokenType::OPERATOR(Operators::DOTDOT))?;
+    //         false
+    //     };
+    //
+    //     let end = if !self.check(&[
+    //         TokenType::DELIMITER(Delimiters::RSBRACKET),
+    //         TokenType::DELIMITER(Delimiters::COLON)
+    //     ]) {
+    //         Some(Box::new(self.parse_expression(0)?))
+    //     } else {
+    //         None
+    //     };
+    //
+    //     let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //         self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //         Some(Box::new(self.parse_expression(0)?))
+    //     } else {
+    //         None
+    //     };
+    //
+    //     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+    //
+    //     println!("Fin du parsing d'une tranche de tableau OK!!!!!!!!!!!!!!!!!!!!!!!");
+    //
+    //     Ok(Expression::ArraySlice(ArraySlice{
+    //         array: Box::new(array),
+    //         start,
+    //         end,
+    //         step,
+    //         inclusive,
+    //     }))
+    //
+    // }
+    pub fn parse_slice(&mut self) -> Result<Expression, ParserError> {
+        let index = self.parse_expression(0)?;
+        self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
 
-        let start = if !self.check(&[
-            TokenType::OPERATOR(Operators::DOTDOT),
-            TokenType::OPERATOR(Operators::DOTDOTEQUAL)
-        ]) {
-            Some(Box::new(self.parse_expression(0)?))
-        } else {
+        let end = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) ||
+            self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
             None
-        };
-
-        let inclusive = if self.check(&[TokenType::OPERATOR(Operators::DOTDOTEQUAL)]) {
-            self.consume(TokenType::OPERATOR(Operators::DOTDOTEQUAL))?;
-            true
         } else {
-            self.consume(TokenType::OPERATOR(Operators::DOTDOT))?;
-            false
-        };
-
-        let end = if !self.check(&[
-            TokenType::DELIMITER(Delimiters::RSBRACKET),
-            TokenType::DELIMITER(Delimiters::COLON)
-        ]) {
             Some(Box::new(self.parse_expression(0)?))
-        } else {
-            None
         };
 
         let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+            self.advance();
             Some(Box::new(self.parse_expression(0)?))
         } else {
             None
@@ -825,19 +856,19 @@ impl Parser{
 
         self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
 
-        println!("Fin du parsing d'une tranche de tableau OK!!!!!!!!!!!!!!!!!!!!!!!");
-
-        Ok(Expression::ArraySlice(ArraySlice{
-            array: Box::new(array),
-            start,
+        Ok(Expression::Slice(Slice {
+            start: Some(Box::new(index)),
             end,
-            step,
-            inclusive,
+            step
         }))
-
-
-
     }
+
+
+
+
+
+
+
 
 
     pub fn parse_list_comprehension(&mut self) -> Result<Expression, ParserError> {

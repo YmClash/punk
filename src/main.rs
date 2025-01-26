@@ -343,12 +343,15 @@ match x :
     let code_test46 = r#"{k: v for k, v in items}"#;
     let code_test47 = r#"let mut listcomprehension =[x + y for x in array1 if x > 0 for y in array2 if y < 10]"#;
     let code_test48 = r#"{2 + 2: "four", "array": [1, 2, 3]};"#;
+    let code_test49 = r#"array[1:10:2];"#;
+
+    let code_test50 = r#"{k: v for k, v in items if v > 0}"#;
 
 
 
 
     // let mut lexer = Lexer::new(code_test44, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test46, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_test49, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
