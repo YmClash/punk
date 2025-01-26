@@ -218,6 +218,7 @@ pub enum Declaration {
     Macro(MacroDeclaration),
     Attributes(Attribute),
     Constructor(Constructor),
+    // Array(ArrayDeclaration),
 }
 
 #[allow(dead_code)]
@@ -366,6 +367,21 @@ pub struct MacroDeclaration {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
+pub struct ArrayDeclaration {
+    //pub name: String,
+    pub array_type: Type,
+    pub size: usize,
+    pub array_elements: Vec<Expression>,
+    pub is_repeated: bool,
+
+}
+
+
+
+
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub enum SelfKind{
     Value,                  // self
     Reference,              // &self
@@ -444,7 +460,12 @@ pub enum Expression {
     BinaryOperation(BinaryOperation),
     UnaryOperation(UnaryOperation),
     FunctionCall(FunctionCall),
-    //ArrayAccess(ArrayAccess), // transfere dans IndexAccess
+
+    ArrayAccess(ArrayAccess), // transfere dans IndexAccess
+    ArraySlice(ArraySlice), // pas encore completement implementé
+    Slice(Slice), // pas encore completement implementé
+
+
     MemberAccess(MemberAccess),
     LambdaExpression(LambdaExpression),
     MatchExpression(MatchExpression),
@@ -460,8 +481,100 @@ pub enum Expression {
     DestructuringAssignment(DestructuringAssignment),
 
     RangeExpression(RangeExpression),
+    Array(ArrayExpression),
+    ArrayRepeat(ArrayRepeatExpression),
+    ListComprehension(ListComprehension),
+
+    DictLiteral(DictLiteral),
+    DictAccess(DictAccess),
+    DictComprehension(DictComprehension),
+
+    CollectionAccess(CollectionAccess),
 
 }
+//*********************************
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum CollectionAccess {
+    Dict(Box<Expression>, Box<Expression>),   // (dict, key)
+    Array(Box<Expression>, Box<Expression>),  // (array, index)
+    Unknown(Box<Expression>, Box<Expression>) // à résoudre pendant le type checking
+}
+
+//**********************************
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictLiteral{
+    pub entries: Vec<DictEntry>
+}
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictEntry {
+    pub key : Box<Expression>,
+    pub value : Box<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictAccess{
+    pub dict: Box<Expression>,
+    pub key: Box<Expression>,
+}
+
+
+
+
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ListComprehension{
+    pub elements: Box<Expression>,
+    pub iterators: Vec<ComprehensionFor>,
+    pub conditions: Vec<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DictComprehension{
+    pub key_expr: Box<Expression>,
+    pub value_expr: Box<Expression>,
+    pub iterators: Vec<CompFor>,
+    pub conditions: Vec<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct CompFor {
+    pub targets:Vec<Expression>,
+    pub iterator: Box<Expression>,
+    pub conditions: Vec<Expression>,
+
+}
+
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ComprehensionFor{
+    pub pattern: Pattern,
+    pub iterator: Expression,
+}
+
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ArrayExpression{
+    pub elements: Vec<Expression>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ArrayRepeatExpression{
+    pub value: Box<Expression>,
+    pub size: Box<Expression>,
+}
+
+
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -565,6 +678,25 @@ pub struct ArrayAccess {
     pub array: Box<Expression>,
     pub index: Box<Expression>,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ArraySlice{
+    pub array: Box<Expression>,
+    pub start: Option<Box<Expression>>,
+    pub end: Option<Box<Expression>>,
+    pub step: Option<Box<Expression>>,
+    pub inclusive: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Slice {
+    pub start: Option<Box<Expression>>,
+    pub end: Option<Box<Expression>>,
+    pub step: Option<Box<Expression>>
+}
+
+
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct MemberAccess {
@@ -685,7 +817,7 @@ pub struct ReturnStatement {
 #[derive(Clone, Debug)]
 pub struct IfStatement {
     pub condition: Expression,
-    pub then_block: Vec<ASTNode>,
+    pub elif_block: Vec<ASTNode>,
     pub else_block: Option<Vec<ASTNode>>,
 }
 
@@ -792,12 +924,12 @@ pub struct AssignmentStatement {
     pub value: Expression,
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Function {
-    pub declaration: FunctionDeclaration,
-    pub body: Body,
-}
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Function {
+//     pub declaration: FunctionDeclaration,
+//     pub body: Body,
+// }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]

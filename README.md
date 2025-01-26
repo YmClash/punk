@@ -1,9 +1,9 @@
-# PyRustLang
+# PyRustLang to PunkLang
 
 
-# pyrust
+# PunkLang
 
-PyRust est un langage de programmation expérimental qui combine des éléments de Python et de Rust. Ce projet est un hobby et vise à explorer les concepts de conception de langages de programmation en utilisant Rust comme compilateur backend pour générer du code tout en offrant une syntaxe de haut niveau
+PUNK est un langage de programmation expérimental qui combine des éléments de Python et de Rust. Ce projet est un hobby et vise à explorer les concepts de conception de langages de programmation en utilisant Rust comme compilateur backend pour générer du code tout en offrant une syntaxe de haut niveau
 
 ## Table des matières
 
@@ -32,7 +32,9 @@ a venir
 
 ## Exemples
 
-Voici un exemple de programme simple en PyRust :
+Voici un exemple de programme simple en PunkLang :
+
+```punk
 les keywords peuvent changer à l'avenir 
 
 # Comprendre les Différences entre les Modes
@@ -46,7 +48,6 @@ Pas besoin d'accolades.
 Les nouvelles lignes et l'indentation remplacent les séparateurs.
 
 
-```pyrust
 #Syntaxe_mode = Indentation
 
 # Ceci est un commentaire
@@ -118,7 +119,7 @@ let root: float = sqrt(16)
 print("La racine carrée de 16 est: ", root)
 
 
-/////////////////////////////MONKEY/D/RUST/////OR /////PYRUST//////////////////////////
+/////////////////////////////MONKEY/D/RUST/////OR /////PUNKLANG//////////////////////////
 
 
 #Syntaxe_mode = Braces
@@ -150,12 +151,12 @@ let person1: Person = Person("Alice", 30);
 
 // Emprunt immuable
 let name_ref: &string = &person1.name;
-println("Nom de la personne : ", name_ref);
+print("Nom de la personne : ", name_ref);
 
 // Emprunt mutable
 let mut age_ref: &mut int = &mut person1.age;
 *age_ref = 31;
-println("Nouvel âge de la personne : ", person1.age);
+print("Nouvel âge de la personne : ", person1.age);
 
 
 
@@ -167,7 +168,7 @@ fn increment_value(x: &mut int) {
 // Utilisation de la fonction avec un emprunt mutable
 let mut num: int = 10;
 increment_value(&mut num);
-println("Valeur après incrément : ", num);
+print("Valeur après incrément : ", num);
 
 
 

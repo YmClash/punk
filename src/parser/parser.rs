@@ -2,7 +2,7 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, Function, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ArrayExpression, ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, DictAccess, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
 
 use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName, MissingType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
@@ -15,9 +15,9 @@ use crate::parser::ast::Declaration::Variable;
 //////////////////////Debut///////////////////////////
 
 pub struct Parser {
-    tokens: Vec<Token>, // liste des tokens genere par le lexer
-    current: usize,     // index du token actuel
-    syntax_mode: SyntaxMode,
+    pub(crate) tokens: Vec<Token>, // liste des tokens genere par le lexer
+    pub(crate) current: usize,     // index du token actuel
+    pub(crate) syntax_mode: SyntaxMode,
     indent_level: Vec<usize>,
 }
 
@@ -164,504 +164,476 @@ impl Parser {
     // }
 
 
-
-    pub fn parse_statement(&mut self) -> Result<ASTNode, ParserError> {
-        let visibility = self.parse_visibility();
-
-        // Cas particulier : pour la gestion de label dans les statements
-        // l'utilisation de label est optionnelle et est de souhaite restreinte a etre utilise que pour les boucles
-
-
-        if let Some(current) = self.peek_token() {
-            if let Some(next) = self.peek_next_token() {
-                if matches!(current.token_type, TokenType::IDENTIFIER { .. }) &&
-                    matches!(next.token_type, TokenType::DELIMITER(Delimiters::COLON)) {
-                    // Si le token suivant est 'loop', c'est un label de boucle
-                    if let Some(third) = self.tokens.get(self.current + 2) {
-                        if matches!(third.token_type, TokenType::KEYWORD(Keywords::LOOP)) {
-                            return self.parse_loop_statement();
-                        }
-                    }
-                }
-            }
-        }
-
-        // if let Some(stmt) = self.parse_labeled_statement()? {
-        //     return Ok(stmt);
-        // }
-
-
-        if self.check(&[TokenType::KEYWORD(Keywords::LET)]){
-            self.parse_variable_declaration()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_function_declaration(visibility)
-        }else if self.check(&[TokenType::KEYWORD(Keywords::CONST)]){
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_const_declaration(visibility)
-        }else if self.check(&[TokenType::KEYWORD(Keywords::STRUCT)]){
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_struct_declaration(visibility)
-        }else if self.check(&[TokenType::KEYWORD(Keywords::ENUM)]){
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_enum_declaration(visibility)
-        }else if self.check(&[TokenType::KEYWORD(Keywords::CLASS)]) {
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_class_declaration(visibility)
-        }else if self.check(&[TokenType::KEYWORD(Keywords::TRAIT)]) {
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_trait_declaration(visibility)
-        }else if self.check(&[TokenType::KEYWORD(Keywords::IMPL)]) {
-            let visibility = visibility.unwrap_or(Visibility::Private);
-            self.parse_impl_declaration(visibility)
-        }else if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]){
-            self.parse_loop_statement()
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::IMPORT),TokenType::KEYWORD(Keywords::USE)]){
-            self.parse_module_import_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::RETURN)]) {
-            self.parse_return_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::IF)]){
-            self.parse_if_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::WHILE)]) {
-            self.parse_while_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
-            self.parse_for_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::MATCH)]) {
-            self.parse_match_statement()
-        }else if self.check(&[TokenType::KEYWORD(Keywords::TRY)]) {
-            self.parse_try_statement()
-
-        // }else if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]){
-        //     self.parse_where_clauses()
-
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::BREAK)]){
-            self.consume_seperator();
-            Ok(ASTNode::Statement(Statement::Break))
-            //self.parse_break_statement()
-
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::CONTINUE)]){
-            self.consume_seperator();
-            Ok(ASTNode::Statement(Statement::Continue))
-            //self.parse_continue_statement()
-        }else {
-            self.parse_expression_statement()
-        }
-
-
-
-    }
-
-    /// fonction pour parser les expressions
-
-    pub fn parse_expression(&mut self,precedence:u8) -> Result<Expression, ParserError> {
-        println!("Début du parsing de l'expression");
-        //verifier si c'est destructuration
-        if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]){
-            return self.parse_destructuring_assignment();
-        }
-
-        //let mut left = self.parse_postfix_expression()?;
-        let mut left = self.parse_unary_expression()?;
-
-
-        if let Some(token) = self.current_token(){
-            match &token.token_type {
-                TokenType::OPERATOR(Operators::EQUAL) => {
-                    self.advance();
-                    let value = self.parse_expression(precedence)?;
-                    return Ok(Expression::Assignment(Assignment{
-                        target: Box::new(left),
-                        value: Box::new(value),
-                    }));
-                }
-                TokenType::OPERATOR(op) => {
-                    if let Some(compound_op) = self.get_compound_operator(op){
-                        self.advance();
-                        let value = self.parse_expression(precedence)?;
-                        return Ok(Expression::CompoundAssignment(CompoundAssignment{
-                            target: Box::new(left),
-                            operator: compound_op,
-                            value: Box::new(value),
-                        }));
-                    }
-                }
-                _ => {}
-            }
-        }
-
-
-        while let Some (operator) = self.peek_operator(){
-            let operator_precedence = self.get_operator_precedence(&operator);
-            if operator_precedence < precedence {
-                break;
-            }
-
-            self.advance();
-            let right = self.parse_expression(precedence +1)?;
-
-
-            if let Operator::Range|Operator::RangeInclusive = operator{
-                left = Expression::RangeExpression(RangeExpression{
-                    left: Some(Box::new(left)),
-                    operator,
-                    right: Some(Box::new(right)),
-                });
-            }else {
-                left = Expression::BinaryOperation(BinaryOperation{
-                    left: Box::new(left),
-                    operator,
-                    right: Box::new(right),
-                });
-            }
-
-            // left = Expression::BinaryOperation(BinaryOperation{
-            //     left: Box::new(left),
-            //     operator,
-            //     right: Box::new(right),
-            // });
-
-        }
-
-        println!("Fin du parsing de l'expression ");
-
-        Ok(left)
-
-    }
-
-    pub fn parse_expression_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'expression statement");
-        let expr = self.parse_expression(0);
-        println!("Expression parsée : {:?}", expr);
-        //self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON))?;
-        self.consume_seperator();
-        println!("Separateur consommé");
-        Ok(ASTNode::Expression(expr?))
-
-    }
-
-    fn parse_postfix_expression(&mut self) -> Result<Expression, ParserError> {
-        let mut expr = self.parse_primary_expression()?;
-
-        loop {
-            if self.check(&[TokenType::DELIMITER(Delimiters::DOT)]){
-                self.advance();
-                let member_name = self.consume_identifier()?;
-
-                if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
-                    // Appel de méthode
-                    self.advance();
-                    let arguments = self.parse_arguments_list()?;
-                    self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-                    println!("Arguments parsés : {:?}", arguments);
-                    expr = Expression::MethodCall(MethodCall{
-                        object: Box::new(expr),
-                        method: member_name,
-                        arguments,
-                    });
-                }else{
-                    // Acces à un membre
-                    println!("Nom du membre parsé : {}", member_name);
-                    expr = Expression::MemberAccess(MemberAccess{
-                        object: Box::new(expr),
-                        member: member_name,
-                    });
-                }
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]) {
-                // Appel de Fonction
-                self.advance();
-                let arguments = self.parse_arguments_list()?;
-                self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-                println!("Arguments parsés : {:?}", arguments);
-                expr = Expression::FunctionCall(FunctionCall{
-                    name: Box::new(expr),
-                    arguments,
-                });
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
-                //Acces à un élément d'un tableau par indice
-                self.advance();
-                let index = self.parse_expression(0)?;
-                self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-                println!("Index parsé : {:?}", index);
-                expr = Expression::IndexAccess(IndexAccess{
-                    array: Box::new(expr),
-                    index: Box::new(index),
-                });
-
-            } else { break; }
-        }
-        Ok(expr)
-    }
-
-    fn parse_destructuring_assignment(&mut self) -> Result<Expression,ParserError>{
-        println!("Début du parsing de l'assignation destructuree[");
-        self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
-        let mut targets = Vec::new();
-        loop {
-            let target = self.parse_expression(0)?;
-            targets.push(target);
-            if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
-                break;
-            }
-        }
-        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-        self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
-        let value = self.parse_expression(0)?;
-        println!("Fin du parsing de l'assignation destructuree OK!!!!");
-        Ok(Expression::DestructuringAssignment(DestructuringAssignment{
-            targets,
-            value: Box::new(value),
-        }))
-    }
-
-    fn parse_unary_expression(&mut self) -> Result<Expression, ParserError> {
-        println!("Début du parsing de l'expression unaire");
-        println!("Début du parsing de l'expression unaire, current_token = {:?}", self.current_token());
-        if let Some(token) = self.current_token(){
-            match &token.token_type{
-                //Gestion de la Negation (-)
-                TokenType::OPERATOR(Operators::MINUS) => {
-                    self.advance();
-                    let right = self.parse_unary_expression()?;
-                    return Ok(Expression::UnaryOperation(UnaryOperation{
-                        operator: UnaryOperator::Negative,
-                        operand: Box::new(right),
-                    }));
-                }
-                // Gestion de la Negation  Logique (!)
-                TokenType::OPERATOR(Operators::EXCLAMATION) => {
-                    self.advance();
-                    let right = self.parse_unary_expression()?;
-                    return Ok(Expression::UnaryOperation(UnaryOperation{
-                        operator: UnaryOperator::Not,
-                        operand: Box::new(right),
-                    }));
-                }
-                // Gestion de la Reference(Borrowing) (&)
-                TokenType::OPERATOR(Operators::AMPER) => {
-                    self.advance();
-                    if self.check(&[TokenType::KEYWORD(Keywords::MUT)]){
-                        self.advance();
-                        let right = self.parse_unary_expression()?;
-                        return Ok(Expression::UnaryOperation(UnaryOperation{
-                            operator: UnaryOperator::ReferenceMutable,
-                            operand: Box::new(right),
-                        }));
-                    }else{
-                        let right = self.parse_unary_expression()?;
-                        return Ok(Expression::UnaryOperation(UnaryOperation{
-                            operator: UnaryOperator::Reference,
-                            operand: Box::new(right),
-                        }));
-                    }
-                }
-                _ => self.parse_postfix_expression()
-            }
-        }else { Err(ParserError::new(UnexpectedEndOfInput, self.current_position())) }
-
-    }
-
-
-    fn parse_primary_expression(&mut self) -> Result<Expression, ParserError> {
-        println!("Début du parsing de l'expression primaire, current_token = {:?}", self.current_token());
-        if let Some(token) = self.current_token() {
-            let expr = match &token.token_type {
-                TokenType::INTEGER { value } => {
-                    let value = value.clone();
-                    println!("Valeur entière parsée : {}", value);
-                    self.advance();
-                    Expression::Literal(Literal::Integer { value })
-                }
-                TokenType::FLOAT { value } => {
-                    let value = *value;
-                    println!("Valeur flottante parsée : {}", value);
-                    self.advance();
-                    Expression::Literal(Literal::Float { value })
-                }
-
-
-                // TokenType::STRING { value, .. } => {
-                //     let value = value.clone();
-                //     println!("Valeur de chaîne parsée : {}", value);
-                //     self.advance();
-                //     Expression::Literal(Literal::String(value))
-                // }
-
-
-                TokenType::STRING { value,.. } => {
-                    let value = value.clone();
-                    if value.len() == 1 && self.if_single_quote(&value) {
-                        self.advance();
-                        Expression::Literal(Literal::Char(value.chars().next().unwrap()))
-                    }else {
-                        self.advance();
-                        Expression::Literal(Literal::String(value))
-                    }
-                }
-
-                TokenType::CHAR { value } => {
-                    let value = *value;
-                    println!("Valeur de caractère parsée : {}", value);
-                    self.advance();
-                    Expression::Literal(Literal::Char(value))
-                }
-
-                TokenType::KEYWORD(Keywords::TRUE) => {
-                    self.advance(); // Consomme le token
-                    Expression::Literal(Literal::Boolean(true))
-                }
-                TokenType::KEYWORD(Keywords::FALSE) => {
-                    self.advance(); // Consomme le token
-                    Expression::Literal(Literal::Boolean(false))
-                }
-                // SELF   pour les methode d'instantiation dans class declaration
-                TokenType::KEYWORD(Keywords::SELF) =>{
-                    self.advance();
-                    let name = "self".to_string();
-                    Expression::Identifier(name)
-
-                }
-
-                TokenType::IDENTIFIER { name } => {
-                    let name = name.clone();
-                    self.advance();
-                    Expression::Identifier(name)
-                }
-                TokenType::KEYWORD(Keywords::LAMBDA) => {
-                    // self.advance();
-                    self.parse_lambda_expression()?
-                }
-
-                TokenType::DELIMITER(Delimiters::LPAR) => {
-                    self.advance();
-                    let expr = self.parse_expression(0)?;
-                    if let Some(token) = self.current_token() {
-                        if matches!(token.token_type, TokenType::DELIMITER(Delimiters::RPAR)) {
-                            self.advance();
-                            expr
-                        } else {
-                            return Err(ParserError::new(
-                                ExpectedCloseParenthesis,
-                                self.current_position(),
-                            ));
-                        }
-                    } else {
-                        return Err(ParserError::new(
-                            UnexpectedEndOfInput,
-                            self.current_position(),
-                        ));
-                    }
-                }
-                _ => return Err(ParserError::new(UnexpectedToken, self.current_position())),
-            };
-            Ok(expr)
-        } else {
-            Err(ParserError::new(
-                UnexpectedEndOfInput,
-                self.current_position(),
-            ))
-        }
-
-    }
-
-
-    fn parse_lambda_expression(&mut self) -> Result<Expression, ParserError> {
-        println!("Début du parsing de l'expression lambda");
-        self.consume(TokenType::KEYWORD(Keywords::LAMBDA))?;
-
-        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-        let parameters = self.parse_parameter_list()?;
-        //let parameters = self.parse_function_parameters()?;
-        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-
-        let return_type = if self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]) {
-            self.parse_type()?
-        } else {
-            Type::Infer
-        };
-
-        let body = if self.match_token(&[TokenType::OPERATOR(Operators::FATARROW)]) {
-            // Expression unique
-            let expr = self.parse_expression(0)?;
-            vec![ASTNode::Expression(expr)]
-        } else if self.check(&[TokenType::DELIMITER(Delimiters::LCURBRACE)]) {
-            // Bloc de code
-            //self.parse_block_expression()?
-            //self.parse_body_block()?
-            self.parse_block()?
-        } else {
-            return Err(ParserError::new(ExpectedArrowOrBlock, self.current_position()));
-        };
-
-
-
-        Ok(Expression::LambdaExpression(LambdaExpression{
-            parameters,
-            return_type: Some(return_type),
-            body,
-        }))
-
-    }
-
-    /// fonction pour parser les parametres
-
-    fn parse_arguments_list(&mut self) -> Result<Vec<Expression>, ParserError> {
-        println!("Début du parsing de la liste d'arguments");
-        let mut arguments = Vec::new();
-        if self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]){
-            return Ok(arguments);
-        }
-        loop {
-            let argument = self.parse_expression(0);
-            arguments.push(argument?);
-
-            if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
-                break;
-            }
-        }
-        println!("Arguments liste parsés : {:?}", arguments);
-        Ok(arguments)
-
-    }
-
-    fn parse_parameter_list(&mut self) -> Result<Vec<Parameter>, ParserError> {
-        println!("Début du parsing de la liste des paramètres");
-        let mut parameters = Vec::new();
-
-        if self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]) {
-            self.advance(); // Consomme ')'
-            return Ok(parameters); // Pas de paramètres
-        }
-
-        loop {
-            let param_name = self.consume_identifier()?;
-
-            // Vérifier s'il y a un type spécifié
-            let param_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-                Some(self.parse_type()?)
-            } else {
-                None
-            };
-
-            parameters.push(Parameter {
-                name: param_name,
-                parameter_type: param_type.unwrap_or(Type::Infer),
-            });
-
-            // Si le prochain token est une virgule, continuer
-            if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
-                continue;
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]) {
-                //self.advance(); // Consomme ')'
-                break;
-            } else {
-                return Err(ParserError::new(ExpectedCommaOrClosingParenthesis, self.current_position()));
-            }
-        }
-
-        Ok(parameters)
-    }
-
-    fn parse_function_parameters(&mut self) -> Result<Vec<Parameter>, ParserError> {
+    // /// fonction pour parser les expressions
+    //
+    // pub fn parse_expression(&mut self,precedence:u8) -> Result<Expression, ParserError> {
+    //     println!("Début du parsing de l'expression");
+    //
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::LCURBRACE)]){
+    //         return self.parse_dict_literal();
+    //     }
+    //
+    //
+    //     if self.is_list_comprehension()?{
+    //         return self.parse_list_comprehension();
+    //     }
+    //
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
+    //         // Si nous avons un token précédent et que c'est un '=', alors c'est une expression de tableau
+    //         // Sinon, c'est une destructuration
+    //         match self.previous_token() {
+    //             Some(token) if token.token_type == TokenType::OPERATOR(Operators::EQUAL) => {
+    //                 return self.parse_array_expression();
+    //             },
+    //             _ => {
+    //                 return self.parse_destructuring_assignment();
+    //             }
+    //         }
+    //     }
+    //
+    //
+    //
+    //
+    //
+    //
+    //     //let mut left = self.parse_postfix_expression()?;
+    //     let mut left = self.parse_unary_expression()?;
+    //
+    //
+    //     if let Some(token) = self.current_token(){
+    //         match &token.token_type {
+    //             TokenType::OPERATOR(Operators::EQUAL) => {
+    //                 self.advance();
+    //                 let value = self.parse_expression(precedence)?;
+    //                 return Ok(Expression::Assignment(Assignment{
+    //                     target: Box::new(left),
+    //                     value: Box::new(value),
+    //                 }));
+    //             }
+    //             TokenType::OPERATOR(op) => {
+    //                 if let Some(compound_op) = self.get_compound_operator(op){
+    //                     self.advance();
+    //                     let value = self.parse_expression(precedence)?;
+    //                     return Ok(Expression::CompoundAssignment(CompoundAssignment{
+    //                         target: Box::new(left),
+    //                         operator: compound_op,
+    //                         value: Box::new(value),
+    //                     }));
+    //                 }
+    //             }
+    //             _ => {}
+    //         }
+    //     }
+    //
+    //
+    //     while let Some (operator) = self.peek_operator(){
+    //         let operator_precedence = self.get_operator_precedence(&operator);
+    //         if operator_precedence < precedence {
+    //             break;
+    //         }
+    //
+    //         self.advance();
+    //         let right = self.parse_expression(precedence +1)?;
+    //
+    //
+    //         if let Operator::Range|Operator::RangeInclusive = operator{
+    //             left = Expression::RangeExpression(RangeExpression{
+    //                 left: Some(Box::new(left)),
+    //                 operator,
+    //                 right: Some(Box::new(right)),
+    //             });
+    //         }else {
+    //             left = Expression::BinaryOperation(BinaryOperation{
+    //                 left: Box::new(left),
+    //                 operator,
+    //                 right: Box::new(right),
+    //             });
+    //         }
+    //
+    //         // left = Expression::BinaryOperation(BinaryOperation{
+    //         //     left: Box::new(left),
+    //         //     operator,
+    //         //     right: Box::new(right),
+    //         // });
+    //
+    //     }
+    //
+    //     println!("Fin du parsing de l'expression ");
+    //
+    //     Ok(left)
+    //
+    // }
+    //
+    // pub fn parse_expression_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'expression statement");
+    //     let expr = self.parse_expression(0);
+    //     println!("Expression parsée : {:?}", expr);
+    //     //self.consume(TokenType::DELIMITER(Delimiters::SEMICOLON))?;
+    //     self.consume_seperator();
+    //     println!("Separateur consommé");
+    //     Ok(ASTNode::Expression(expr?))
+    //
+    // }
+    //
+    // fn parse_postfix_expression(&mut self) -> Result<Expression, ParserError> {
+    //     let mut expr = self.parse_primary_expression()?;
+    //
+    //     loop {
+    //         if self.check(&[TokenType::DELIMITER(Delimiters::DOT)]){
+    //             self.advance();
+    //             let member_name = self.consume_identifier()?;
+    //
+    //             if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
+    //                 // Appel de méthode
+    //                 self.advance();
+    //                 let arguments = self.parse_arguments_list()?;
+    //                 self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //                 println!("Arguments parsés : {:?}", arguments);
+    //                 expr = Expression::MethodCall(MethodCall{
+    //                     object: Box::new(expr),
+    //                     method: member_name,
+    //                     arguments,
+    //                 });
+    //             }else{
+    //                 // Acces à un membre
+    //                 println!("Nom du membre parsé : {}", member_name);
+    //                 expr = Expression::MemberAccess(MemberAccess{
+    //                     object: Box::new(expr),
+    //                     member: member_name,
+    //                 });
+    //             }
+    //         } else if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]) {
+    //             // Appel de Fonction
+    //             self.advance();
+    //             let arguments = self.parse_arguments_list()?;
+    //             self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //             println!("Arguments parsés : {:?}", arguments);
+    //             expr = Expression::FunctionCall(FunctionCall{
+    //                 name: Box::new(expr),
+    //                 arguments,
+    //             });
+    //         } else if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
+    //             //Acces à un élément d'un tableau par indice
+    //             self.advance();
+    //             if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)]){
+    //                 expr = self.parse_array_slice(expr)?;
+    //             } else {
+    //                 let index = self.parse_expression(0)?;
+    //                 self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+    //
+    //                 // Si l'index est une string, on considère que c'est un accès dictionnaire
+    //                 match &index {
+    //                     Expression::Literal(Literal::String(_)) => {
+    //                         println!("Accès dictionnaire parsé avec la clé : {:?}", index);
+    //                         expr = Expression::DictAccess(DictAccess {
+    //                             dict: Box::new(expr),
+    //                             key: Box::new(index),
+    //                         });
+    //                     },
+    //                     _ => {
+    //                         println!("Accès tableau parsé avec l'index : {:?}", index);
+    //                         expr = Expression::IndexAccess(IndexAccess {
+    //                             array: Box::new(expr),
+    //                             index: Box::new(index),
+    //                         });
+    //                     }
+    //                 }
+    //             }
+    //         } else {
+    //             break;
+    //         }
+    //     }
+    //     Ok(expr)
+    // }
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // fn parse_destructuring_assignment(&mut self) -> Result<Expression,ParserError>{
+    //     println!("Début du parsing de l'assignation destructuree[");
+    //     self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
+    //     let mut targets = Vec::new();
+    //     loop {
+    //         let target = self.parse_expression(0)?;
+    //         targets.push(target);
+    //         if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+    //             break;
+    //         }
+    //     }
+    //
+    //     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+    //
+    //
+    //     if self.check(&[TokenType::OPERATOR(Operators::EQUAL)]){
+    //         self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
+    //         let value = self.parse_expression(0)?;
+    //
+    //         println!("Fin du parsing de l'assignation destructuree OK!!!!");
+    //         Ok(Expression::DestructuringAssignment(DestructuringAssignment {
+    //             targets,
+    //             value: Box::new(value),
+    //         }))
+    //     } else {
+    //         // C'est un tableau littéral
+    //         println!("Fin du parsing d'un tableau");
+    //         Ok(Expression::Array(ArrayExpression {
+    //             elements: targets
+    //         }))
+    //     }
+    // }
+    //
+    // fn parse_unary_expression(&mut self) -> Result<Expression, ParserError> {
+    //     println!("Début du parsing de l'expression unaire");
+    //     println!("Début du parsing de l'expression unaire, current_token = {:?}", self.current_token());
+    //     if let Some(token) = self.current_token(){
+    //         match &token.token_type{
+    //             //Gestion de la Negation (-)
+    //             TokenType::OPERATOR(Operators::MINUS) => {
+    //                 self.advance();
+    //                 let right = self.parse_unary_expression()?;
+    //                 return Ok(Expression::UnaryOperation(UnaryOperation{
+    //                     operator: UnaryOperator::Negative,
+    //                     operand: Box::new(right),
+    //                 }));
+    //             }
+    //             // Gestion de la Negation  Logique (!)
+    //             TokenType::OPERATOR(Operators::EXCLAMATION) => {
+    //                 self.advance();
+    //                 let right = self.parse_unary_expression()?;
+    //                 return Ok(Expression::UnaryOperation(UnaryOperation{
+    //                     operator: UnaryOperator::Not,
+    //                     operand: Box::new(right),
+    //                 }));
+    //             }
+    //             // Gestion de la Reference(Borrowing) (&)
+    //             TokenType::OPERATOR(Operators::AMPER) => {
+    //                 self.advance();
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::MUT)]){
+    //                     self.advance();
+    //                     let right = self.parse_unary_expression()?;
+    //                     return Ok(Expression::UnaryOperation(UnaryOperation{
+    //                         operator: UnaryOperator::ReferenceMutable,
+    //                         operand: Box::new(right),
+    //                     }));
+    //                 }else{
+    //                     let right = self.parse_unary_expression()?;
+    //                     return Ok(Expression::UnaryOperation(UnaryOperation{
+    //                         operator: UnaryOperator::Reference,
+    //                         operand: Box::new(right),
+    //                     }));
+    //                 }
+    //             }
+    //             _ => self.parse_postfix_expression()
+    //         }
+    //     }else { Err(ParserError::new(UnexpectedEndOfInput, self.current_position())) }
+    //
+    // }
+    //
+    //
+    // fn parse_primary_expression(&mut self) -> Result<Expression, ParserError> {
+    //     println!("Début du parsing de l'expression primaire, current_token = {:?}", self.current_token());
+    //     if let Some(token) = self.current_token() {
+    //         let expr = match &token.token_type {
+    //             TokenType::INTEGER { value } => {
+    //                 let value = value.clone();
+    //                 println!("Valeur entière parsée : {}", value);
+    //                 self.advance();
+    //                 Expression::Literal(Literal::Integer { value })
+    //             }
+    //             TokenType::FLOAT { value } => {
+    //                 let value = *value;
+    //                 println!("Valeur flottante parsée : {}", value);
+    //                 self.advance();
+    //                 Expression::Literal(Literal::Float { value })
+    //             }
+    //
+    //
+    //             // TokenType::STRING { value, .. } => {
+    //             //     let value = value.clone();
+    //             //     println!("Valeur de chaîne parsée : {}", value);
+    //             //     self.advance();
+    //             //     Expression::Literal(Literal::String(value))
+    //             // }
+    //
+    //
+    //             TokenType::STRING { value,.. } => {
+    //                 let value = value.clone();
+    //                 if value.len() == 1 && self.if_single_quote(&value) {
+    //                     self.advance();
+    //                     Expression::Literal(Literal::Char(value.chars().next().unwrap()))
+    //                 }else {
+    //                     self.advance();
+    //                     Expression::Literal(Literal::String(value))
+    //                 }
+    //             }
+    //
+    //             TokenType::CHAR { value } => {
+    //                 let value = *value;
+    //                 println!("Valeur de caractère parsée : {}", value);
+    //                 self.advance();
+    //                 Expression::Literal(Literal::Char(value))
+    //             }
+    //
+    //             TokenType::KEYWORD(Keywords::TRUE) => {
+    //                 self.advance(); // Consomme le token
+    //                 Expression::Literal(Literal::Boolean(true))
+    //             }
+    //             TokenType::KEYWORD(Keywords::FALSE) => {
+    //                 self.advance(); // Consomme le token
+    //                 Expression::Literal(Literal::Boolean(false))
+    //             }
+    //             // SELF   pour les methode d'instantiation dans class declaration
+    //             TokenType::KEYWORD(Keywords::SELF) =>{
+    //                 self.advance();
+    //                 let name = "self".to_string();
+    //                 Expression::Identifier(name)
+    //
+    //             }
+    //
+    //             TokenType::IDENTIFIER { name } => {
+    //                 let name = name.clone();
+    //                 self.advance();
+    //                 Expression::Identifier(name)
+    //             }
+    //             TokenType::KEYWORD(Keywords::LAMBDA) => {
+    //                 // self.advance();
+    //                 self.parse_lambda_expression()?
+    //             }
+    //
+    //             TokenType::DELIMITER(Delimiters::LPAR) => {
+    //                 self.advance();
+    //                 let expr = self.parse_expression(0)?;
+    //                 if let Some(token) = self.current_token() {
+    //                     if matches!(token.token_type, TokenType::DELIMITER(Delimiters::RPAR)) {
+    //                         self.advance();
+    //                         expr
+    //                     } else {
+    //                         return Err(ParserError::new(
+    //                             ExpectedCloseParenthesis,
+    //                             self.current_position(),
+    //                         ));
+    //                     }
+    //                 } else {
+    //                     return Err(ParserError::new(
+    //                         UnexpectedEndOfInput,
+    //                         self.current_position(),
+    //                     ));
+    //                 }
+    //             }
+    //             _ => return Err(ParserError::new(UnexpectedToken, self.current_position())),
+    //         };
+    //         Ok(expr)
+    //     } else {
+    //         Err(ParserError::new(
+    //             UnexpectedEndOfInput,
+    //             self.current_position(),
+    //         ))
+    //     }
+    //
+    // }
+    //
+    //
+    // fn parse_lambda_expression(&mut self) -> Result<Expression, ParserError> {
+    //     println!("Début du parsing de l'expression lambda");
+    //     self.consume(TokenType::KEYWORD(Keywords::LAMBDA))?;
+    //
+    //     self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+    //     let parameters = self.parse_parameter_list()?;
+    //     //let parameters = self.parse_function_parameters()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //
+    //     let return_type = if self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]) {
+    //         self.parse_type()?
+    //     } else {
+    //         Type::Infer
+    //     };
+    //
+    //     let body = if self.match_token(&[TokenType::OPERATOR(Operators::FATARROW)]) {
+    //         // Expression unique
+    //         let expr = self.parse_expression(0)?;
+    //         vec![ASTNode::Expression(expr)]
+    //     } else if self.check(&[TokenType::DELIMITER(Delimiters::LCURBRACE)]) {
+    //         // Bloc de code
+    //         //self.parse_block_expression()?
+    //         //self.parse_body_block()?
+    //         self.parse_block()?
+    //     } else {
+    //         return Err(ParserError::new(ExpectedArrowOrBlock, self.current_position()));
+    //     };
+    //
+    //
+    //
+    //     Ok(Expression::LambdaExpression(LambdaExpression{
+    //         parameters,
+    //         return_type: Some(return_type),
+    //         body,
+    //     }))
+    //
+    // }
+    //
+    // /// fonction pour parser les parametres
+    //
+    // fn parse_arguments_list(&mut self) -> Result<Vec<Expression>, ParserError> {
+    //     println!("Début du parsing de la liste d'arguments");
+    //     let mut arguments = Vec::new();
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]){
+    //         return Ok(arguments);
+    //     }
+    //     loop {
+    //         let argument = self.parse_expression(0);
+    //         arguments.push(argument?);
+    //
+    //         if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+    //             break;
+    //         }
+    //     }
+    //     println!("Arguments liste parsés : {:?}", arguments);
+    //     Ok(arguments)
+    //
+    // }
+    //
+    // fn parse_parameter_list(&mut self) -> Result<Vec<Parameter>, ParserError> {
+    //     println!("Début du parsing de la liste des paramètres");
+    //     let mut parameters = Vec::new();
+    //
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]) {
+    //         self.advance(); // Consomme ')'
+    //         return Ok(parameters); // Pas de paramètres
+    //     }
+    //
+    //     loop {
+    //         let param_name = self.consume_identifier()?;
+    //
+    //         // Vérifier s'il y a un type spécifié
+    //         let param_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //             Some(self.parse_type()?)
+    //         } else {
+    //             None
+    //         };
+    //
+    //         parameters.push(Parameter {
+    //             name: param_name,
+    //             parameter_type: param_type.unwrap_or(Type::Infer),
+    //         });
+    //
+    //         // Si le prochain token est une virgule, continuer
+    //         if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+    //             continue;
+    //         } else if self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]) {
+    //             //self.advance(); // Consomme ')'
+    //             break;
+    //         } else {
+    //             return Err(ParserError::new(ExpectedCommaOrClosingParenthesis, self.current_position()));
+    //         }
+    //     }
+    //
+    //     Ok(parameters)
+    // }
+
+    pub(crate) fn parse_function_parameters(&mut self) -> Result<Vec<Parameter>, ParserError> {
         println!("Début du parsing des paramètres de fonction");
         let mut parameters = Vec::new();
 
@@ -695,7 +667,7 @@ impl Parser {
         Ok(parameters)
     }
 
-    fn parse_function_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
+    pub fn parse_function_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         let mut body = Vec::new();
 
         match self.syntax_mode {
@@ -726,7 +698,7 @@ impl Parser {
         Ok(body)
     }
 
-    fn parse_body_block(&mut self) -> Result<Vec<ASTNode>,ParserError>{
+    pub fn parse_body_block(&mut self) -> Result<Vec<ASTNode>,ParserError>{
         println!("Début du parsing du corps");
         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
         let mut statements = Vec::new();
@@ -783,572 +755,516 @@ impl Parser {
     // }
 
 
-    /// fonction pour parser les déclarations de variables
-    /// Exemple: Brace Mode
-    /// // let mut x: int = 5;
-    /// // let y: float = 3.14;
-    /// // let z = 42;
-    /// // let a:bool = true;
-    /// Exemple: Indentation Mode
-    /// // let mut x: int = 5
-    /// // let y: float = 3.14
-    /// // let z = 42
-    /// // let a:bool = true
-
-
-    pub fn parse_variable_declaration(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de la déclaration de variable");
-
-        self.consume(TokenType::KEYWORD(Keywords::LET))?;
-
-        let mutability = self.parse_mutability()?;
-
-        let  name = self.consume_identifier()?;
-        println!("Nom de la variable parsé : {}", name);
-
-
-        let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-            self.parse_type()?
-
-        } else {
-            Type::Infer
-        };
-
-        println!("Type de la variable parsé : {:?}", variable_type);
-
-        println!("Debut de la valeur de la variable");
-        self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
-
-        let value = self.parse_expression(0)?;
-
-        //infere  le txpe si neccessaire
-
-        // ici  on vas implementer la fonction parse_inference_type pour determiner le type de la variable
-        let final_type = self.parse_inference_type(&variable_type,&value)?;
-
-
-        self.consume_seperator();
-        println!("Valeur de la variable parsée : {:?}", value);
-
-        Ok(ASTNode::Declaration(Variable(VariableDeclaration {
-            name,
-            variable_type: Some(final_type),
-            value: Some(value),
-            mutability,
-        })))
-
-    }
-
-    pub fn parse_const_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de la déclaration de constante");
-
-        //let visibility = self.parse_visibility()?;
-
-        self.consume(TokenType::KEYWORD(Keywords::CONST))?;
-
-        let name = self.consume_identifier()?;
-
-        let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-            self.parse_type()?
-        } else {
-            Type::Infer
-        };
-
-        self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
-        let value = self.parse_expression(0)?;
-
-        //transfer dan la fonction parse_inference_type
-
-        //infere  le type si neccessaire
-        let final_type = self.parse_inference_type(&variable_type,&value)?;
-
-        self.consume_seperator();
-
-        println!("la valeur de la constante parse : {:?}", value);
-
-        Ok(ASTNode::Declaration(Declaration::Constante(ConstDeclaration{
-            name,
-            constant_type: Some(final_type),
-            value,
-            visibility,
-        })))
-
-    }
-
-    pub fn parse_function_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de la déclaration de fonction");
-        self.consume(TokenType::KEYWORD(Keywords::FN))?;
-        let name = self.consume_identifier()?;
-        println!("Nom de la fonction parsé : {}", name);
-
-        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-
-        let parameters = self.parse_function_parameters()?;
-
-        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-
-        let return_type = if self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]) {
-            self.parse_type()?
-        } else {
-            Type::Infer // Ou un type par défaut
-        };
-
-        if self.syntax_mode == SyntaxMode::Indentation{
-            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-        }
-
-        let body = self.parse_function_body()?;
-
-        // let return_type = self.parse_return_type(return_type, &body)?;
-
-        // self.consume_seperator();  plus de ; apres une fonction
-
-        Ok(ASTNode::Declaration(Declaration::Function(FunctionDeclaration {
-            name,
-            parameters,
-            return_type: Some(return_type),
-            body,
-            visibility,
-        })))
-    }
-
-    pub fn parse_struct_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de la déclaration de structure");
-
-
-        self.consume(TokenType::KEYWORD(Keywords::STRUCT))?;
-        let name = self.consume_identifier()?;
-        println!("Nom de la structure parsé : {}", name);
-
-        // // on vas implementer le type generique si on as un <
-        // let generic_type = if self.match_token(&[TokenType::OPERATOR(Operators::LESS)]){
-        //     self.parse_gen_type_param()?;
-        // }else {
-        //     vec![]
-        //
-        // };
-        self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-
-        let fields = self.parse_struct_fields()?;
-        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-
-        // self.consume_seperator();
-
-        Ok(ASTNode::Declaration(Declaration::Structure(StructDeclaration{
-            name,
-            // generic_type,
-            fields,
-            visibility,
-        })))
-
-    }
-
-    fn parse_enum_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
-        println!("Debut du parsing de la déclaration d'énumération");
-        self.consume(TokenType::KEYWORD(Keywords::ENUM))?;
-        let name = self.consume_identifier()?;
-        println!("Nom de l'énumération parsé : {}", name);
-        self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-        let variantes = self.parse_enum_variantes()?;
-        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-
-        // self.consume_seperator();
-
-        println!("Variantes d'énumération parsées OK!!!!!!!!!!!!!!!!!!!!!!");
-        Ok(ASTNode::Declaration(Declaration::Enum(EnumDeclaration{
-            name,
-            variantes,
-            visibility,
-        })))
-
-    }
-
-    fn parse_trait_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de la déclaration de trait");
-        self.consume(TokenType::KEYWORD(Keywords::TRAIT))?;
-        let name = self.consume_identifier()?;
-        println!("Nom du trait parsé : {}", name);
-
-        let generic_params = if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
-            Some(self.parse_generic_parameters()?)
-        } else {
-            None
-        };
-
-        // Parse des supertraits optionnels - ne tente que si c'est vraiment un : pour les super traits
-        let mut super_traits = Vec::new();
-        if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-            let next_token = self.peek_next_token();
-            if let Some(token) = next_token {
-                if !matches!(token.token_type, TokenType::NEWLINE) &&
-                    !matches!(token.token_type, TokenType::DELIMITER(Delimiters::LCURBRACE)) {
-                    self.advance(); // Consomme le ':'
-                    super_traits = self.parse_trait_bounds()?;
-                }
-            }
-        }
-
-        let mut methods = Vec::new();
-        let mut associated_types = Vec::new();
-
-        //Optionelement de where clause
-        let where_clause = self.parse_where_clauses()?;
-
-        match self.syntax_mode{
-            SyntaxMode::Braces => {
-                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
-                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-                        methods.push(self.parse_trait_methods()?);
-                    } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
-                        associated_types.push(self.parse_associated_type()?);
-                    } else {
-                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
-                    }
-                }
-                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?; // Consomme explicitement la '}'
-            },
-            SyntaxMode::Indentation => {
-                self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-                self.consume(TokenType::NEWLINE)?;
-                self.consume(TokenType::INDENT)?;
-                while !self.check(&[TokenType::DEDENT]) && !self.is_at_end() {
-                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-                        methods.push(self.parse_trait_methods()?);
-                    } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
-                        associated_types.push(self.parse_associated_type()?);
-                    } else {
-                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
-                    }
-                }
-
-            }
-        }
-
-        // self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-        // self.consume_seperator();
-
-
-        println!("Parsing des Trait OK!!!!!!!!!!!!!!!!!!!!!!");
-        Ok(ASTNode::Declaration(Declaration::Trait(TraitDeclaration{
-            name,
-            generic_parameters: generic_params,
-            methods,
-            associated_types,
-            visibility,
-            where_clause,
-            super_traits
-        })))
-
-    }
-
-
-
-    fn parse_impl_declaration(&mut self,visibility: Visibility) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de la déclaration d'implémentation");
-        self.consume(TokenType::KEYWORD(Keywords::IMPL))?;
-
-        // Parse les paramètres génériques optionnels
-        let generic_params = if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
-            Some(self.parse_generic_parameters()?)
-        } else {
-            None
-        };
-
-        // Parse le type cible
-        let trait_name = self.consume_identifier()?;
-
-        // Vérifie s'il s'agit d'une implémentation de trait
-        let target_type = if self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
-            self.advance(); // Consomme 'for'
-            // Parse le type cible qui peut être générique
-            let base_type = self.consume_identifier()?;
-
-            // Vérifie s'il y a des paramètres génériques pour le type cible
-            if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
-                self.advance(); // Consomme '<'
-                let mut type_params = Vec::new();
-
-                loop {
-                    type_params.push(self.parse_type()?);
-                    if self.check(&[TokenType::OPERATOR(Operators::GREATER)]) {
-                        self.advance();
-                        break;
-                    } else if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
-                        self.advance();
-                    } else {
-                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
-                    }
-                }
-
-                Type::Generic(GenericType {
-                    base: base_type,
-                    type_parameters: type_params,
-                })
-            } else {
-                Type::Named(base_type)
-            }
-        } else {
-            Type::Named(trait_name.clone())
-        };
-
-        // Parse where clause optionnelle
-        let where_clause = self.parse_where_clauses()?;
-
-        let mut methods = Vec::new();
-
-        match self.syntax_mode {
-            SyntaxMode::Braces => {
-                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
-                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-                        methods.push(self.parse_impl_method()?);
-                    } else {
-                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
-                    }
-                }
-                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-            },
-            SyntaxMode::Indentation => {
-                self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-                self.consume(TokenType::NEWLINE)?;
-                self.consume(TokenType::INDENT)?;
-
-                while !self.check(&[TokenType::DEDENT]) && !self.is_at_end() {
-                    if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-                        methods.push(self.parse_impl_method()?);
-                    } else {
-                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
-                    }
-                }
-                // self.consume(TokenType::NEWLINE)?;
-                self.consume(TokenType::DEDENT)?;
-            }
-        }
-
-        Ok(ASTNode::Declaration(Declaration::Impl(ImplDeclaration {
-            target_type,
-            trait_name: Some(trait_name),
-            generic_parameters: generic_params,
-            methods,
-            where_clause,
-            visibility,
-        })))
-    }
-
-
-    fn parse_class_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de la déclaration de classe");
-        self.consume(TokenType::KEYWORD(Keywords::CLASS))?;
-
-        let name = self.consume_identifier()?;
-
-        println!("Nom de la classe parsé : {}", name);
-
-        let parent_classes = self.parse_class_inheritance()?;
-
-        match self.syntax_mode{
-            SyntaxMode::Indentation => self.consume(TokenType::DELIMITER(Delimiters::COLON))?,
-            // SyntaxMode::Braces => self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?,
-            SyntaxMode::Braces => (),
-        }
-
-        let (attributes ,methods,constructor)= self.parse_class_body()?;
-
-        println!("Fin du parsing de la classe OK!!!!!!!!!!!!!!!!!!!!!!");
-
-
-        Ok(ASTNode::Declaration(Declaration::Class(ClassDeclaration{
-            name,
-            parent_classes,
-            attributes,
-            constructor,
-            methods,
-            visibility,
-
-        })))
-
-    }
-    fn parse_class_inheritance(&mut self) -> Result<Vec<String>,ParserError>{
-        let mut parent_classes = Vec::new();
-        if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
-            self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-            loop {
-                let parent = self.consume_identifier()?;
-                parent_classes.push(parent.clone());
-                if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
-                    break;
-                }
-            }
-            self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-        }
-        println!("Classes parentes parsées : {:?}", parent_classes);
-        Ok(parent_classes)
-    }
-
-    pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>, Vec<MethodeDeclaration>, Option<Constructor>), ParserError> {
-        let mut attributes = Vec::new();
-        let mut methods = Vec::new();
-        let mut constructor = None;
-
-        match self.syntax_mode {
-            SyntaxMode::Braces => {
-                self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-                while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
-                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
-                        if constructor.is_some() {
-                            return Err(ParserError::new(MultipleConstructors, self.current_position()));
-                        }
-                        // parse un constructor
-                        let ctor = self.parse_constructor_declaration()?;
-                        constructor = Some(ctor);
-                    } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-                        let method = self.parse_methode_declaration()?;
-                        methods.push(method);
-                    } else if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
-                        let attribute = self.parse_attribute_declaration()?;
-                        attributes.push(attribute);
-                    } else {
-                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
-                    }
-                }
-                self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-            }
-            SyntaxMode::Indentation => {
-                self.consume(TokenType::NEWLINE)?;
-                self.consume(TokenType::INDENT)?;
-                while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end() {
-                    if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
-                        if constructor.is_some() {
-                            return Err(ParserError::new(MultipleConstructors, self.current_position()));
-                        }
-                        let ctor = self.parse_constructor_declaration()?;
-                        constructor = Some(ctor);
-                    } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
-                        let method = self.parse_methode_declaration()?;
-                        methods.push(method);
-                    } else if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
-                        let attribute = self.parse_attribute_declaration()?;
-                        attributes.push(attribute);
-                    } else {
-                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
-                    }
-                }
-                if !self.match_token(&[TokenType::DEDENT]){
-                    self.consume(TokenType::DEDENT)?;
-                }
-            }
-        }
-        Ok((attributes, methods, constructor))
-    }
-
-
-    fn parse_constructor_declaration(&mut self) -> Result<Constructor,ParserError>{
-        println!("Debut du parsing du constructeur");
-        self.consume(TokenType::KEYWORD(Keywords::DEF))?;
-        let constructor_name = self.consume_identifier()?;
-        if constructor_name != "init"{
-            return Err(ParserError::new(UnexpectedToken, self.current_position()));
-        }
-        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-        let parameters = self.parse_function_parameters()?;
-        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-
-        // self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]){
-        //
-        // };
-
-        let body = self.parse_block()?;
-
-        println!("Fin du parsing du constructeur OK!!!!!!!!!!!!!!!!!!!!!!");
-
-        Ok(Constructor{
-            name: constructor_name,
-            parameters,
-            body,
-        })
-
-    }
-
-    fn parse_attribute_declaration(&mut self) -> Result<Attribute, ParserError> {
-        println!("Début du parsing de la déclaration de méthode");
-        let visibility = self.parse_visibility()?;
-        self.consume(TokenType::KEYWORD(Keywords::LET))?;
-        let mutability = self.parse_mutability()?;
-
-        let name = self.consume_identifier()?;
-        self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-        let attribute_type = self.parse_type()?;
-        self.consume_seperator();
-        println!("Parsing de la déclaration de méthode OK!!!!!!!!!!!!!!!!!!!!!!!");
-
-        Ok(Attribute{
-            name,
-            attr_type: attribute_type,
-            // value: Some(value),
-            visibility,
-            mutability
-        })
-
-    }
-
-    fn parse_trait_methods(&mut self) -> Result<TraitMethod, ParserError> {
-        println!("Début du parsing de la signature de méthode de trait");
-        self.consume(TokenType::KEYWORD(Keywords::FN))?;
-        let name = self.consume_identifier()?;
-        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-        let parameters = self.parse_function_parameters()?;
-        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-
-        let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
-
-            self.consume(TokenType::OPERATOR(Operators::RARROW))?;
-            Some(self.parse_type()?)
-        } else {
-            None
-        };
-
-        self.consume_seperator();
-
-        println!("Parsing de Trait Method OK!!!!!!!!!!!!!!!!!!!!!!!");
-
-        Ok(TraitMethod {
-            name,
-            parameters,
-            return_type,
-        })
-    }
-
-
-    pub fn parse_where_clauses(&mut self) -> Result<Vec<WhereClause>,ParserError>{
-        println!("Début du parsing des clauses where");
-        
-        // self.consume(TokenType::KEYWORD(Keywords::WHERE))?;
-        
-        let mut clauses = Vec::new();
-
-        if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]) /*&& !self.is_at_end()*/{
-            self.consume(TokenType::KEYWORD(Keywords::WHERE))?;
-            loop {
-                let type_name = self.consume_identifier()?;
-                self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-
-                let bounds = self.parse_type_bounds()?;
-                clauses.push(WhereClause{
-                    type_name,
-                    bounds,
-                });
-                if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]){
-                    self.advance();
-                }else { break; }
-            }
-        }
-        println!("Parsing des clauses where OK!!!!!!!!!!!!!!!!!!!!!!!");
-        Ok(clauses)
-
-    }
-
-    fn parse_associated_type(&mut self) -> Result<AssociatedType, ParserError> {
+    //
+    // pub fn parse_const_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de la déclaration de constante");
+    //
+    //     //let visibility = self.parse_visibility()?;
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::CONST))?;
+    //
+    //     let name = self.consume_identifier()?;
+    //
+    //     let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //         self.parse_type()?
+    //     } else {
+    //         Type::Infer
+    //     };
+    //
+    //     self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
+    //     let value = self.parse_expression(0)?;
+    //
+    //     //transfer dan la fonction parse_inference_type
+    //
+    //     //infere  le type si neccessaire
+    //     let final_type = self.parse_inference_type(&variable_type,&value)?;
+    //
+    //     self.consume_seperator();
+    //
+    //     println!("la valeur de la constante parse : {:?}", value);
+    //
+    //     Ok(ASTNode::Declaration(Declaration::Constante(ConstDeclaration{
+    //         name,
+    //         constant_type: Some(final_type),
+    //         value,
+    //         visibility,
+    //     })))
+    //
+    // }
+    //
+    // pub fn parse_function_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de la déclaration de fonction");
+    //     self.consume(TokenType::KEYWORD(Keywords::FN))?;
+    //     let name = self.consume_identifier()?;
+    //     println!("Nom de la fonction parsé : {}", name);
+    //
+    //     self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+    //
+    //     let parameters = self.parse_function_parameters()?;
+    //
+    //     self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //
+    //     let return_type = if self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]) {
+    //         self.parse_type()?
+    //     } else {
+    //         Type::Infer // Ou un type par défaut
+    //     };
+    //
+    //     if self.syntax_mode == SyntaxMode::Indentation{
+    //         self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //     }
+    //
+    //     let body = self.parse_function_body()?;
+    //
+    //     // let return_type = self.parse_return_type(return_type, &body)?;
+    //
+    //     // self.consume_seperator();  plus de ; apres une fonction
+    //
+    //     Ok(ASTNode::Declaration(Declaration::Function(FunctionDeclaration {
+    //         name,
+    //         parameters,
+    //         return_type: Some(return_type),
+    //         body,
+    //         visibility,
+    //     })))
+    // }
+    //
+    // pub fn parse_struct_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de la déclaration de structure");
+    //
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::STRUCT))?;
+    //     let name = self.consume_identifier()?;
+    //     println!("Nom de la structure parsé : {}", name);
+    //
+    //     // // on vas implementer le type generique si on as un <
+    //     // let generic_type = if self.match_token(&[TokenType::OPERATOR(Operators::LESS)]){
+    //     //     self.parse_gen_type_param()?;
+    //     // }else {
+    //     //     vec![]
+    //     //
+    //     // };
+    //     self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //
+    //     let fields = self.parse_struct_fields()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //
+    //     // self.consume_seperator();
+    //
+    //     Ok(ASTNode::Declaration(Declaration::Structure(StructDeclaration{
+    //         name,
+    //         // generic_type,
+    //         fields,
+    //         visibility,
+    //     })))
+    //
+    // }
+    // pub fn parse_enum_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
+    //     println!("Debut du parsing de la déclaration d'énumération");
+    //     self.consume(TokenType::KEYWORD(Keywords::ENUM))?;
+    //     let name = self.consume_identifier()?;
+    //     println!("Nom de l'énumération parsé : {}", name);
+    //     self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //     let variantes = self.parse_enum_variantes()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //
+    //     // self.consume_seperator();
+    //
+    //     println!("Variantes d'énumération parsées OK!!!!!!!!!!!!!!!!!!!!!!");
+    //     Ok(ASTNode::Declaration(Declaration::Enum(EnumDeclaration{
+    //         name,
+    //         variantes,
+    //         visibility,
+    //     })))
+    //
+    // }
+    //
+    // pub fn parse_trait_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de la déclaration de trait");
+    //     self.consume(TokenType::KEYWORD(Keywords::TRAIT))?;
+    //     let name = self.consume_identifier()?;
+    //     println!("Nom du trait parsé : {}", name);
+    //
+    //     let generic_params = if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
+    //         Some(self.parse_generic_parameters()?)
+    //     } else {
+    //         None
+    //     };
+    //
+    //     // Parse des supertraits optionnels - ne tente que si c'est vraiment un : pour les super traits
+    //     let mut super_traits = Vec::new();
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //         let next_token = self.peek_next_token();
+    //         if let Some(token) = next_token {
+    //             if !matches!(token.token_type, TokenType::NEWLINE) &&
+    //                 !matches!(token.token_type, TokenType::DELIMITER(Delimiters::LCURBRACE)) {
+    //                 self.advance(); // Consomme le ':'
+    //                 super_traits = self.parse_trait_bounds()?;
+    //             }
+    //         }
+    //     }
+    //
+    //     let mut methods = Vec::new();
+    //     let mut associated_types = Vec::new();
+    //
+    //     //Optionelement de where clause
+    //     let where_clause = self.parse_where_clauses()?;
+    //
+    //     match self.syntax_mode{
+    //         SyntaxMode::Braces => {
+    //             self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //             while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+    //                     methods.push(self.parse_trait_methods()?);
+    //                 } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
+    //                     associated_types.push(self.parse_associated_type()?);
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //             self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?; // Consomme explicitement la '}'
+    //         },
+    //         SyntaxMode::Indentation => {
+    //             self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //             self.consume(TokenType::NEWLINE)?;
+    //             self.consume(TokenType::INDENT)?;
+    //             while !self.check(&[TokenType::DEDENT]) && !self.is_at_end() {
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+    //                     methods.push(self.parse_trait_methods()?);
+    //                 } else if self.check(&[TokenType::KEYWORD(Keywords::TYPE)]) {
+    //                     associated_types.push(self.parse_associated_type()?);
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //
+    //         }
+    //     }
+    //
+    //     // self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //     // self.consume_seperator();
+    //
+    //
+    //     println!("Parsing des Trait OK!!!!!!!!!!!!!!!!!!!!!!");
+    //     Ok(ASTNode::Declaration(Declaration::Trait(TraitDeclaration{
+    //         name,
+    //         generic_parameters: generic_params,
+    //         methods,
+    //         associated_types,
+    //         visibility,
+    //         where_clause,
+    //         super_traits
+    //     })))
+    //
+    // }
+    //
+    //
+    //
+    // pub(crate) fn parse_impl_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de la déclaration d'implémentation");
+    //     self.consume(TokenType::KEYWORD(Keywords::IMPL))?;
+    //
+    //     // Parse les paramètres génériques optionnels
+    //     let generic_params = if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
+    //         Some(self.parse_generic_parameters()?)
+    //     } else {
+    //         None
+    //     };
+    //
+    //     // Parse le type cible
+    //     let trait_name = self.consume_identifier()?;
+    //
+    //     // Vérifie s'il s'agit d'une implémentation de trait
+    //     let target_type = if self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
+    //         self.advance(); // Consomme 'for'
+    //         // Parse le type cible qui peut être générique
+    //         let base_type = self.consume_identifier()?;
+    //
+    //         // Vérifie s'il y a des paramètres génériques pour le type cible
+    //         if self.check(&[TokenType::OPERATOR(Operators::LESS)]) {
+    //             self.advance(); // Consomme '<'
+    //             let mut type_params = Vec::new();
+    //
+    //             loop {
+    //                 type_params.push(self.parse_type()?);
+    //                 if self.check(&[TokenType::OPERATOR(Operators::GREATER)]) {
+    //                     self.advance();
+    //                     break;
+    //                 } else if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+    //                     self.advance();
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //
+    //             Type::Generic(GenericType {
+    //                 base: base_type,
+    //                 type_parameters: type_params,
+    //             })
+    //         } else {
+    //             Type::Named(base_type)
+    //         }
+    //     } else {
+    //         Type::Named(trait_name.clone())
+    //     };
+    //
+    //     // Parse where clause optionnelle
+    //     let where_clause = self.parse_where_clauses()?;
+    //
+    //     let mut methods = Vec::new();
+    //
+    //     match self.syntax_mode {
+    //         SyntaxMode::Braces => {
+    //             self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //             while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+    //                     methods.push(self.parse_impl_method()?);
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //             self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //         },
+    //         SyntaxMode::Indentation => {
+    //             self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //             self.consume(TokenType::NEWLINE)?;
+    //             self.consume(TokenType::INDENT)?;
+    //
+    //             while !self.check(&[TokenType::DEDENT]) && !self.is_at_end() {
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+    //                     methods.push(self.parse_impl_method()?);
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //             // self.consume(TokenType::NEWLINE)?;
+    //             self.consume(TokenType::DEDENT)?;
+    //         }
+    //     }
+    //
+    //     Ok(ASTNode::Declaration(Declaration::Impl(ImplDeclaration {
+    //         target_type,
+    //         trait_name: Some(trait_name),
+    //         generic_parameters: generic_params,
+    //         methods,
+    //         where_clause,
+    //         visibility,
+    //     })))
+    // }
+    //
+    //
+    // pub(crate) fn parse_class_declaration(&mut self, visibility: Visibility) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de la déclaration de classe");
+    //     self.consume(TokenType::KEYWORD(Keywords::CLASS))?;
+    //
+    //     let name = self.consume_identifier()?;
+    //
+    //     println!("Nom de la classe parsé : {}", name);
+    //
+    //     let parent_classes = self.parse_class_inheritance()?;
+    //
+    //     match self.syntax_mode{
+    //         SyntaxMode::Indentation => self.consume(TokenType::DELIMITER(Delimiters::COLON))?,
+    //         // SyntaxMode::Braces => self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?,
+    //         SyntaxMode::Braces => (),
+    //     }
+    //
+    //     let (attributes ,methods,constructor)= self.parse_class_body()?;
+    //
+    //     println!("Fin du parsing de la classe OK!!!!!!!!!!!!!!!!!!!!!!");
+    //
+    //
+    //     Ok(ASTNode::Declaration(Declaration::Class(ClassDeclaration{
+    //         name,
+    //         parent_classes,
+    //         attributes,
+    //         constructor,
+    //         methods,
+    //         visibility,
+    //
+    //     })))
+    //
+    // }
+    // pub fn parse_class_inheritance(&mut self) -> Result<Vec<String>,ParserError>{
+    //     let mut parent_classes = Vec::new();
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
+    //         self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+    //         loop {
+    //             let parent = self.consume_identifier()?;
+    //             parent_classes.push(parent.clone());
+    //             if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+    //                 break;
+    //             }
+    //         }
+    //         self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //     }
+    //     println!("Classes parentes parsées : {:?}", parent_classes);
+    //     Ok(parent_classes)
+    // }
+    //
+    // pub fn parse_class_body(&mut self) -> Result<(Vec<Attribute>, Vec<MethodeDeclaration>, Option<Constructor>), ParserError> {
+    //     let mut attributes = Vec::new();
+    //     let mut methods = Vec::new();
+    //     let mut constructor = None;
+    //
+    //     match self.syntax_mode {
+    //         SyntaxMode::Braces => {
+    //             self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //             while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) && !self.is_at_end() {
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
+    //                     if constructor.is_some() {
+    //                         return Err(ParserError::new(MultipleConstructors, self.current_position()));
+    //                     }
+    //                     // parse un constructor
+    //                     let ctor = self.parse_constructor_declaration()?;
+    //                     constructor = Some(ctor);
+    //                 } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+    //                     let method = self.parse_methode_declaration()?;
+    //                     methods.push(method);
+    //                 } else if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
+    //                     let attribute = self.parse_attribute_declaration()?;
+    //                     attributes.push(attribute);
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //             self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //         }
+    //         SyntaxMode::Indentation => {
+    //             self.consume(TokenType::NEWLINE)?;
+    //             self.consume(TokenType::INDENT)?;
+    //             while !self.check(&[TokenType::EOF, TokenType::DEDENT]) && !self.is_at_end() {
+    //                 if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
+    //                     if constructor.is_some() {
+    //                         return Err(ParserError::new(MultipleConstructors, self.current_position()));
+    //                     }
+    //                     let ctor = self.parse_constructor_declaration()?;
+    //                     constructor = Some(ctor);
+    //                 } else if self.check(&[TokenType::KEYWORD(Keywords::FN)]) {
+    //                     let method = self.parse_methode_declaration()?;
+    //                     methods.push(method);
+    //                 } else if self.check(&[TokenType::KEYWORD(Keywords::LET)]) {
+    //                     let attribute = self.parse_attribute_declaration()?;
+    //                     attributes.push(attribute);
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             }
+    //             if !self.match_token(&[TokenType::DEDENT]){
+    //                 self.consume(TokenType::DEDENT)?;
+    //             }
+    //         }
+    //     }
+    //     Ok((attributes, methods, constructor))
+    // }
+    //
+    //
+    // fn parse_constructor_declaration(&mut self) -> Result<Constructor,ParserError>{
+    //     println!("Debut du parsing du constructeur");
+    //     self.consume(TokenType::KEYWORD(Keywords::DEF))?;
+    //     let constructor_name = self.consume_identifier()?;
+    //     if constructor_name != "init"{
+    //         return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //     }
+    //     self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+    //     let parameters = self.parse_function_parameters()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //
+    //     // self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]){
+    //     //
+    //     // };
+    //
+    //     let body = self.parse_block()?;
+    //
+    //     println!("Fin du parsing du constructeur OK!!!!!!!!!!!!!!!!!!!!!!");
+    //
+    //     Ok(Constructor{
+    //         name: constructor_name,
+    //         parameters,
+    //         body,
+    //     })
+    //
+    // }
+    //
+    // fn parse_attribute_declaration(&mut self) -> Result<Attribute, ParserError> {
+    //     println!("Début du parsing de la déclaration de méthode");
+    //     let visibility = self.parse_visibility()?;
+    //     self.consume(TokenType::KEYWORD(Keywords::LET))?;
+    //     let mutability = self.parse_mutability()?;
+    //
+    //     let name = self.consume_identifier()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //     let attribute_type = self.parse_type()?;
+    //     self.consume_seperator();
+    //     println!("Parsing de la déclaration de méthode OK!!!!!!!!!!!!!!!!!!!!!!!");
+    //
+    //     Ok(Attribute{
+    //         name,
+    //         attr_type: attribute_type,
+    //         // value: Some(value),
+    //         visibility,
+    //         mutability
+    //     })
+    //
+    // }
+    //
+    // fn parse_trait_methods(&mut self) -> Result<TraitMethod, ParserError> {
+    //     println!("Début du parsing de la signature de méthode de trait");
+    //     self.consume(TokenType::KEYWORD(Keywords::FN))?;
+    //     let name = self.consume_identifier()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
+    //     let parameters = self.parse_function_parameters()?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //
+    //     let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
+    //
+    //         self.consume(TokenType::OPERATOR(Operators::RARROW))?;
+    //         Some(self.parse_type()?)
+    //     } else {
+    //         None
+    //     };
+    //
+    //     self.consume_seperator();
+    //
+    //     println!("Parsing de Trait Method OK!!!!!!!!!!!!!!!!!!!!!!!");
+    //
+    //     Ok(TraitMethod {
+    //         name,
+    //         parameters,
+    //         return_type,
+    //     })
+    // }
+    //
+    //
+    // pub fn parse_where_clauses(&mut self) -> Result<Vec<WhereClause>,ParserError>{
+    //     println!("Début du parsing des clauses where");
+    //
+    //     // self.consume(TokenType::KEYWORD(Keywords::WHERE))?;
+    //
+    //     let mut clauses = Vec::new();
+    //
+    //     if self.check(&[TokenType::KEYWORD(Keywords::WHERE)]) /*&& !self.is_at_end()*/{
+    //         self.consume(TokenType::KEYWORD(Keywords::WHERE))?;
+    //         loop {
+    //             let type_name = self.consume_identifier()?;
+    //             self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //
+    //             let bounds = self.parse_type_bounds()?;
+    //             clauses.push(WhereClause{
+    //                 type_name,
+    //                 bounds,
+    //             });
+    //             if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+    //                 self.advance();
+    //             }else { break; }
+    //         }
+    //     }
+    //     println!("Parsing des clauses where OK!!!!!!!!!!!!!!!!!!!!!!!");
+    //     Ok(clauses)
+    //
+    // }
+
+    pub fn parse_associated_type(&mut self) -> Result<AssociatedType, ParserError> {
         // Consommer le mot-clé `type`
         self.consume(TokenType::KEYWORD(Keywords::TYPE))?;
 
@@ -1375,7 +1291,7 @@ impl Parser {
         Ok(AssociatedType { name, type_bound ,where_clause})
     }
 
-    fn parse_type_bounds(&mut self) -> Result<Vec<TypeBound>, ParserError> {
+    pub fn parse_type_bounds(&mut self) -> Result<Vec<TypeBound>, ParserError> {
         let mut type_bounds = Vec::new();
 
         let bound = self.consume_identifier()?;
@@ -1393,46 +1309,11 @@ impl Parser {
     }
 
 
-    fn parse_methode_declaration(&mut self) -> Result<MethodeDeclaration,ParserError>{
-        println!("Debut du parsing de la déclaration de méthode");
-        // pour la visibilite de methode dans une classe je pense que
-        // ca serai  mieux de laisse ceci a  "pub class".
-        // une classe publique  rend toutes ses methodes publiques aussi
-        // pour let visibilite = self.parse_visibility()?;  pour  l'ast
-        // on revoir
-
-        let visibility = self.parse_visibility()?;
-
-        self.consume(TokenType::KEYWORD(Keywords::FN))?;
-
-        let name = self.consume_identifier()?;
-        self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-        let parameters = self.parse_function_parameters()?;
-        self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-
-        let return_type = if self.match_token(&[TokenType::OPERATOR(Operators::RARROW)]){
-            self.parse_type()?
-        }else { Type::Infer };
-        if self.syntax_mode == SyntaxMode::Indentation{
-            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-        }
-        let body = self.parse_function_body()?;
-        self.consume_seperator();
-        println!("Fin du parsing de la déclaration de méthode OK!!!!!!!!!!!!!!!!!!!!!!!");
-
-        Ok(MethodeDeclaration{
-            name,
-            parameters,
-            return_type: Some(return_type),
-            body,
-            visibility,
-        })
-    }
 
 
 
     /// fonction pour parser les types
-    fn parse_type(&mut self) -> Result<Type, ParserError> {
+    pub fn parse_type(&mut self) -> Result<Type, ParserError> {
         let token = self
             .current_token()
             .ok_or_else(|| ParserError::new(ExpectedTypeAnnotation, self.current_position()))?;
@@ -1508,7 +1389,7 @@ impl Parser {
     }
 
 
-    fn parse_generic_parameters(&mut self) -> Result<Vec<GenericParameter>, ParserError> {
+    pub fn parse_generic_parameters(&mut self) -> Result<Vec<GenericParameter>, ParserError> {
         self.consume(TokenType::OPERATOR(Operators::LESS))?; // Consomme '<'
         let mut params = Vec::new();
 
@@ -1536,7 +1417,7 @@ impl Parser {
         Ok(params)
     }
 
-    fn parse_trait_bounds(&mut self) -> Result<Vec<TypeBound>, ParserError> {
+    pub fn parse_trait_bounds(&mut self) -> Result<Vec<TypeBound>, ParserError> {
         let mut bounds = Vec::new();
 
         loop {
@@ -1578,7 +1459,7 @@ impl Parser {
         }
     }
 
-    fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
+    pub fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
         let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
 
         // Vérifier si c'est un constructeur ou une méthode normale
@@ -1651,65 +1532,7 @@ impl Parser {
             body,
         })
     }
-    // fn parse_impl_method(&mut self) -> Result<ImplMethod, ParserError> {
-    //     let visibility = self.parse_visibility().unwrap_or(Visibility::Private);
-    //
-    //     // Distinguer entre constructeur (def init) et méthode normale (fn)
-    //     let (is_constructor, name) = if self.check(&[TokenType::KEYWORD(Keywords::DEF)]) {
-    //         self.advance(); // Consomme 'def'
-    //         let name = self.consume_identifier()?;
-    //         if name != "init" {
-    //             return Err(ParserError::new(
-    //                 ParserErrorType::InvalidConstructorName,
-    //                 self.current_position()));
-    //         }
-    //         (true, name)
-    //     } else {
-    //         self.consume(TokenType::KEYWORD(Keywords::FN))?;
-    //         let name = self.consume_identifier()?;
-    //         (false, name)
-    //     };
-    //
-    //     // Parser les paramètres
-    //     self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
-    //     let (self_param, parameters) = if is_constructor {
-    //         // Les constructeurs ne peuvent pas avoir de self
-    //         (None, self.parse_constructor_parameters()?)
-    //     } else {
-    //         self.parse_method_parameters()?
-    //     };
-    //
-    //     // Parser le type de retour
-    //     let return_type = if self.check(&[TokenType::OPERATOR(Operators::RARROW)]) {
-    //         self.advance(); // Consomme ->
-    //         if is_constructor {
-    //             // Pour un constructeur, vérifie que le type de retour est Self
-    //             if !self.check(&[TokenType::KEYWORD(Keywords::SELF)]) {
-    //                 return Err(ParserError::new(
-    //                     ParserErrorType::InvalidConstructorReturn,
-    //                     self.current_position()));
-    //             }
-    //             self.advance();
-    //             Some(Type::SelfType)
-    //         } else {
-    //             Some(self.parse_type()?)
-    //         }
-    //     } else {
-    //         None
-    //     };
-    //
-    //     // Parser le corps de la méthode
-    //     let body = self.parse_block()?;
-    //
-    //     Ok(ImplMethod {
-    //         name,
-    //         self_param,
-    //         parameters,
-    //         return_type,
-    //         visibility,
-    //         body,
-    //     })
-    // }
+
 
     fn parse_constructor_parameters(&mut self) -> Result<Vec<Parameter>, ParserError> {
         let mut parameters = Vec::new();
@@ -1863,214 +1686,216 @@ impl Parser {
     //     })
     // }
 
+    // //Transferer  a declarations.rs
+    // /// fonction  pour parser la mutabilité et la visibilité
+    // pub fn parse_mutability(&mut self) -> Result<Mutability, ParserError> {
+    //     if self.match_token(&[TokenType::KEYWORD(Keywords::MUT)]){
+    //         Ok(Mutability::Mutable)
+    //     } else {
+    //         Ok(Mutability::Immutable)
+    //     }
+    // }
+    // pub fn parse_visibility(&mut self) -> Result<Visibility, ParserError> {
+    //     if self.match_token(&[TokenType::KEYWORD(Keywords::PUB)]){
+    //         Ok(Visibility::Public)
+    //     } else {
+    //         Ok(Visibility::Private)
+    //     }
+    // }
+    //
+    // ///fonction pour parser les champs de structure STRUCT
+    //
+    // pub fn parse_struct_fields(&mut self) -> Result<Vec<Field>, ParserError> {
+    //     println!("Début du parsing des champs de structure");
+    //     let mut fields = Vec::new();
+    //
+    //     if self.match_token(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
+    //         return Ok(fields)
+    //     }
+    //     // ici  on  gere au cas ou on as  une structure vide
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
+    //         return Ok(fields)
+    //     }
+    //     loop {
+    //         let field = self.parse_struct_field()?;
+    //         fields.push(field);
+    //         if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+    //             // ne pas exiger de NEWLINE après la virgule en mode indentation
+    //             let _ = self.match_token(&[TokenType::NEWLINE]);
+    //             // if self.syntax_mode == SyntaxMode::Indentation{
+    //             //     self.consume(TokenType::NEWLINE)?;
+    //             // }
+    //             //continue;
+    //         } else if self.match_token(&[TokenType::NEWLINE])  && self.syntax_mode==SyntaxMode::Indentation{
+    //
+    //         } else if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
+    //             break;
+    //         } else {
+    //             return Err(ParserError::new(ExpectColon,self.current_position()))
+    //         }
+    //     }
+    //     println!("Champs de structure parsés : {:?}", fields);
+    //     Ok(fields)
+    //
+    // }
+    // pub fn parse_struct_field(&mut self) -> Result<Field, ParserError> {
+    //     let visibility = self.parse_visibility()?;
+    //     println!("Visibilité du champ parsée : {:?}", visibility);
+    //     let name = self.consume_identifier()?;
+    //     println!("Nom du champ parsé : {}", name);
+    //     self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //     let field_type = self.parse_type()?;
+    //     println!("Type du champ parsé : {:?}", field_type);
+    //     Ok(Field{
+    //         name,
+    //         field_type,
+    //         visibility
+    //
+    //     })
+    //
+    // }
+    //
+    // pub fn parse_enum_variantes(&mut self) -> Result<Vec<EnumVariant>,ParserError>{
+    //     println!("Début du parsing des variantes d'énumération");
+    //     let mut variantes = Vec::new();
+    //     if self.match_token(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
+    //         return Ok(variantes)
+    //     }
+    //     if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
+    //         return Ok(variantes)
+    //     }
+    //     loop{
+    //         let variante = self.parse_enum_variant_fields()?;
+    //         variantes.push(variante);
+    //         if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
+    //
+    //             let _ = self.match_token(&[TokenType::NEWLINE]);
+    //
+    //         }else if self.match_token(&[TokenType::NEWLINE]) && self.syntax_mode == SyntaxMode::Indentation{
+    //
+    //         }else if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
+    //             break;
+    //         } else {
+    //             return Err(ParserError::new(ExpectColon,self.current_position()))
+    //         }
+    //     }
+    //     println!("Variantes d'énumération parsées : {:?}", variantes);
+    //     Ok(variantes)
+    // }
+    //
+    // pub fn parse_enum_variant_fields(&mut self) ->  Result<EnumVariant,ParserError>{
+    //     let visibility = self.parse_visibility()?;
+    //     println!("Visibilité de la variante parsée : {:?}", visibility);
+    //     let name = self.consume_identifier()?;
+    //     println!("Nom de la variante parsée : {}", name);
+    //     self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //     let variante_type = self.parse_type()?;
+    //     println!("Type de la variante parsée : {:?}", variante_type);
+    //     Ok(EnumVariant{
+    //         name,
+    //         variante_type,
+    //         visibility
+    //     })
+    //
+    // }
 
-    /// fonction  pour parser la mutabilité et la visibilité
-    fn parse_mutability(&mut self) -> Result<Mutability, ParserError> {
-        if self.match_token(&[TokenType::KEYWORD(Keywords::MUT)]){
-            Ok(Mutability::Mutable)
-        } else {
-            Ok(Mutability::Immutable)
-        }
-    }
-    fn parse_visibility(&mut self) -> Result<Visibility, ParserError> {
-        if self.match_token(&[TokenType::KEYWORD(Keywords::PUB)]){
-            Ok(Visibility::Public)
-        } else {
-            Ok(Visibility::Private)
-        }
-    }
 
-    ///fonction pour parser les champs de structure STRUCT
-
-    fn parse_struct_fields(&mut self) -> Result<Vec<Field>, ParserError> {
-        println!("Début du parsing des champs de structure");
-        let mut fields = Vec::new();
-
-        if self.match_token(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
-            return Ok(fields)
-        }
-        // ici  on  gere au cas ou on as  une structure vide
-        if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
-            return Ok(fields)
-        }
-        loop {
-            let field = self.parse_struct_field()?;
-            fields.push(field);
-            if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
-                // ne pas exiger de NEWLINE après la virgule en mode indentation
-                let _ = self.match_token(&[TokenType::NEWLINE]);
-                // if self.syntax_mode == SyntaxMode::Indentation{
-                //     self.consume(TokenType::NEWLINE)?;
-                // }
-                //continue;
-            } else if self.match_token(&[TokenType::NEWLINE])  && self.syntax_mode==SyntaxMode::Indentation{
-
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
-                break;
-            } else {
-                return Err(ParserError::new(ExpectColon,self.current_position()))
-            }
-        }
-        println!("Champs de structure parsés : {:?}", fields);
-        Ok(fields)
-
-    }
-    fn parse_struct_field(&mut self) -> Result<Field, ParserError> {
-        let visibility = self.parse_visibility()?;
-        println!("Visibilité du champ parsée : {:?}", visibility);
-        let name = self.consume_identifier()?;
-        println!("Nom du champ parsé : {}", name);
-        self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-        let field_type = self.parse_type()?;
-        println!("Type du champ parsé : {:?}", field_type);
-        Ok(Field{
-            name,
-            field_type,
-            visibility
-
-        })
-
-    }
-
-    fn parse_enum_variantes(&mut self) -> Result<Vec<EnumVariant>,ParserError>{
-        println!("Début du parsing des variantes d'énumération");
-        let mut variantes = Vec::new();
-        if self.match_token(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
-            return Ok(variantes)
-        }
-        if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
-            return Ok(variantes)
-        }
-        loop{
-            let variante = self.parse_enum_variant_fields()?;
-            variantes.push(variante);
-            if self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]){
-
-                let _ = self.match_token(&[TokenType::NEWLINE]);
-
-            }else if self.match_token(&[TokenType::NEWLINE]) && self.syntax_mode == SyntaxMode::Indentation{
-
-            }else if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
-                break;
-            } else {
-                return Err(ParserError::new(ExpectColon,self.current_position()))
-            }
-        }
-        println!("Variantes d'énumération parsées : {:?}", variantes);
-        Ok(variantes)
-    }
-
-    fn parse_enum_variant_fields(&mut self) ->  Result<EnumVariant,ParserError>{
-        let visibility = self.parse_visibility()?;
-        println!("Visibilité de la variante parsée : {:?}", visibility);
-        let name = self.consume_identifier()?;
-        println!("Nom de la variante parsée : {}", name);
-        self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-        let variante_type = self.parse_type()?;
-        println!("Type de la variante parsée : {:?}", variante_type);
-        Ok(EnumVariant{
-            name,
-            variante_type,
-            visibility
-        })
-
-    }
-
-    /// fonction pour le gestion de structure de controle
-    pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction if");
-
-        self.consume(TokenType::KEYWORD(Keywords::IF))?;
-        let condition = self.parse_expression(0)?;
-        //let then_block = self.parse_body_block()?;; // block_expression
-        let then_block = self.parse_block()?;
-
-        let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]){
-            self.advance();
-            let elif_statement = self.parse_if_statement()?;
-            Some(vec![elif_statement])
-        }else if self.match_token(&[TokenType::KEYWORD(Keywords::ELSE)]){
-            //Some(self.parse_body_block()?)
-            Some(self.parse_block()?)
-        }else { None };
-
-        println!("Fin du parsing de l'instruction if");
-        Ok(ASTNode::Statement(Statement::IfStatement(IfStatement{
-            condition,
-            then_block,
-            else_block,
-        })))
-
-    }
-    fn parse_while_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction while");
-
-        self.consume(TokenType::KEYWORD(Keywords::WHILE))?;
-
-        let condition = self.parse_expression(0)?;
-        let body = self.parse_body_block()?;
-        println!("Fin du parsing de l'instruction while OK!!!!!!!!!!!!!!");
-        Ok(ASTNode::Statement(Statement::WhileStatement(WhileStatement{
-            condition,
-            body,
-        })))
-
-    }
-
-    fn parse_loop_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction loop");
-
-        // ajoute de label optional pour la boucle pour
-        let label = self.check_for_label()?;
-
-        self.consume(TokenType::KEYWORD(Keywords::LOOP))?;
-        let body = self.parse_block()?;
-        println!("Fin du parsing de l'instruction loop OK!!!!!!!!!!!!!!");
-        Ok(ASTNode::Statement(Statement::LoopStatement(LoopStatement{
-            label,
-            body,
-        })))
-    }
-
-    fn parse_for_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction for");
-
-        self.consume(TokenType::KEYWORD(Keywords::FOR))?;
-
-        let iterator = self.consume_identifier()?;
-        self.consume(TokenType::KEYWORD(Keywords::IN))?;
-        let iterable = self.parse_expression(0)?;
-        let body = self.parse_body_block()?;
-        println!("Fin du parsing de l'instruction for OK!!!!!!!!!!!!!!!");
-        Ok(ASTNode::Statement(Statement::ForStatement(ForStatement{
-            iterator,
-            iterable,
-            body
-        })))
-
-    }
-
-    fn parse_break_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction break");
-        self.consume(TokenType::KEYWORD(Keywords::BREAK))?;
-        let label = self.check_for_label()?;
-        self.consume_seperator();
-        println!("Fin du parsing de l'instruction break OK!!!!!!!!!!!!!!!");
-        Ok(ASTNode::Statement(Statement::BreakStatement(BreakStatement{
-            label
-        })))
-    }
-
-    fn parse_continue_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction continue");
-        self.consume(TokenType::KEYWORD(Keywords::CONTINUE))?;
-        let label = self.check_for_label()?;
-        self.consume_seperator();
-        println!("Fin du parsing de l'instruction continue OK!!!!!!!!!!!!!!!");
-        Ok(ASTNode::Statement(Statement::ContinueStatement(ContinueStatement{
-            label
-        })))
-    }
+    // // Transferer a Statements.rs
+    // /// fonction pour le gestion de structure de controle
+    // pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction if");
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::IF))?;
+    //     let condition = self.parse_expression(0)?;
+    //     //let then_block = self.parse_body_block()?;; // block_expression
+    //     let then_block = self.parse_block()?;
+    //
+    //     let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]){
+    //         self.advance();
+    //         let elif_statement = self.parse_if_statement()?;
+    //         Some(vec![elif_statement])
+    //     }else if self.match_token(&[TokenType::KEYWORD(Keywords::ELSE)]){
+    //         //Some(self.parse_body_block()?)
+    //         Some(self.parse_block()?)
+    //     }else { None };
+    //
+    //     println!("Fin du parsing de l'instruction if");
+    //     Ok(ASTNode::Statement(Statement::IfStatement(IfStatement{
+    //         condition,
+    //         then_block,
+    //         else_block,
+    //     })))
+    //
+    // }
+    // pub fn parse_while_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction while");
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::WHILE))?;
+    //
+    //     let condition = self.parse_expression(0)?;
+    //     let body = self.parse_body_block()?;
+    //     println!("Fin du parsing de l'instruction while OK!!!!!!!!!!!!!!");
+    //     Ok(ASTNode::Statement(Statement::WhileStatement(WhileStatement{
+    //         condition,
+    //         body,
+    //     })))
+    //
+    // }
+    //
+    // pub fn parse_loop_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction loop");
+    //
+    //     // ajoute de label optional pour la boucle pour
+    //     let label = self.check_for_label()?;
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::LOOP))?;
+    //     let body = self.parse_block()?;
+    //     println!("Fin du parsing de l'instruction loop OK!!!!!!!!!!!!!!");
+    //     Ok(ASTNode::Statement(Statement::LoopStatement(LoopStatement{
+    //         label,
+    //         body,
+    //     })))
+    // }
+    //
+    // pub fn parse_for_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction for");
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::FOR))?;
+    //
+    //     let iterator = self.consume_identifier()?;
+    //     self.consume(TokenType::KEYWORD(Keywords::IN))?;
+    //     let iterable = self.parse_expression(0)?;
+    //     let body = self.parse_body_block()?;
+    //     println!("Fin du parsing de l'instruction for OK!!!!!!!!!!!!!!!");
+    //     Ok(ASTNode::Statement(Statement::ForStatement(ForStatement{
+    //         iterator,
+    //         iterable,
+    //         body
+    //     })))
+    //
+    // }
+    //
+    // pub fn parse_break_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction break");
+    //     self.consume(TokenType::KEYWORD(Keywords::BREAK))?;
+    //     let label = self.check_for_label()?;
+    //     self.consume_seperator();
+    //     println!("Fin du parsing de l'instruction break OK!!!!!!!!!!!!!!!");
+    //     Ok(ASTNode::Statement(Statement::BreakStatement(BreakStatement{
+    //         label
+    //     })))
+    // }
+    //
+    // pub fn parse_continue_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction continue");
+    //     self.consume(TokenType::KEYWORD(Keywords::CONTINUE))?;
+    //     let label = self.check_for_label()?;
+    //     self.consume_seperator();
+    //     println!("Fin du parsing de l'instruction continue OK!!!!!!!!!!!!!!!");
+    //     Ok(ASTNode::Statement(Statement::ContinueStatement(ContinueStatement{
+    //         label
+    //     })))
+    // }
 
 
     pub fn parse_match_statement(&mut self) -> Result<ASTNode, ParserError> {
@@ -2126,7 +1951,7 @@ impl Parser {
     }
 
 
-    fn parse_indented_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
+    pub fn parse_indented_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         // On vérifie si on utilise => ou : pour ce bras
         let uses_arrow = self.check(&[TokenType::OPERATOR(Operators::FATARROW)]);
 
@@ -2154,7 +1979,7 @@ impl Parser {
         }
     }
 
-    fn parse_braced_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
+    pub fn parse_braced_arm_body(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         self.consume(TokenType::OPERATOR(Operators::FATARROW))?;
 
         let body = if self.check(&[TokenType::DELIMITER(Delimiters::LCURBRACE)]) {
@@ -2174,7 +1999,7 @@ impl Parser {
         Ok(body)
     }
 
-    fn parse_guard(&mut self) -> Result<Option<Box<Expression>>, ParserError> {
+    pub fn parse_guard(&mut self) -> Result<Option<Box<Expression>>, ParserError> {
         if self.match_token(&[TokenType::KEYWORD(Keywords::IF)]){
             let condition = self.parse_expression(0)?;
             Ok(Some(Box::new(condition)))
@@ -2182,7 +2007,7 @@ impl Parser {
             Ok(None)
         }
     }
-    fn parse_match_arm(&mut self) -> Result<MatchArm, ParserError> {
+    pub fn parse_match_arm(&mut self) -> Result<MatchArm, ParserError> {
         println!("Début du parsing du bras de match");
         let pattern = self.parse_pattern_complex()?;
 
@@ -2201,7 +2026,7 @@ impl Parser {
         })
     }
 
-    fn parse_pattern_complex(&mut self) -> Result<Pattern, ParserError>{
+    pub fn parse_pattern_complex(&mut self) -> Result<Pattern, ParserError>{
         if self.check(&[TokenType::DELIMITER(Delimiters::DOT)]){
             self.consume(TokenType::DELIMITER(Delimiters::DOT))?;
             self.consume(TokenType::DELIMITER(Delimiters::DOT))?;
@@ -2214,7 +2039,7 @@ impl Parser {
 
     }
 
-    fn parse_tuple_pattern(&mut self) -> Result<Pattern, ParserError> {
+    pub fn parse_tuple_pattern(&mut self) -> Result<Pattern, ParserError> {
         self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
         let mut patterns = Vec::new();
         if !self.check(&[TokenType::DELIMITER(Delimiters::RPAR)]){
@@ -2232,7 +2057,7 @@ impl Parser {
     }
 
     //feature pour plus tard
-    fn parse_tuple_rest_pattern(&mut self) -> Result<Pattern, ParserError> {
+    pub fn parse_tuple_rest_pattern(&mut self) -> Result<Pattern, ParserError> {
         self.consume(TokenType::DELIMITER(Delimiters::LPAR))?;
         let mut patterns = Vec::new();
         let mut has_rest = false;
@@ -2260,7 +2085,7 @@ impl Parser {
         Ok(Pattern::TupleRest(patterns))
     }
 
-    fn parse_array_pattern(&mut self) -> Result<Pattern, ParserError> {
+    pub fn parse_array_pattern(&mut self) -> Result<Pattern, ParserError> {
         println!("Début du parsing du pattern de tableau Array");
         self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
         let mut patterns = Vec::new();
@@ -2280,7 +2105,7 @@ impl Parser {
     }
 
     //feature pour plus tard
-    fn parse_array_rest_pattern(&mut self) -> Result<Pattern, ParserError> {
+    pub fn parse_array_rest_pattern(&mut self) -> Result<Pattern, ParserError> {
         self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
         let mut before = Vec::new();
         let mut after = Vec::new();
@@ -2317,7 +2142,7 @@ impl Parser {
         }))
     }
 
-    fn parse_range_pattern(&mut self) -> Result<Pattern, ParserError> {
+    pub fn parse_range_pattern(&mut self) -> Result<Pattern, ParserError> {
         let start = if !self.check(&[TokenType::DELIMITER(Delimiters::DOT)]) {
             Some(Box::new(self.parse_expression(0)?))
         } else {
@@ -2344,7 +2169,7 @@ impl Parser {
     }
 
 
-    fn parse_pattern(&mut self) -> Result<Pattern, ParserError> {
+    pub fn parse_pattern(&mut self) -> Result<Pattern, ParserError> {
         println!("Début du parsing du pattern");
 
 
@@ -2397,7 +2222,7 @@ impl Parser {
 
 
 
-    fn parse_return_statement(&mut self) -> Result<ASTNode, ParserError> {
+    pub fn parse_return_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction de retour");
         self.consume(TokenType::KEYWORD(Keywords::RETURN))?;
         let value = if !self.match_token(&[TokenType::NEWLINE, TokenType::DEDENT, TokenType::EOF]) {
@@ -2417,7 +2242,7 @@ impl Parser {
     /// fonction pour la gestion des emprunts
     /// J'ai deja  implementé la gestion des emprunts dans parse_unary_expression()
 
-    fn parse_borrow(&mut self) -> Result<Expression, ParserError> {
+    pub fn parse_borrow(&mut self) -> Result<Expression, ParserError> {
         if self.match_token(&[TokenType::OPERATOR(Operators::AMPER)]){
             let mutable = self.match_token(&[TokenType::KEYWORD(Keywords::MUT)]);
             let expression = self.parse_expression(0)?;
@@ -2431,7 +2256,7 @@ impl Parser {
 
     }
 
-    fn parse_module_import_statement(&mut self) -> Result<ASTNode, ParserError> {
+    pub fn parse_module_import_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction d'import de module Import/Use");
 
         let keyword_token = self.previous_token();
@@ -2466,7 +2291,7 @@ impl Parser {
 
     }
 
-    fn parse_module_path(&mut self) -> Result<Vec<String>, ParserError> {
+    pub fn parse_module_path(&mut self) -> Result<Vec<String>, ParserError> {
         let mut path = Vec::new();
         loop {
 
@@ -2482,7 +2307,7 @@ impl Parser {
         Ok(path)
     }
 
-    fn parse_specific_import(&mut self, keyword: ImportKeyword, module_path: Vec<String>) -> Result<ASTNode, ParserError>{
+    pub fn parse_specific_import(&mut self, keyword: ImportKeyword, module_path: Vec<String>) -> Result<ASTNode, ParserError>{
         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
 
         // parser la liste des element importés
@@ -2554,17 +2379,6 @@ impl Parser {
                 self.current_position()
             ))?;
 
-        // let final_type = match explicit_type {
-        //     Type::Infer => inferred_type,
-        //     t if t == &inferred_type => t.clone(),
-        //
-        //     _ => return Err(ParserError::new(
-        //         ParserErrorType::TypeInferenceError,
-        //         self.current_position()
-        //     )),
-        // };
-        // Ok(final_type)
-
         match explicit_type {
             Type::Infer => Ok(inferred_type),
             explicit if explicit == &inferred_type => Ok(explicit.clone()),
@@ -2577,7 +2391,7 @@ impl Parser {
 
 
 
-    fn get_operator_precedence(&self, operator: &Operator) -> u8 {
+    pub fn get_operator_precedence(&self, operator: &Operator) -> u8 {
         match operator {
             Operator::Multiplication | Operator::Division | Operator::Modulo => 5,
             Operator::Addition | Operator::Substraction => 4,
@@ -2592,7 +2406,7 @@ impl Parser {
 
 
 
-    fn get_compound_operator(&self,op:&Operators) -> Option<CompoundOperator>{
+    pub fn get_compound_operator(&self,op:&Operators) -> Option<CompoundOperator>{
         match op {
             Operators::PLUSEQUAL => Some(CompoundOperator::AddAssign),
             Operators::MINEQUAL => Some(CompoundOperator::SubAssign),
@@ -2636,7 +2450,7 @@ impl Parser {
     /// fonction pour la gestion des
 
 
-    fn current_token(&self) -> Option<&Token> {
+    pub fn current_token(&self) -> Option<&Token> {
         self.tokens.get(self.current)
     }
     pub fn advance(&mut self) -> Option<&Token> {
@@ -2649,12 +2463,12 @@ impl Parser {
     pub fn peek_token(&self) -> Option<&Token>{
         self.tokens.get(self.current)
     }
-    fn peek_next_token(&self) -> Option<&Token>{
+    pub fn peek_next_token(&self) -> Option<&Token>{
         self.tokens.get(self.current + 1)
 
     }
 
-    fn previous_token(&self) -> Option<&Token> {
+    pub fn previous_token(&self) -> Option<&Token> {
         if self.current > 0 {
             // &self.tokens(self.current - 1)
             Some(&self.tokens[self.current - 1])
@@ -2668,7 +2482,7 @@ impl Parser {
 
     ///  Fonctions de Vérification et de Correspondance des Tokens
 
-    pub(crate) fn match_token(&mut self, expected:&[TokenType]) -> bool {
+    pub fn match_token(&mut self, expected:&[TokenType]) -> bool {
         if self.check(expected){
             self.advance();
             return true
@@ -2677,7 +2491,7 @@ impl Parser {
         }
     }
 
-    pub(crate) fn check(&self, expected:&[TokenType]) -> bool {
+    pub fn check(&self, expected:&[TokenType]) -> bool {
         if let Some(token) = self.current_token(){
             expected.contains(&token.token_type)
         } else {
@@ -2721,7 +2535,7 @@ impl Parser {
 
     /// fonctontion  pour aider a comsume les tokens
 
-    pub(crate) fn consume_identifier(&mut self) -> Result<String, ParserError> {
+    pub fn consume_identifier(&mut self) -> Result<String, ParserError> {
         let current_token = self.current_token().ok_or_else(|| ParserError::new(UnexpectedEOF,self.current_position()))?;
         if let TokenType::IDENTIFIER {name:_} = &current_token.token_type{
             let name = current_token.text.clone();
@@ -2769,11 +2583,11 @@ impl Parser {
         println!("");
     }
 
-    fn consume_seperator(&mut self)  {
+    pub fn consume_seperator(&mut self)  {
         println!("Mode de syntaxe : {:?}", self.syntax_mode);
         match self.syntax_mode{
             SyntaxMode::Indentation =>{
-                // ordre logique de verification EOF -> DEDENT -> NEWLINE
+                // ordre logique de verification EOF → DEDENT → NEWLINE
                 println!("Indentation Mode");
                 if self.check(&[TokenType::EOF]){
                     let _ = self.consume(TokenType::EOF);
@@ -2802,7 +2616,7 @@ impl Parser {
         true
     }
 
-    fn check_for_label(&mut self) -> Result<Option<String>, ParserError> {
+    pub fn check_for_label(&mut self) -> Result<Option<String>, ParserError> {
         // Vérifie si le token actuel est un identifiant
         if let Some(current) = self.peek_token() {
             if let Some(next) = self.peek_next_token() {
@@ -2830,7 +2644,7 @@ impl Parser {
 
 
     // fonction pour checke  le lifetime
-    fn check_lifetime_token(&mut self) ->bool{
+    pub fn check_lifetime_token(&mut self) ->bool{
         if let Some(token) = &self.current_token(){
             match &token.token_type {
                 TokenType::IDENTIFIER {name} => name.starts_with('\''),

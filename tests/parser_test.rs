@@ -134,6 +134,183 @@ mod tests {
             // assert!(result.is_ok());
         }
     }
+    mod if_elif_else_statement_tests{
+        use super::*;
+
+        #[test]
+        fn test_if_elif_else_brace() {
+            let input = r#"if x > 0 { print(x); } elif x < 0 { print(); } else { print(\"0\"); }"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+        #[test]
+        fn test_if_elif_else_indent() {
+            let input = r#"if x > 0 :
+    print(x)
+elif x < 0 :
+    print()
+else :
+    print(\"0\")
+"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_multiple_elif_braces() {
+            let input = r#"if x > 0 { a(); } elif x < 0 { b(); } elif x == 0 { c(); } else { d(); }"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+        #[test]
+        fn test_multiple_elif_indent() {
+            let input = r#"if x > 0:
+    a()
+elif x < 0:
+    b()
+elif x == 0:
+    c()
+else :
+    d()
+"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_if_statement();
+            // assert!(result.is_ok());
+        }
+
+    }
+
+
+    mod test_array_declaration_tests{
+        use super::*;
+
+        #[test]
+        fn test_array_declaration_braces() {
+            let input = r#"let arr = [1, 2, 3];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_array_declaration_indent() {
+            let input = r#"let arr = [1, 2, 3]"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_array_declaration_braces() {
+            let input = r#"let arr = [[1, 2], [3, 4]];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_array_declaration_indent() {
+            let input = r#"let arr = [[1, 2], [3, 4]]"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_array_declaration_braces() {
+            let input = r#"let arr = [];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_array_declaration_indent() {
+            let input = r#"let arr = []"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+    }
+
+    mod test_list_comprehesion {
+        use super::*;
+        #[test]
+        fn test_list_comprehension() {
+            let tests = vec![
+                ("[x * 2 for x in range(10)]", "Simple comprehension"),
+                ("[x for x in array if x > 0]", "With condition"),
+                ("[x + y for x in a for y in b]", "Multiple for"),
+                ("[x for x in a if x > 0 if x < 10]", "Multiple conditions"),
+                ("[(x, y) for x in a for y in b]", "Tuple pattern"),
+            ];
+
+            for (input, test_name) in tests {
+                let result = create_parser(input, SyntaxMode::Indentation);
+                // assert!(result.is_ok(), "Failed to parse {}: {:?}", test_name, result.err());
+            }
+        }
+
+    }
+
+    mod test_Dictionary_declaration_tests{
+        use super::*;
+
+        #[test]
+        fn test_dictionary_declaration_braces() {
+            let input = r#"let dict = {2 + 2: "four", "array": [1, 2, 3]};"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_dictionary_declaration_indent() {
+            let input = r#"let dict = {2 + 2: "four", "array": [1, 2, 3]}"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_dictionary_declaration_braces() {
+            let input = r#"let dict = { "key": { "nested": "value" } };"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_nested_dictionary_declaration_indent() {
+            let input = r#"let dict = { "key": { "nested": "value" } }"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_dictionary_declaration_braces() {
+            let input = r#"let dict = {};"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_empty_dictionary_declaration_indent() {
+            let input = r#"let dict = {}"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_variable_declaration();
+            // assert!(result.is_ok());
+        }
+
+    }
+
+
 
 
 
