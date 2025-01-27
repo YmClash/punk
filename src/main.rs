@@ -345,7 +345,7 @@ match x :
     let code_test48 = r#"{2 + 2: "four", "array": [1, 2, 3]};"#;
     let code_test49 = r#"array[1:10:2];"#;
 
-    let code_test50 = r#"array[1..10:2]"#;
+    let code_test50 = r#"0.."#;
 
 
 
