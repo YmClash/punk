@@ -836,32 +836,32 @@ impl Parser{
     //     }))
     //
     // }
-    pub fn parse_slice(&mut self) -> Result<Expression, ParserError> {
-        let index = self.parse_expression(0)?;
-        self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-
-        let end = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) ||
-            self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
-            None
-        } else {
-            Some(Box::new(self.parse_expression(0)?))
-        };
-
-        let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-            self.advance();
-            Some(Box::new(self.parse_expression(0)?))
-        } else {
-            None
-        };
-
-        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-
-        Ok(Expression::Slice(Slice {
-            start: Some(Box::new(index)),
-            end,
-            step
-        }))
-    }
+    // pub fn parse_slice(&mut self) -> Result<Expression, ParserError> {
+    //     let index = self.parse_expression(0)?;
+    //     self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //
+    //     let end = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) ||
+    //         self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
+    //         None
+    //     } else {
+    //         Some(Box::new(self.parse_expression(0)?))
+    //     };
+    //
+    //     let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //         self.advance();
+    //         Some(Box::new(self.parse_expression(0)?))
+    //     } else {
+    //         None
+    //     };
+    //
+    //     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+    //
+    //     Ok(Expression::Slice(Slice {
+    //         start: Some(Box::new(index)),
+    //         end,
+    //         step
+    //     }))
+    // }
 
 
 

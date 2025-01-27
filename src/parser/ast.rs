@@ -464,6 +464,7 @@ pub enum Expression {
     ArrayAccess(ArrayAccess), // transfere dans IndexAccess
     ArraySlice(ArraySlice), // pas encore completement implementé
     Slice(Slice), // pas encore completement implementé
+    RangeSlice(RangeSlice), // pas encore completement implementé
 
 
     MemberAccess(MemberAccess),
@@ -696,6 +697,14 @@ pub struct Slice {
     pub step: Option<Box<Expression>>
 }
 
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct RangeSlice{
+    pub array: Box<Expression>,
+    pub range: Box<Expression>,
+    pub step: Option<Box<Expression>>,
+}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]

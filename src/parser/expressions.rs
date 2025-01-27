@@ -152,27 +152,31 @@ impl Parser {
             } else if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
                 //Acces à un élément d'un tableau par indice
                 self.advance();
-                if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)]){
+                let range_expr = self.parse_expression(0)?;
+                //if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)])
+
+                if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+                    self.advance();
+                    let step = Some(Box::new(self.parse_expression(0)?));
                     // expr = self.parse_array_slice(expr)?;
-                    expr = self.parse_slice()?;
-                } else {
-                    let index = self.parse_expression(0)?;
+                    // expr = self.parse_slice()?;
+
                     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
 
                     // Si l'index est une string, on considère que c'est un accès dictionnaire
-                    match &index {
+                    match &range_expr {
                         Expression::Literal(Literal::String(_)) => {
-                            println!("Accès dictionnaire parsé avec la clé : {:?}", index);
+                            println!("Accès dictionnaire parsé avec la clé : {:?}", range_expr);
                             expr = Expression::DictAccess(DictAccess {
                                 dict: Box::new(expr),
-                                key: Box::new(index),
+                                key: Box::new(range_expr),
                             });
                         },
                         _ => {
-                            println!("Accès tableau parsé avec l'index : {:?}", index);
+                            println!("Accès tableau parsé avec l'index : {:?}", range_expr);
                             expr = Expression::IndexAccess(IndexAccess {
                                 array: Box::new(expr),
-                                index: Box::new(index),
+                                index: Box::new(range_expr),
                             });
                         }
                     }
