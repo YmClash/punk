@@ -87,12 +87,6 @@ impl Parser {
                 });
             }
 
-            // left = Expression::BinaryOperation(BinaryOperation{
-            //     left: Box::new(left),
-            //     operator,
-            //     right: Box::new(right),
-            // });
-
         }
 
         println!("Fin du parsing de l'expression ");
@@ -112,82 +106,82 @@ impl Parser {
 
     }
 
-    pub fn parse_postfix_expression(&mut self) -> Result<Expression, ParserError> {
-        let mut expr = self.parse_primary_expression()?;
-
-        loop {
-            if self.check(&[TokenType::DELIMITER(Delimiters::DOT)]){
-                self.advance();
-                let member_name = self.consume_identifier()?;
-
-                if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
-                    // Appel de méthode
-                    self.advance();
-                    let arguments = self.parse_arguments_list()?;
-                    self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-                    println!("Arguments parsés : {:?}", arguments);
-                    expr = Expression::MethodCall(MethodCall{
-                        object: Box::new(expr),
-                        method: member_name,
-                        arguments,
-                    });
-                }else{
-                    // Acces à un membre
-                    println!("Nom du membre parsé : {}", member_name);
-                    expr = Expression::MemberAccess(MemberAccess{
-                        object: Box::new(expr),
-                        member: member_name,
-                    });
-                }
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]) {
-                // Appel de Fonction
-                self.advance();
-                let arguments = self.parse_arguments_list()?;
-                self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-                println!("Arguments parsés : {:?}", arguments);
-                expr = Expression::FunctionCall(FunctionCall{
-                    name: Box::new(expr),
-                    arguments,
-                });
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
-                //Acces à un élément d'un tableau par indice
-                self.advance();
-                let range_expr = self.parse_expression(0)?;
-                //if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)])
-
-                if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-                    self.advance();
-                    let step = Some(Box::new(self.parse_expression(0)?));
-                    // expr = self.parse_array_slice(expr)?;
-                    // expr = self.parse_slice()?;
-
-                    self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-
-                    // Si l'index est une string, on considère que c'est un accès dictionnaire
-                    match &range_expr {
-                        Expression::Literal(Literal::String(_)) => {
-                            println!("Accès dictionnaire parsé avec la clé : {:?}", range_expr);
-                            expr = Expression::DictAccess(DictAccess {
-                                dict: Box::new(expr),
-                                key: Box::new(range_expr),
-                            });
-                        },
-                        _ => {
-                            println!("Accès tableau parsé avec l'index : {:?}", range_expr);
-                            expr = Expression::IndexAccess(IndexAccess {
-                                array: Box::new(expr),
-                                index: Box::new(range_expr),
-                            });
-                        }
-                    }
-                }
-            } else {
-                break;
-            }
-        }
-        Ok(expr)
-    }
-
+    // pub fn parse_postfix_expression(&mut self) -> Result<Expression, ParserError> {
+    //     let mut expr = self.parse_primary_expression()?;
+    //
+    //     loop {
+    //         if self.check(&[TokenType::DELIMITER(Delimiters::DOT)]){
+    //             self.advance();
+    //             let member_name = self.consume_identifier()?;
+    //
+    //             if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
+    //                 // Appel de méthode
+    //                 self.advance();
+    //                 let arguments = self.parse_arguments_list()?;
+    //                 self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //                 println!("Arguments parsés : {:?}", arguments);
+    //                 expr = Expression::MethodCall(MethodCall{
+    //                     object: Box::new(expr),
+    //                     method: member_name,
+    //                     arguments,
+    //                 });
+    //             }else{
+    //                 // Acces à un membre
+    //                 println!("Nom du membre parsé : {}", member_name);
+    //                 expr = Expression::MemberAccess(MemberAccess{
+    //                     object: Box::new(expr),
+    //                     member: member_name,
+    //                 });
+    //             }
+    //         } else if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]) {
+    //             // Appel de Fonction
+    //             self.advance();
+    //             let arguments = self.parse_arguments_list()?;
+    //             self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //             println!("Arguments parsés : {:?}", arguments);
+    //             expr = Expression::FunctionCall(FunctionCall{
+    //                 name: Box::new(expr),
+    //                 arguments,
+    //             });
+    //         } else if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
+    //             //Acces à un élément d'un tableau par indice
+    //             self.advance();
+    //             let range_expr = self.parse_expression(0)?;
+    //             //if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)])
+    //
+    //             if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //                 self.advance();
+    //                 let step = Some(Box::new(self.parse_expression(0)?));
+    //                 // expr = self.parse_array_slice(expr)?;
+    //                 // expr = self.parse_slice()?;
+    //
+    //                 self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+    //
+    //                 // Si l'index est une string, on considère que c'est un accès dictionnaire
+    //                 match &range_expr {
+    //                     Expression::Literal(Literal::String(_)) => {
+    //                         println!("Accès dictionnaire parsé avec la clé : {:?}", range_expr);
+    //                         expr = Expression::DictAccess(DictAccess {
+    //                             dict: Box::new(expr),
+    //                             key: Box::new(range_expr),
+    //                         });
+    //                     },
+    //                     _ => {
+    //                         println!("Accès tableau parsé avec l'index : {:?}", range_expr);
+    //                         expr = Expression::IndexAccess(IndexAccess {
+    //                             array: Box::new(expr),
+    //                             index: Box::new(range_expr),
+    //                         });
+    //                     }
+    //                 }
+    //             }
+    //         } else {
+    //             break;
+    //         }
+    //     }
+    //     Ok(expr)
+    // }
+    //
 
 
 
