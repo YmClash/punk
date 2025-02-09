@@ -972,46 +972,6 @@ impl Parser{
         }))
     }
 
-    pub fn parse_dict_literal(&mut self) -> Result<Expression,ParserError> {
-        println!("Debut du parsing d'un dictionnaire");
-        self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
-
-        let mut entries = Vec::new();
-
-        // if
-
-
-        while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
-            if !entries.is_empty(){
-                self.consume(TokenType::DELIMITER(Delimiters::COMMA))?;
-            }
-            if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
-                break;
-            }
-
-            let key = self.parse_expression(0)?;
-            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-
-            let value = self.parse_expression(0)?;
-
-            if self.match_token(&[TokenType::KEYWORD(Keywords::FOR)]){
-                return self.parse_dict_comprehension();
-            }
-
-
-            entries.push(DictEntry {
-                key: Box::new(key),
-                value: Box::new(value),
-            });
-        }
-
-        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-
-        println!("Fin du parsing d'un dictionnaire OK!!!!!!!!!!!!!!!!!!!!!!!");
-
-        Ok(Expression::DictLiteral(DictLiteral { entries }))
-    }
-
     pub fn parse_dict_access(&mut self,dict:Expression) -> Result<Expression,ParserError>{
         println!("Debut du parsing d'un accès à un dictionnaire");
         self.consume(TokenType::DELIMITER(Delimiters::LSBRACKET))?;
@@ -1023,118 +983,142 @@ impl Parser{
         }))
     }
 
+    pub fn parse_dict_literal(&mut self) -> Result<Expression, ParserError> {
+        println!("Debut du parsing d'un dictionnaire");
+        self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
 
-
-
-
-    pub fn parse_dict_comprehension(&mut self) -> Result<Expression, ParserError> {
-        println!("Début du parsing d'une dict comprehension");
-
-        // On a déjà consommé le '{'
-
-        // Parse l'expression de la clé
-        let key_expr = self.parse_expression(0)?;
-
-        // Consomme ':'
+        // Parser la première paire clé-valeur
+        let key = self.parse_expression(0)?;
         self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+        let value = self.parse_expression(0)?;
 
-        // Parse l'expression de la valeur
-        let value_expr = self.parse_expression(0)?;
+        // Vérifier si c'est une dict comprehension
+        if self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
+            self.advance(); // Consommer le 'for'
+            return self.parse_dict_comprehension(key, value);
+        }
 
-        // Consomme 'for'
-        self.consume(TokenType::KEYWORD(Keywords::FOR))?;
+        // Si ce n'est pas une dict comprehension, continuer avec un dictionnaire normal
+        let mut entries = vec![DictEntry {
+            key: Box::new(key),
+            value: Box::new(value),
+        }];
+
+        while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
+            self.consume(TokenType::DELIMITER(Delimiters::COMMA))?;
+
+            if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
+                break;
+            }
+
+            let key = self.parse_expression(0)?;
+            self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+            let value = self.parse_expression(0)?;
+
+            entries.push(DictEntry {
+                key: Box::new(key),
+                value: Box::new(value),
+            });
+        }
+
+        self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+        println!("Fin du parsing d'un dictionnaire OK!!!!!!!!!!!!!!!!!!!!!!!");
+
+        Ok(Expression::DictLiteral(DictLiteral { entries }))
+    }
+
+    // pub fn parse_dict_literal(&mut self) -> Result<Expression,ParserError> {
+    //     println!("Debut du parsing d'un dictionnaire");
+    //     self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+    //
+    //     let mut entries = Vec::new();
+    //
+    //     while !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
+    //
+    //         if !entries.is_empty(){
+    //             self.consume(TokenType::DELIMITER(Delimiters::COMMA))?;
+    //         }
+    //         if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
+    //             break;
+    //         }
+    //
+    //         let key = self.parse_expression(0)?;
+    //         self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
+    //
+    //         let value = self.parse_expression(0)?;
+    //
+    //         // if self.match_token(&[TokenType::KEYWORD(Keywords::FOR)]){
+    //         //     return self.parse_dict_comprehension();
+    //         // }
+    //
+    //         entries.push(DictEntry {
+    //             key: Box::new(key),
+    //             value: Box::new(value),
+    //         });
+    //     }
+    //
+    //     self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+    //
+    //     println!("Fin du parsing d'un dictionnaire OK!!!!!!!!!!!!!!!!!!!!!!!");
+    //
+    //     Ok(Expression::DictLiteral(DictLiteral { entries }))
+    // }
+
+
+
+    pub fn parse_dict_comprehension(&mut self, key_expr: Expression, value_expr: Expression) -> Result<Expression, ParserError> {
+        println!("Début du parsing d'une dict comprehension");
 
         let mut iterators = Vec::new();
         let mut conditions = Vec::new();
 
+        // Parse la partie itération
         loop {
             let mut targets = Vec::new();
-            loop {
-                // Correction ici : utilisation de la variante tuple Identifier
-                match self.current_token() {
-                    Some(Token { token_type: TokenType::IDENTIFIER { name }, .. }) => {
-                        targets.push(Expression::Identifier(name.clone()));  // Correction ici
-                        self.advance();
-                    }
-                    _ => return Err(ParserError::new(UnexpectedToken, self.current_position())),
-                    // _ => return Err(ParserError::unexpected_token(self.current_position())),
-                }
 
-                if !self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
-                    break;
-                }
-                self.advance(); // Consomme la virgule
+            // Parser la première variable
+            if let Some(Token { token_type: TokenType::IDENTIFIER { name }, .. }) = self.current_token() {
+                targets.push(Expression::Identifier(name.clone()));
+                self.advance();
+            } else {
+                return Err(ParserError::new(UnexpectedToken, self.current_position()));
             }
 
+            // Parser d'autres variables si présentes
+            while self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+                self.advance(); // Consomme la virgule
+                if let Some(Token { token_type: TokenType::IDENTIFIER { name }, .. }) = self.current_token() {
+                    targets.push(Expression::Identifier(name.clone()));
+                    self.advance();
+                } else {
+                    return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                }
+            }
+
+            // Parse 'in' et l'itérable
             self.consume(TokenType::KEYWORD(Keywords::IN))?;
             let iterator = self.parse_expression(0)?;
 
-            let mut for_conditions = Vec::new();
-            while self.check(&[TokenType::KEYWORD(Keywords::IF)]) {
-                self.advance();
+            // Parse les conditions if
+            if self.check(&[TokenType::KEYWORD(Keywords::IF)]) {
+                self.advance(); // Consomme 'if'
                 let condition = self.parse_expression(0)?;
-                for_conditions.push(condition);
+                conditions.push(condition);
             }
 
             iterators.push(CompFor {
                 targets,
                 iterator: Box::new(iterator),
-                conditions: for_conditions,
+                conditions: vec![], // Les conditions sont maintenant stockées au niveau supérieur
             });
 
+            // Vérifie s'il y a un autre 'for'
             if !self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
                 break;
             }
             self.advance();
         }
 
-
-
-
-
-        // Parse les clauses for et if
-        // loop {
-        //     // Parse les targets (variables)
-        //     let mut targets = Vec::new();
-        //     loop {
-        //         let target = self.parse_pattern()?;
-        //         targets.push(target);
-        //
-        //         if !self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
-        //             break;
-        //         }
-        //         self.advance(); // Consomme la virgule
-        //     }
-        //
-        //     // Consomme 'in'
-        //     self.consume(TokenType::KEYWORD(Keywords::IN))?;
-        //
-        //     // Parse l'itérateur
-        //     let iterator = self.parse_expression(0)?;
-        //
-        //     // Parse les conditions if optionnelles
-        //     let mut for_conditions = Vec::new();
-        //     while self.check(&[TokenType::KEYWORD(Keywords::IF)]) {
-        //         self.advance(); // Consomme 'if'
-        //         let condition = self.parse_expression(0)?;
-        //         for_conditions.push(condition);
-        //     }
-        //
-        //     iterators.push(CompFor {
-        //         targets,
-        //         iterator: Box::new(iterator),
-        //         // iterator: Box::new(*Box::new(iterator)),
-        //         conditions: for_conditions,
-        //     });
-        //
-        //     // Vérifie s'il y a un autre 'for'
-        //     if !self.check(&[TokenType::KEYWORD(Keywords::FOR)]) {
-        //         break;
-        //     }
-        //     self.advance(); // Consomme 'for'
-        // }
-
-        // Consomme '}'
         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
 
         println!("Fin du parsing de la dict comprehension");
@@ -1146,8 +1130,6 @@ impl Parser{
             conditions,
         }))
     }
-
-
 
 
 
