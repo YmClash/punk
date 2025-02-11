@@ -20,24 +20,63 @@ impl Parser{
     /// // let y: float = 3.14
     /// // let z = 42
     /// // let a:bool = true
+    // pub fn parse_variable_declaration(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de la déclaration de variable");
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::LET))?;
+    //
+    //     let mutability = self.parse_mutability()?;
+    //
+    //     let  name = self.consume_identifier()?;
+    //     println!("Nom de la variable parsé : {}", name);
+    //
+    //
+    //     let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //         self.parse_type()?
+    //
+    //     } else {
+    //         Type::Infer
+    //     };
+    //
+    //     println!("Type de la variable parsé : {:?}", variable_type);
+    //
+    //     println!("Debut de la valeur de la variable");
+    //     self.consume(TokenType::OPERATOR(Operators::EQUAL))?;
+    //
+    //     let value = self.parse_expression(0)?;
+    //
+    //     //infere  le txpe si neccessaire
+    //
+    //     // ici  on vas implementer la fonction parse_inference_type pour determiner le type de la variable
+    //     let final_type = self.parse_inference_type(&variable_type,&value)?;
+    //
+    //
+    //     self.consume_seperator();
+    //     println!("Valeur de la variable parsée : {:?}", value);
+    //
+    //     Ok(ASTNode::Declaration(Variable(VariableDeclaration {
+    //         name,
+    //         variable_type: Some(final_type),
+    //         value: Some(value),
+    //         mutability,
+    //     })))
+    //
+    // }
+
     pub fn parse_variable_declaration(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de la déclaration de variable");
-
         self.consume(TokenType::KEYWORD(Keywords::LET))?;
 
         let mutability = self.parse_mutability()?;
 
         let  name = self.consume_identifier()?;
         println!("Nom de la variable parsé : {}", name);
-
-
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
 
         } else {
             Type::Infer
         };
-
         println!("Type de la variable parsé : {:?}", variable_type);
 
         println!("Debut de la valeur de la variable");
@@ -45,23 +84,38 @@ impl Parser{
 
         let value = self.parse_expression(0)?;
 
-        //infere  le txpe si neccessaire
-
-        // ici  on vas implementer la fonction parse_inference_type pour determiner le type de la variable
-        let final_type = self.parse_inference_type(&variable_type,&value)?;
-
 
         self.consume_seperator();
         println!("Valeur de la variable parsée : {:?}", value);
 
-        Ok(ASTNode::Declaration(Variable(VariableDeclaration {
+        Ok(ASTNode::Declaration(Declaration::Variable(VariableDeclaration{
             name,
-            variable_type: Some(final_type),
+            variable_type: Some(variable_type),
             value: Some(value),
             mutability,
         })))
 
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
