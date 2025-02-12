@@ -149,10 +149,19 @@ impl Parser {
     //                 } else if let Some(start) = start {
     //                     // Simple index access
     //                     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-    //                     Expression::IndexAccess(IndexAccess {
-    //                         array: Box::new(expr),
-    //                         index: start
-    //                     })
+    //                     match &*start {
+    //                         Expression::Literal(Literal::String(_)) => {
+    //                             println!("Accès dictionnaire parsé avec la clé : {:?}", start);
+    //                             Expression::DictAccess(DictAccess {
+    //                                 dict: Box::new(expr),
+    //                                 key: start
+    //                             })
+    //                         },
+    //                         _ => Expression::IndexAccess(IndexAccess {
+    //                             array: Box::new(expr),
+    //                             index: start
+    //                         })
+    //                     }
     //                 } else {
     //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
     //                 }
@@ -199,24 +208,31 @@ impl Parser {
     //
     //     Ok(expr)
     // }
+
+
+
+
     pub fn parse_postfix_expression(&mut self) -> Result<Expression, ParserError> {
         let mut expr = self.parse_primary_expression()?;
 
         while let Some(token) = self.current_token() {
-
             expr = match &token.token_type {
                 TokenType::DELIMITER(Delimiters::LSBRACKET) => {
                     self.advance(); // Consume [
 
-                    // Check for empty start
-                    let start = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-                        None
-                    } else {
+                    // Parse start
+                    let start = if !self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
                         Some(Box::new(self.parse_expression(0)?))
+                    } else {
+                        None
                     };
 
-                    if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-                        self.advance(); // Consume :
+                    // Si on trouve .. ou :, c'est un slice
+                    if self.check(&[TokenType::OPERATOR(Operators::DOTDOT)]) ||
+                        self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+                        self.advance(); // Consomme '..' ou ':'
+
+                        // Parse end
                         let end = if !self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) &&
                             !self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
                             Some(Box::new(self.parse_expression(0)?))
@@ -224,14 +240,17 @@ impl Parser {
                             None
                         };
 
+                        // Parse step
                         let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-                            self.advance();
+                            self.advance(); // Consomme ':'
                             Some(Box::new(self.parse_expression(0)?))
                         } else {
                             None
                         };
 
                         self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+
+                        // Ne pas créer de RangeExpression, traiter start comme une valeur normale
                         Expression::ArraySlice(ArraySlice {
                             array: Box::new(expr),
                             start,
@@ -243,7 +262,6 @@ impl Parser {
                         self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
                         match &*start {
                             Expression::Literal(Literal::String(_)) => {
-                                println!("Accès dictionnaire parsé avec la clé : {:?}", start);
                                 Expression::DictAccess(DictAccess {
                                     dict: Box::new(expr),
                                     key: start
@@ -300,13 +318,6 @@ impl Parser {
 
         Ok(expr)
     }
-
-
-
-
-
-
-
 
 
     pub fn parse_destructuring_assignment(&mut self) -> Result<Expression,ParserError>{
@@ -406,15 +417,6 @@ impl Parser {
                     self.advance();
                     Expression::Literal(Literal::Float { value })
                 }
-
-
-                // TokenType::STRING { value, .. } => {
-                //     let value = value.clone();
-                //     println!("Valeur de chaîne parsée : {}", value);
-                //     self.advance();
-                //     Expression::Literal(Literal::String(value))
-                // }
-
 
                 TokenType::STRING { value,.. } => {
                     let value = value.clone();
@@ -520,8 +522,6 @@ impl Parser {
         } else {
             return Err(ParserError::new(ExpectedArrowOrBlock, self.current_position()));
         };
-
-
 
         Ok(Expression::LambdaExpression(LambdaExpression{
             parameters,

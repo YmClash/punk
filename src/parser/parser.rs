@@ -2347,7 +2347,7 @@ impl Parser {
 
     // fonction utilitaire pour aide au parsing
 
-    fn is_operator(&self,token_type: &TokenType) -> bool {
+    fn is_operator(&self,_token_type: &TokenType) -> bool {
 
         todo!()
     }

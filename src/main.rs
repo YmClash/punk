@@ -34,9 +34,8 @@ fn main() {
 
     let code_number = "a && b || c";
 
-    let code_decl_braces = "let x = 10;let mut y:int = 3;const numb = 5;pub const x:int = 5;pub struct Point {x: int,y: int};pub struct Point {height: int,width: int};enum Color {x:int,y:float,z:str};pub enum Color {pub x:int,y:float,z:str};pub fn add(x: int, y: int) -> int {return x + y};pub fn add(x: int, y: int) -> int {\
-    let mut result = x + y;\
-    return result};";
+    let code_decl_braces = "let x = 10;let mut y:int = 3;const numb = 5;pub const x:int = 5;pub struct Point {x: int,y: int}pub struct Point {height: int,width: int}enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}pub fn add(x: int, y: int) -> int {return x + y}pub fn add(x: int, y: int) -> int {\
+    let mut result = x + y";
     let code_decl_indentation = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}\npub struct Point {height: int,width: int}\nenum Color {x:int,y:float,z:str}\npub enum Color {pub x:int,y:float,z:str}\n";
 
     let solo_decl = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}}\n";
@@ -235,7 +234,7 @@ else:
         return self.x + 1 "#;
 
 
-    let code_test22 = r#"pub class Myclass(classe){let x:int;pubfn do_something() ->int{return self.x + 1}}"#;
+    let code_test22 = r#"pub class Myclass(classe){let x:int;pub fn do_something() ->int{return self.x + 1}}"#;
 
     let code_test23 = r#"fn add(x:int)->int{return x+1}"#;
 
@@ -274,7 +273,7 @@ else:
 
     let code_test32 = r#"impl Color {def init(value: T) -> Self {MyType { value }}fn consume(self)-> T {&self.value} fn get_value(&self) -> &T {&self.value}fn set_value(&mut self, value: T) {self.value = value }}"#;
 
-    let code_test33 = r#"mpl<T> Drawable for MyType<S>:
+    let code_test33 = r#"impl<T> Drawable for MyType<S>:
     fn draw(x: float):
         return self.x+1}
     fn get_color() -> int:
@@ -343,16 +342,18 @@ match x :
     let code_test46 = r#"{k: v for k, v in items if v > 0};"#;
     let code_test47 = r#"let mut listcomprehension =[x + y for x in array1 if x > 0 for y in array2 if y < 10]"#;
     let code_test48 = r#"{2 + 2: "four", "array": [1, 2, 3]};"#;
-    let code_test49 = r#"array[1..10];"#;
+    let code_test49 = r#"array[1..10..2];"#;
 
     let code_test50 = r#"array[1:10:2];"#;
     let code_test51 = r#"dict["key"]  "#;
+    let code_test52 = r#"let x = &10; let mut x:float = 1.1;pub struct Point {x: int,y: int}enum Color {x:int,y:float,z:str}"#;
+    let code_test53 = r#"&mut"#;
 
 
 
 
-    // let mut lexer = Lexer::new(code_test45, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test46, SyntaxMode::Braces);
+    // let mut lexer = Lexer::new(code_test35, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test50, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
