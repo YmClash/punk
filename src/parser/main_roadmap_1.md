@@ -58,10 +58,17 @@ Je comprends. En effet, ces fonctionnalités ne sont pas essentielles pour un pa
 - [ ] Tests de performance (Q3)
 
 ### 4.2 Gestion des Erreurs 🚨
-- [x] Erreurs de base avec position
+- [x]  Type d'erreur ParserError avec position
 - [x] Messages d'erreur basiques
 - [x] Gestion des exceptions
 - [ ] Recovery parsing (Priorité Q2)
+- [X] Propagation des erreurs avec Result
+- [X] Messages d'erreur descriptifs
+- [X] Erreurs spécifiques au pattern matching
+- [X] Erreurs pour les types invalides
+- [X] Erreurs pour les déclarations invalides
+- [X] Erreurs pour le try/except
+- [X] Position des erreurs dans le code source
 
 ## 5. Documentation & Tooling (À venir)
 ### 5.1 Documentation 📚
