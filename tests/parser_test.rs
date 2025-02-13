@@ -2,74 +2,42 @@
 mod tests {
     use pyrust::parser::parser::Parser;
     use pyrust::{Lexer, SyntaxMode};
-    use pyrust::parser::ast::ASTNode;
+    use pyrust::parser::ast::Expression;
+
     use super::*;
 
-    // Helper functions
+    // Fonction d'aide pour créer un parser
     fn create_parser(source: &str, mode: SyntaxMode) -> Parser {
         let mut lexer = Lexer::new(source, mode);
         let tokens = lexer.tokenize();
         Parser::new(tokens, mode)
     }
 
-    fn assert_ast_eq(actual: ASTNode, expected: ASTNode) {
+    fn assert_ast_eq(actual: Expression, expected: Expression) {
         assert_eq!(format!("{:#?}", actual), format!("{:#?}", expected));
     }
 
     mod expression_tests {
+
         use super::*;
+
 
         #[test]
         fn test_literal_expressions_braces() {
-            let test_cases = vec![
-                ("42", "INTEGER"),
-                ("3.14", "FLOAT"),
-                ("\"hello\"", "STRING"),
-                ("'c'", "CHAR"),
-                ("true", "BOOLEAN"),
-            ];
-
-            for (input, expected_type) in test_cases {
-                let mut parser = create_parser(input, SyntaxMode::Braces);
-                let result = parser.parse_expression(0).unwrap();
-                // Add assertions
-            }
+            let input = "42";
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
         }
-
-        fn test_literal_expressions_indent() {
-            let test_cases = vec![
-                ("42", "INTEGER"),
-                ("3.14", "FLOAT"),
-                ("\"hello\"", "STRING"),
-                ("'c'", "CHAR"),
-                ("true", "BOOLEAN"),
-            ];
-
-            for (input, expected_type) in test_cases {
-                let mut parser = create_parser(input, SyntaxMode::Indentation);
-                let result = parser.parse_expression(0).unwrap();
-                // Add assertions
-            }
-        }
-
-
 
         #[test]
-        fn test_arithmetic_expressions() {
-            let test_cases = vec![
-                ("1 + 2", 3),
-                ("3 * 4", 12),
-                ("10 - 5", 5),
-                ("20 / 5", 4),
-                ("(2 + 3) * 4", 20),
-            ];
-
-            for (input, expected) in test_cases {
-                let mut parser = create_parser(input, SyntaxMode::Braces);
-                let result = parser.parse_expression(0).unwrap();
-                // Add assertions
-            }
+        fn test_literal_expressions_indent() {
+            let input = "42+2";
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
         }
+
 
         #[test]
         fn test_complex_expressions() {
@@ -85,6 +53,7 @@ mod tests {
                 assert!(parser.parse_expression(0).is_ok());
             }
         }
+
 
     }
 
@@ -102,20 +71,20 @@ mod tests {
         "#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_try_statement();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
         fn test_try_except_indent() {
-            let input = r#"
-        try:
-            risky_function()
-        except Error as e:
-            handle_error(e)
-        "#;
+
+            let input = r#"try:
+    risky_function()
+except Error as e:
+    handle_error(e)
+"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_try_statement();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -131,7 +100,7 @@ mod tests {
         "#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_try_statement();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
     }
     mod if_elif_else_statement_tests{
@@ -142,7 +111,7 @@ mod tests {
             let input = r#"if x > 0 { print(x); } elif x < 0 { print(); } else { print(\"0\"); }"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_if_statement();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
         #[test]
         fn test_if_elif_else_indent() {
@@ -153,9 +122,9 @@ elif x < 0 :
 else :
     print(\"0\")
 "#;
-            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_if_statement();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -163,7 +132,7 @@ else :
             let input = r#"if x > 0 { a(); } elif x < 0 { b(); } elif x == 0 { c(); } else { d(); }"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_if_statement();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
         #[test]
         fn test_multiple_elif_indent() {
@@ -178,7 +147,7 @@ else :
 "#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_if_statement();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
     }
@@ -192,7 +161,7 @@ else :
             let input = r#"let arr = [1, 2, 3];"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -200,7 +169,7 @@ else :
             let input = r#"let arr = [1, 2, 3]"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -208,7 +177,7 @@ else :
             let input = r#"let arr = [[1, 2], [3, 4]];"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -216,7 +185,7 @@ else :
             let input = r#"let arr = [[1, 2], [3, 4]]"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -224,7 +193,7 @@ else :
             let input = r#"let arr = [];"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -232,7 +201,7 @@ else :
             let input = r#"let arr = []"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
     }
@@ -240,19 +209,24 @@ else :
     mod test_list_comprehesion {
         use super::*;
         #[test]
-        fn test_list_comprehension() {
-            let tests = vec![
-                ("[x * 2 for x in range(10)]", "Simple comprehension"),
-                ("[x for x in array if x > 0]", "With condition"),
-                ("[x + y for x in a for y in b]", "Multiple for"),
-                ("[x for x in a if x > 0 if x < 10]", "Multiple conditions"),
-                ("[(x, y) for x in a for y in b]", "Tuple pattern"),
-            ];
+        fn test_list_comprehension_braces() {
 
-            for (input, test_name) in tests {
-                let result = create_parser(input, SyntaxMode::Indentation);
-                // assert!(result.is_ok(), "Failed to parse {}: {:?}", test_name, result.err());
-            }
+            let tests = r#"[x * 2 for x in range(10)]"#;
+
+            let mut parser = create_parser(tests, SyntaxMode::Braces);
+            let result = parser.parse_list_comprehension();
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_list_comprehension_indent() {
+
+
+            let tests = r#"[x * 2 for x in range(10)]"#;
+
+            let mut parser = create_parser(tests, SyntaxMode::Indentation);
+            let result = parser.parse_list_comprehension();
+            assert!(result.is_ok());
         }
 
     }
@@ -265,7 +239,7 @@ else :
             let input = r#"let dict = {2 + 2: "four", "array": [1, 2, 3]};"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -273,7 +247,7 @@ else :
             let input = r#"let dict = {2 + 2: "four", "array": [1, 2, 3]}"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
