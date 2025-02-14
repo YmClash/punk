@@ -129,8 +129,8 @@ else :
 
         #[test]
         fn test_multiple_elif_braces() {
-            let input = r#"if x > 0 { a(); } elif x < 0 { b(); } elif x == 0 { c(); } else { d(); }"#;
-            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let input = r#"if x > 0 { a(); } elif x < 0 { b(); } elif x == 0 { c(); } else { d(); };"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_if_statement();
             assert!(result.is_ok());
         }
@@ -255,7 +255,7 @@ else :
             let input = r#"let dict = { "key": { "nested": "value" } };"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -263,7 +263,7 @@ else :
             let input = r#"let dict = { "key": { "nested": "value" } }"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -271,7 +271,7 @@ else :
             let input = r#"let dict = {};"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -279,7 +279,7 @@ else :
             let input = r#"let dict = {}"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_variable_declaration();
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
         }
 
     }
@@ -288,102 +288,103 @@ else :
 
 
 
-    // mod declaration_tests {
-    //     use pyrust::parser::ast::Visibility;
-    //     use super::*;
-    //
-    //     #[test]
-    //     fn test_variable_declarations() {
-    //         let test_cases = vec![
-    //             "let x = 42;",
-    //             "let mut y: int = 10;",
-    //             "let z: float = 3.14;",
-    //             "let s = \"hello\";",
-    //         ];
-    //
-    //         for input in test_cases {
-    //             let mut parser = create_parser(input, SyntaxMode::Braces);
-    //             assert!(parser.parse_variable_declaration().is_ok());
-    //         }
-    //     }
-    //
-    //     #[test]
-    //     fn test_function_declarations() {
-    //         let test_cases = vec![
-    //             "fn foo() { }",
-    //             "fn add(x: int, y: int) -> int { x + y }",
-    //             "pub fn complex<T>(value: T) -> Option<T> { Some(value) }",
-    //         ];
-    //
-    //         for input in test_cases {
-    //             let mut parser = create_parser(input, SyntaxMode::Braces);
-    //             assert!(parser.parse_function_declaration(Visibility::Public).is_ok());
-    //         }
-    //     }
-    //
-    //     #[test]
-    //     fn test_type_declarations() {
-    //         let test_cases = vec![
-    //             r#"struct Point { x: int, y: int }"#,
-    //             r#"enum Option { Some(T), None }"#,
-    //             r#"trait Display { fn display(&self) -> str; }"#,
-    //         ];
-    //
-    //         for input in test_cases {
-    //             let mut parser = create_parser(input, SyntaxMode::Braces);
-    //             // Test appropriate declaration type
-    //         }
-    //     }
-    // }
+    mod declaration_tests {
+        use pyrust::parser::ast::Visibility;
+        use super::*;
+
+        #[test]
+        fn test_variable_declarations() {
+            let test_cases = vec![
+                "let x = 42;",
+                "let mut y: int = 10;",
+                "let z: float = 3.14;",
+                "let s = \"hello\";",
+            ];
+
+            for input in test_cases {
+                let mut parser = create_parser(input, SyntaxMode::Braces);
+                assert!(parser.parse_variable_declaration().is_ok());
+            }
+        }
+
+        #[test]
+        fn test_function_declarations() {
+            let test_cases = vec![
+                "fn foo() { }",
+                "fn add(x: int, y: int) -> int { x + y }",
+                "pub fn complex<T>(value: T) -> Option<T> { Some(value) }",
+            ];
+
+            for input in test_cases {
+                let mut parser = create_parser(input, SyntaxMode::Braces);
+                assert!(parser.parse_function_declaration(Visibility::Public).is_ok());
+            }
+        }
+
+        #[test]
+        fn test_type_declarations() {
+            let test_cases = vec![
+                r#"struct Point { x: int, y: int }"#,
+                r#"enum Option { Some(T), None }"#,
+                r#"trait Display { fn display(&self) -> str; }"#,
+            ];
+
+            for input in test_cases {
+                let mut parser = create_parser(input, SyntaxMode::Braces);
+                assert!(parser.parse_type_declaration().is_ok());
+                // Test appropriate declaration type
+            }
+        }
+    }
 
 
-    //
-    // mod pattern_matching_tests {
-    //     use super::*;
-    //
-    //     #[test]
-    //     fn test_simple_patterns_braces() {
-    //         let input = r#"
-    //         match x {
-    //             n if n > 0 => print("positive"),
-    //             n if n < 0 => print("negative"),
-    //             _ => print("zero")
-    //         }
-    //         "#;
-    //         let mut parser = create_parser(input, SyntaxMode::Braces);
-    //         let result = parser.parse_match_statement().unwrap();
-    //         // Add assertions
-    //     }
-    //
-    //     #[test]
-    //     fn test_simple_patterns_indent() {
-    //         let input = r#"
-    //         match x:
-    //             n if n > 0 => print("positive")
-    //             n if n < 0 => print("negative")
-    //             _ => print("zero")
-    //         "#;
-    //         let mut parser = create_parser(input, SyntaxMode::Indentation);
-    //         let result = parser.parse_match_statement().unwrap();
-    //         // Add assertions
-    //     }
-    //
-    //     #[test]
-    //     fn test_complex_patterns() {
-    //         let input = r#"
-    //         match value {
-    //             Point{x, y} if x > 0 && y > 0 => "first quadrant",
-    //             (x, y, z) => "tuple pattern",
-    //             [head, ..tail] => "array pattern",
-    //             _ => "wildcard"
-    //         }
-    //         "#;
-    //         let mut parser = create_parser(input, SyntaxMode::Braces);
-    //         let result = parser.parse_match_statement().unwrap();
-    //         // Add assertions
-    //     }
-    // }
-    //
+
+    mod pattern_matching_tests {
+        use super::*;
+
+        #[test]
+        fn test_simple_patterns_braces() {
+            let input = r#"
+            match x {
+                n if n > 0 => print("positive"),
+                n if n < 0 => print("negative"),
+                _ => print("zero")
+            }
+            "#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_match_statement().unwrap();
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_simple_patterns_indent() {
+            let input = r#"match x :
+    n if n > 0 => print("positive")
+    (x, y) => print("tuple simple")
+    [1, 2] => print("array simple")
+    _ => print("default")
+"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_match_statement().unwrap();
+            // Add assertions
+        }
+
+        #[test]
+        fn test_complex_patterns() {
+            let input = r#"
+            match value {
+                Point{x, y} if x > 0 && y > 0 => "first quadrant",
+                (x, y, z) => "tuple pattern",
+                [head, ..tail] => "array pattern",
+                _ => "wildcard"
+            }
+            "#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_match_statement().unwrap();
+            // Add assertions
+        }
+    }
+
 
     // mod control_flow_tests {
     //     use super::*;
