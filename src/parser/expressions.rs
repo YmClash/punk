@@ -1,4 +1,4 @@
-use crate::parser::ast::{ArrayAccess, ArrayExpression, ArraySlice, Assignment, ASTNode, BinaryOperation, CompoundAssignment, DestructuringAssignment, DictAccess, Expression, FunctionCall, IndexAccess, LambdaExpression, Literal, MemberAccess, MethodCall, Operator, Parameter, RangeExpression, Type, UnaryOperation, UnaryOperator};
+use crate::parser::ast::{ ArrayExpression, ArraySlice, Assignment, ASTNode, BinaryOperation, CompoundAssignment, DestructuringAssignment, DictAccess, Expression, FunctionCall, IndexAccess, LambdaExpression, Literal, MemberAccess, MethodCall, Operator, Parameter, RangeExpression, Type, UnaryOperation, UnaryOperator};
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
 use crate::parser::parser_error::ParserErrorType::{ExpectedArrowOrBlock, ExpectedCloseParenthesis, ExpectedCommaOrClosingParenthesis, UnexpectedEndOfInput, UnexpectedToken};
@@ -516,9 +516,9 @@ impl Parser {
             vec![ASTNode::Expression(expr)]
         } else if self.check(&[TokenType::DELIMITER(Delimiters::LCURBRACE)]) {
             // Bloc de code
-            //self.parse_block_expression()?
+            self.parse_block_expression()?
             //self.parse_body_block()?
-            self.parse_block()?
+            // self.parse_block()?
         } else {
             return Err(ParserError::new(ExpectedArrowOrBlock, self.current_position()));
         };
