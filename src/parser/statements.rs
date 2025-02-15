@@ -1,6 +1,5 @@
 use crate::parser::ast::{ASTNode, BreakStatement, ContinueStatement, ElifStatement, ExceptHandler, ForStatement, IfStatement, LoopStatement, Statement, TryStatement, Visibility, WhileStatement};
 use crate::parser::parser_error::{ParserError, ParserErrorType};
-use crate::parser::parser;
 use crate::parser::parser::Parser;
 use crate::tok::{Delimiters, Keywords, TokenType};
 
