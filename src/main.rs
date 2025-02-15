@@ -35,8 +35,8 @@ fn main() {
     let code_number = "a && b || c";
 
     let code_decl_braces = "let x = 10;let mut y:int = 3;const numb = 5;pub const x:int = 5;pub struct Point {x: int,y: int}pub struct Point {height: int,width: int}enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}pub fn add(x: int, y: int) -> int {return x + y}pub fn add(x: int, y: int) -> int {\
-    let mut result = x + y";
-    let code_decl_indentation = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}\npub struct Point {height: int,width: int}\nenum Color {x:int,y:float,z:str}\npub enum Color {pub x:int,y:float,z:str}\n";
+    let mut result = x + y;}";
+    let code_decl_indentation = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}pub struct Point {height: int,width: int} enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}";
 
     let solo_decl = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}}\n";
 
@@ -130,14 +130,15 @@ fn main() {
     let code_assign_desctructuring_braces = "[x,y,z] = point3d;";
     let code_assign_desctructuring_indent = "[x, y, z] = point3d";
 
-    let code_lambda_braces = "let add = lambda (x: int, y: int) -> int {x + y};";
+    let code_lambda_braces = "add = lambda (x: int, y: int) -> int {x + y};";
     let code_lambda_indent = "add = lambda (x: int, y: int) -> int: x + y";
 
     // let code_test = r#"if x > 0 { print(x);} elif x > 0 {hallo.chante;}elif x==0 {momo.position(x,y);}else{print(hallo.danse);}"#;
-    let code_test = r#"if x > 0 { print(x);}if x < 0 {print()}else{print("0");}"#;
+    // let code_test = r#"if x > 0 { print(x);}if x < 0 {print()}else{print("0");}"#;
+    let code_test = r#"if x > 0 { a(); } elif x < 0 { b(); } elif x == 0 { c(); } else { d(); };"#;
 
 
-    let code_test2 = r#"if x > 0 { print(IF); } elif { print(ELIF ou ELSE IF };} else{print(ELSE) ;}"#;
+    let code_test2 = r#"if x > 0 { print("if"); } elif x < 0 {print("elif");}else{print("else");}"#;
     let code_test3 = r#"while x > 0 { print(x);}"#;
     let code_test4 = r#"for i in range(10) { print(i);}"#;
 
@@ -211,10 +212,15 @@ fn main() {
     let code_test16 = r#"if x > 0 :
     print("hello")
 elif x < 0:
-    print("negative")
+    print("world")
+elif x == 0:
+    print("momo")
 else:
     print("Nothing")
 "#;
+
+
+    // let code_test17 = if
 
     let code_test17 = r#"counter:loop:
     print("infini")
@@ -222,7 +228,7 @@ else:
     if x > 10:
         break
 "#;
-    let code_test18 = r#"counter: loop {print("infini");x += 1;if x > 10 {break;}}"#;
+    let code_test18 = r#"counter: loop {print("infini"),x += 1,if x > 10 {break;}}"#;
 
     let code_test19 = r#"1..5"#;
     let code_test20 = r#"use std.io::{Read as R, Write as W};"#;
@@ -347,13 +353,23 @@ match x :
     let code_test50 = r#"array[1:10:2];"#;
     let code_test51 = r#"dict["key"]  "#;
     let code_test52 = r#"let x = &10; let mut x:float = 1.1;pub struct Point {x: int,y: int}enum Color {x:int,y:float,z:str}"#;
-    let code_test53 = r#"&mut"#;
+    let code_test53 = r#"fn main():
+    let x = 42
+    if x > 0:
+        print("positive")
+    match x:
+        n if n > 0 => print("positive")
+        _ => print(hallo)
+"#;
+
+
+    let code_test54 = r#"let x = result +1 ;"#;
 
 
 
 
-    // let mut lexer = Lexer::new(code_test35, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test50, SyntaxMode::Braces);
+    // let mut lexer = Lexer::new(code_decl_indentation, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test54, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
