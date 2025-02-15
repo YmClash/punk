@@ -231,7 +231,7 @@ else :
 
     }
 
-    mod test_Dictionary_declaration_tests{
+    mod test_dictionary_declaration_tests{
         use super::*;
 
         #[test]
@@ -425,11 +425,17 @@ else :
             assert!(result.is_ok());
         }
 
+
+        // Test unitaire pour la fonction lambda n'est pas encore bien  implemente.
+        // Je vais y remedier plus tard
+
         #[test]
         fn test_lambda_indent() {
-            let input = r#"lambda (x: int, y: int) -> int: x + y""#;
+            let input = r#"lambda (x: int, y: int) -> int:{x + y}"#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
-            let result = parser.parse_lambda_expression();
+            // let result = parser.parse_lambda_expression();
+            let result = parser.parse_program();
+            assert!(result.is_ok());
     }
 
 
@@ -489,16 +495,16 @@ if x > 10:
             }
         }
 
-        // #[test]
-        // fn test_recovery() {
-        //     let input = r#"
-        //     let x = ; // Error
-        //     let y = 42; // Should parse correctly
-        //     "#;
-        //     let mut parser = create_parser(input, SyntaxMode::Braces);
-        //     assert!(parser.parse_program().is_ok());
-        //     // Test error recovery
-        // }
+        #[test]
+        fn test_recovery() {
+            let input = r#"
+            let x = ; // Error
+            let y = 42; // Should parse correctly
+            "#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            assert!(parser.parse_program().is_ok());
+            // Test error recovery
+        }
     }
 
     mod integration_tests {
