@@ -2,9 +2,9 @@
 #[allow(dead_code)]
 use crate::lexer::lex::{SyntaxMode, Token};
 
-use crate::parser::ast::{ArrayExpression, ArrayRest, Assignment, AssociatedType, ASTNode, Attribute, BinaryOperation, BlockSyntax, Body, BreakStatement, ClassDeclaration, ClassMember, CompoundAssignment, CompoundOperator, ConstDeclaration, Constructor, ContinueStatement, Declaration, DestructuringAssignment, DictAccess, EnumDeclaration, EnumVariant, Expression, Field, ForStatement, FunctionCall, FunctionDeclaration, GenericParameter, GenericType, Identifier, IfStatement, ImplDeclaration, ImplMethod, ImportItem, ImportKeyword, IndexAccess, LambdaExpression, Literal, LoopStatement, MatchArm, MatchStatement, MemberAccess, MethodCall, MethodeDeclaration, ModuleImportStatement, Mutability, Operator, Parameter, Pattern, RangeExpression, RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, StructDeclaration, TraitDeclaration, TraitMethod, Type, TypeBound, TypeCast, UnaryOperation, UnaryOperator, VariableDeclaration, Visibility, WhereClause, WhileStatement};
+use crate::parser::ast::{ ArrayRest, AssociatedType, ASTNode,  CompoundOperator, Expression, GenericParameter, GenericType, ImplMethod,  ImportKeyword, Literal,  MatchArm, MatchStatement, ModuleImportStatement, Mutability, Operator, Parameter, Pattern,  RangePattern, ReturnStatement, SelfKind, SpecificImportStatement, Statement, Type, TypeBound,UnaryOperation, UnaryOperator, Visibility};
 
-use crate::parser::parser_error::ParserErrorType::{ExpectColon, ExpectFunctionName, ExpectIdentifier, ExpectOperatorEqual, ExpectParameterName, ExpectValue, ExpectVariableName, ExpectedCloseParenthesis, ExpectedOpenParenthesis, ExpectedTypeAnnotation, InvalidFunctionDeclaration, InvalidTypeAnnotation, InvalidVariableDeclaration, UnexpectedEOF, UnexpectedEndOfInput, UnexpectedIndentation, UnexpectedToken, ExpectedParameterName, InvalidAssignmentTarget, ExpectedDeclaration, ExpectedArrowOrBlock, ExpectedCommaOrClosingParenthesis, MultipleRestPatterns, ExpectedUseOrImport, ExpectedAlias, ExpectedRangeOperator, MultipleConstructors, ExpectedCommaOrCloseBrace, ExpectedLifetime, ExpectedType, InvalidConstructorReturn, InvalidConstructorParameter, InvalidConstructorName, MissingType};
+use crate::parser::parser_error::ParserErrorType::{ ExpectIdentifier, ExpectedTypeAnnotation,  InvalidTypeAnnotation,  UnexpectedEOF, UnexpectedEndOfInput,  UnexpectedToken, ExpectedParameterName,MultipleRestPatterns, ExpectedUseOrImport,  ExpectedCommaOrCloseBrace, ExpectedLifetime,  InvalidConstructorName, MissingType};
 use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
 use crate::parser::inference::{TypeContext};
@@ -32,10 +32,28 @@ impl Parser {
         }
     }
 
+    // pub fn parse_program(&mut self) -> Result<ASTNode, ParserError> {
+    //     let mut statements = Vec::new();
+    //     while !self.is_at_end() {
+    //         statements.push(self.parse_statement()?);
+    //     }
+    //     Ok(ASTNode::Program(statements))
+    // }
+
     pub fn parse_program(&mut self) -> Result<ASTNode, ParserError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            statements.push(self.parse_statement()?);
+            let statement = match self.parse_statement() {
+                Ok(stmt) => stmt,
+                Err(e) => {
+                    eprintln!("Erreur de parsing : {:?}", e);
+                    // On applique la synchronisation
+                    self.synchronize()?;
+                    // On peut continuer à la prochaine itération
+                    continue;
+                }
+            };
+            statements.push(statement);
         }
         Ok(ASTNode::Program(statements))
     }
