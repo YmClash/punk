@@ -353,8 +353,7 @@ match x :
     let code_test50 = r#"array[1:10:2];"#;
     let code_test51 = r#"dict["key"]  "#;
     let code_test52 = r#"let x = &10; let mut x:float = 1.1;pub struct Point {x: int,y: int}enum Color {x:int,y:float,z:str}"#;
-    let code_test53 = r#"fn main():
-    let x = 42
+    let code_test53 = r#"let x = 42
     if x > 0:
         print("positive")
     match x:
@@ -368,8 +367,8 @@ match x :
 
 
 
-    // let mut lexer = Lexer::new(code_decl_indentation, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test54, SyntaxMode::Braces);
+    // let mut lexer = Lexer::new(code_lambda_indent, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_test45, SyntaxMode::Braces);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
