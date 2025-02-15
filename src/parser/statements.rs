@@ -1,4 +1,4 @@
-use crate::parser::ast::{ASTNode, BreakStatement, ContinueStatement, ExceptHandler, ForStatement, IfStatement, LoopStatement, Statement, TryStatement, Visibility, WhileStatement};
+use crate::parser::ast::{ASTNode, BreakStatement, ContinueStatement, ElifStatement, ExceptHandler, ForStatement, IfStatement, LoopStatement, Statement, TryStatement, Visibility, WhileStatement};
 use crate::parser::parser_error::{ParserError, ParserErrorType};
 use crate::parser::parser;
 use crate::parser::parser::Parser;
@@ -8,52 +8,88 @@ impl Parser{
 
 
     /// fonction pour le gestion de structure de controle
+    // pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction if");
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::IF))?;
+    //     let condition = self.parse_expression(0)?;
+    //     //let then_block = self.parse_body_block()?;; // block_expression
+    //     let elif_block = self.parse_block()?;
+    //
+    //     let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]) {
+    //         // self.advance();
+    //         self.consume(TokenType::KEYWORD(Keywords::ELIF))?;
+    //
+    //         let elif_condition = self.parse_expression(0)?;
+    //         let elif_then_block = self.parse_block()?;
+    //
+    //         let elif_else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]){
+    //             Some(self.parse_block()?)
+    //         }else { None };
+    //
+    //
+    //         Some(vec![ASTNode::Statement(Statement::IfStatement(IfStatement{
+    //             condition: elif_condition,
+    //             elif_block: elif_then_block,
+    //             else_block: elif_else_block,
+    //         }))])
+    //
+    //
+    //
+    //         // let elif_statement = self.parse_if_statement()?;
+    //         // Some(vec![elif_statement])
+    //
+    //
+    //     }else if self.check(&[TokenType::KEYWORD(Keywords::ELSE)]){
+    //         self.consume(TokenType::KEYWORD(Keywords::ELSE))?;
+    //         //Some(self.parse_body_block()?)
+    //         Some(self.parse_block()?)
+    //     }else { None };
+    //
+    //     println!("Fin du parsing de l'instruction if");
+    //     Ok(ASTNode::Statement(Statement::IfStatement(IfStatement{
+    //         condition,
+    //         elif_block,
+    //         else_block,
+    //     })))
+    //
+    // }
     pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction if");
-
         self.consume(TokenType::KEYWORD(Keywords::IF))?;
         let condition = self.parse_expression(0)?;
-        //let then_block = self.parse_body_block()?;; // block_expression
-        let elif_block = self.parse_block()?;
+        let then_block = self.parse_block()?;
 
-        let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]) {
-            // self.advance();
+        let mut elif_branches = Vec::new();
+        while self.check(&[TokenType::KEYWORD(Keywords::ELIF)]) {
             self.consume(TokenType::KEYWORD(Keywords::ELIF))?;
-
             let elif_condition = self.parse_expression(0)?;
             let elif_then_block = self.parse_block()?;
-
-            let elif_else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]){
-                Some(self.parse_block()?)
-            }else { None };
-
-
-            Some(vec![ASTNode::Statement(Statement::IfStatement(IfStatement{
+            elif_branches.push(ElifStatement {
                 condition: elif_condition,
-                elif_block: elif_then_block,
-                else_block: elif_else_block,
-            }))])
+                block: elif_then_block,
+            });
+        }
 
-
-            //
-            // let elif_statement = self.parse_if_statement()?;
-            // Some(vec![elif_statement])
-            //
-
-        }else if self.check(&[TokenType::KEYWORD(Keywords::ELSE)]){
+        let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELSE)]) {
             self.consume(TokenType::KEYWORD(Keywords::ELSE))?;
-            //Some(self.parse_body_block()?)
             Some(self.parse_block()?)
-        }else { None };
+        } else {
+            None
+        };
 
-        println!("Fin du parsing de l'instruction if");
-        Ok(ASTNode::Statement(Statement::IfStatement(IfStatement{
+        Ok(ASTNode::Statement(Statement::IfStatement(IfStatement {
             condition,
-            elif_block,
+            then_block,
+            elif_block: elif_branches,
             else_block,
         })))
-
     }
+
+
+
+
+
     pub fn parse_while_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction while");
 
@@ -68,6 +104,33 @@ impl Parser{
         })))
 
     }
+
+
+    // pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
+    //     println!("Début du parsing de l'instruction if");
+    //
+    //     self.consume(TokenType::KEYWORD(Keywords::IF))?;
+    //     let condition = self.parse_expression(0)?;
+    //     //let then_block = self.parse_body_block()?;; // block_expression
+    //     let then_block = self.parse_block()?;
+    //
+    //     let else_block = if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]){
+    //         self.advance();
+    //         let elif_statement = self.parse_if_statement()?;
+    //         Some(vec![elif_statement])
+    //     }else if self.match_token(&[TokenType::KEYWORD(Keywords::ELSE)]){
+    //         //Some(self.parse_body_block()?)
+    //         Some(self.parse_block()?)
+    //     }else { None };
+    //
+    //     println!("Fin du parsing de l'instruction if");
+    //     Ok(ASTNode::Statement(Statement::IfStatement(IfStatement{
+    //         condition,
+    //         elif_block: then_block,
+    //         else_block,
+    //     })))
+    //
+    // }
 
     pub fn parse_loop_statement(&mut self) -> Result<ASTNode, ParserError> {
         println!("Début du parsing de l'instruction loop");
@@ -264,6 +327,13 @@ impl Parser{
         // else if self.check(&[TokenType::KEYWORD(Keywords::ELIF)]) {
         //     self.parse_if_statement()
         // }
+
+        else if self.check(&[TokenType::DEDENT]) {
+            // Si on rencontre un DEDENT, le consommer et continuer
+            self.advance();
+            return self.parse_statement();
+        }
+
 
 
 

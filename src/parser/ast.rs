@@ -822,21 +822,29 @@ pub struct ReturnStatement {
     // pub value: Expression
 }
 
+// #[allow(dead_code)]
+// #[derive(Clone, Debug)]
+// pub struct IfStatement {
+//     pub condition: Expression,
+//     pub elif_block: Vec<ASTNode>,
+//     pub else_block: Option<Vec<ASTNode>>,
+// }
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct IfStatement {
     pub condition: Expression,
-    pub elif_block: Vec<ASTNode>,
+    pub then_block: Vec<ASTNode>,
+    pub elif_block: Vec<ElifStatement>,
     pub else_block: Option<Vec<ASTNode>>,
+
 }
 
-#[allow(dead_code)]
-// #[derive(Clone, Debug)]
-// pub struct ElifStatement {
-//     pub condition: Expression,
-//     pub body: Body,
-// }
 
+#[derive(Clone, Debug, )]
+pub struct ElifStatement {
+    pub condition: Expression,
+    pub block: Vec<ASTNode>,
+}
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
