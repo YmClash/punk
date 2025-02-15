@@ -75,7 +75,7 @@ impl Parser{
     }
 
     // Helper pour la récupération d'erreur dans les blocs spécifiques
-
+    #[allow(dead_code)]
     fn synchronize_block(&mut self) -> Result<(), ParserError> {
         let mut nesting = 1;
 
@@ -120,9 +120,12 @@ impl Parser{
         Ok(())
     }
 
+
+
     // Exemple d'utilisation dans une méthode de parsing
+    #[allow(dead_code)]
     fn parse_method_with_recovery(&mut self) -> Result<ImplMethod, ParserError> {
-        let start_pos = self.current_position();
+        let _start_pos = self.current_position();
         match self.parse_impl_method() {
             Ok(method) => Ok(method),
             Err(e) => {
@@ -143,7 +146,7 @@ impl Parser{
     }
 
 
-
+    #[allow(dead_code)]
     fn sync_after_error(&mut self) {
         // Synchronisation après une erreur
         while let Some(token) = self.current_token() {
