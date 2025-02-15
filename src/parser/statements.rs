@@ -328,11 +328,11 @@ impl Parser{
         //     self.parse_if_statement()
         // }
 
-        else if self.check(&[TokenType::DEDENT]) {
-            // Si on rencontre un DEDENT, le consommer et continuer
-            self.advance();
-            return self.parse_statement();
-        }
+        // else if self.check(&[TokenType::DEDENT]) {
+        //     // Si on rencontre un DEDENT, le consommer et continuer
+        //     self.advance();
+        //     return self.parse_statement();
+        // }
 
 
 
