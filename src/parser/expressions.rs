@@ -1,4 +1,4 @@
-use crate::parser::ast::{ArrayExpression, Assignment, ASTNode, BinaryOperation, CompoundAssignment, DestructuringAssignment, DictAccess, Expression, FunctionCall, IndexAccess, LambdaExpression, Literal, MemberAccess, MethodCall, Operator, Parameter, RangeExpression, Type, UnaryOperation, UnaryOperator};
+use crate::parser::ast::{ ArrayExpression, ArraySlice, Assignment, ASTNode, BinaryOperation, CompoundAssignment, DestructuringAssignment, DictAccess, Expression, FunctionCall, IndexAccess, LambdaExpression, Literal, MemberAccess, MethodCall, Operator, Parameter, RangeExpression, Type, UnaryOperation, UnaryOperator};
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
 use crate::parser::parser_error::ParserErrorType::{ExpectedArrowOrBlock, ExpectedCloseParenthesis, ExpectedCommaOrClosingParenthesis, UnexpectedEndOfInput, UnexpectedToken};
@@ -87,12 +87,6 @@ impl Parser {
                 });
             }
 
-            // left = Expression::BinaryOperation(BinaryOperation{
-            //     left: Box::new(left),
-            //     operator,
-            //     right: Box::new(right),
-            // });
-
         }
 
         println!("Fin du parsing de l'expression ");
@@ -112,82 +106,218 @@ impl Parser {
 
     }
 
+
+    // pub fn parse_postfix_expression(&mut self) -> Result<Expression, ParserError> {
+    //     let mut expr = self.parse_primary_expression()?;
+    //
+    //     while let Some(token) = self.current_token() {
+    //
+    //         expr = match &token.token_type {
+    //             TokenType::DELIMITER(Delimiters::LSBRACKET) => {
+    //                 self.advance(); // Consume [
+    //
+    //                 // Check for empty start
+    //                 let start = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //                     None
+    //                 } else {
+    //                     Some(Box::new(self.parse_expression(0)?))
+    //                 };
+    //
+    //                 if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //                     self.advance(); // Consume :
+    //                     let end = if !self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) &&
+    //                         !self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
+    //                         Some(Box::new(self.parse_expression(0)?))
+    //                     } else {
+    //                         None
+    //                     };
+    //
+    //                     let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+    //                         self.advance();
+    //                         Some(Box::new(self.parse_expression(0)?))
+    //                     } else {
+    //                         None
+    //                     };
+    //
+    //                     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+    //                     Expression::ArraySlice(ArraySlice {
+    //                         array: Box::new(expr),
+    //                         start,
+    //                         end,
+    //                         step
+    //                     })
+    //                 } else if let Some(start) = start {
+    //                     // Simple index access
+    //                     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+    //                     match &*start {
+    //                         Expression::Literal(Literal::String(_)) => {
+    //                             println!("Accès dictionnaire parsé avec la clé : {:?}", start);
+    //                             Expression::DictAccess(DictAccess {
+    //                                 dict: Box::new(expr),
+    //                                 key: start
+    //                             })
+    //                         },
+    //                         _ => Expression::IndexAccess(IndexAccess {
+    //                             array: Box::new(expr),
+    //                             index: start
+    //                         })
+    //                     }
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             },
+    //
+    //             TokenType::DELIMITER(Delimiters::LPAR) => {
+    //                 self.advance();
+    //                 let arguments = self.parse_arguments_list()?;
+    //                 // self.expect_token(&TokenType::DELIMITER(Delimiters::RPAR))?;
+    //                 self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //                 Expression::FunctionCall(FunctionCall {
+    //                     name: Box::new(expr),
+    //                     arguments
+    //                 })
+    //             },
+    //             TokenType::DELIMITER(Delimiters::DOT) => {
+    //                 self.advance();
+    //                 if let Some(TokenType::IDENTIFIER { name }) = self.current_token().map(|t| &t.token_type) {
+    //                     let name = name.clone();
+    //                     self.advance();
+    //                     if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]) {
+    //                         self.advance();
+    //                         let arguments = self.parse_arguments_list()?;
+    //                         // self.expect_token(&TokenType::DELIMITER(Delimiters::RPAR))?;
+    //                         self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+    //                         Expression::MethodCall(MethodCall {
+    //                             object: Box::new(expr),
+    //                             method: name,
+    //                             arguments
+    //                         })
+    //                     } else {
+    //                         Expression::MemberAccess(MemberAccess {
+    //                             object: Box::new(expr),
+    //                             member: name
+    //                         })
+    //                     }
+    //                 } else {
+    //                     return Err(ParserError::new(UnexpectedToken, self.current_position()));
+    //                 }
+    //             },
+    //             _ => break,
+    //         };
+    //     }
+    //
+    //     Ok(expr)
+    // }
+
+
+
+
     pub fn parse_postfix_expression(&mut self) -> Result<Expression, ParserError> {
         let mut expr = self.parse_primary_expression()?;
 
-        loop {
-            if self.check(&[TokenType::DELIMITER(Delimiters::DOT)]){
-                self.advance();
-                let member_name = self.consume_identifier()?;
+        while let Some(token) = self.current_token() {
+            expr = match &token.token_type {
+                TokenType::DELIMITER(Delimiters::LSBRACKET) => {
+                    self.advance(); // Consume [
 
-                if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]){
-                    // Appel de méthode
+                    // Parse start
+                    let start = if !self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+                        Some(Box::new(self.parse_expression(0)?))
+                    } else {
+                        None
+                    };
+
+                    // Si on trouve .. ou :, c'est un slice
+                    if self.check(&[TokenType::OPERATOR(Operators::DOTDOT)]) ||
+                        self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+                        self.advance(); // Consomme '..' ou ':'
+
+                        // Parse end
+                        let end = if !self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) &&
+                            !self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
+                            Some(Box::new(self.parse_expression(0)?))
+                        } else {
+                            None
+                        };
+
+                        // Parse step
+                        let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
+                            self.advance(); // Consomme ':'
+                            Some(Box::new(self.parse_expression(0)?))
+                        } else {
+                            None
+                        };
+
+                        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+
+                        // Ne pas créer de RangeExpression, traiter start comme une valeur normale
+                        Expression::ArraySlice(ArraySlice {
+                            array: Box::new(expr),
+                            start,
+                            end,
+                            step
+                        })
+                    } else if let Some(start) = start {
+                        // Simple index access
+                        self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
+                        match &*start {
+                            Expression::Literal(Literal::String(_)) => {
+                                Expression::DictAccess(DictAccess {
+                                    dict: Box::new(expr),
+                                    key: start
+                                })
+                            },
+                            _ => Expression::IndexAccess(IndexAccess {
+                                array: Box::new(expr),
+                                index: start
+                            })
+                        }
+                    } else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
+                    }
+                },
+
+                TokenType::DELIMITER(Delimiters::LPAR) => {
                     self.advance();
                     let arguments = self.parse_arguments_list()?;
+                    // self.expect_token(&TokenType::DELIMITER(Delimiters::RPAR))?;
                     self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-                    println!("Arguments parsés : {:?}", arguments);
-                    expr = Expression::MethodCall(MethodCall{
-                        object: Box::new(expr),
-                        method: member_name,
-                        arguments,
-                    });
-                }else{
-                    // Acces à un membre
-                    println!("Nom du membre parsé : {}", member_name);
-                    expr = Expression::MemberAccess(MemberAccess{
-                        object: Box::new(expr),
-                        member: member_name,
-                    });
-                }
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]) {
-                // Appel de Fonction
-                self.advance();
-                let arguments = self.parse_arguments_list()?;
-                self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
-                println!("Arguments parsés : {:?}", arguments);
-                expr = Expression::FunctionCall(FunctionCall{
-                    name: Box::new(expr),
-                    arguments,
-                });
-            } else if self.check(&[TokenType::DELIMITER(Delimiters::LSBRACKET)]) {
-                //Acces à un élément d'un tableau par indice
-                self.advance();
-                if self.check(&[TokenType::OPERATOR(Operators::DOTDOT),TokenType::OPERATOR(Operators::DOTDOTEQUAL)]){
-                    // expr = self.parse_array_slice(expr)?;
-                    expr = self.parse_slice()?;
-                } else {
-                    let index = self.parse_expression(0)?;
-                    self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-
-                    // Si l'index est une string, on considère que c'est un accès dictionnaire
-                    match &index {
-                        Expression::Literal(Literal::String(_)) => {
-                            println!("Accès dictionnaire parsé avec la clé : {:?}", index);
-                            expr = Expression::DictAccess(DictAccess {
-                                dict: Box::new(expr),
-                                key: Box::new(index),
-                            });
-                        },
-                        _ => {
-                            println!("Accès tableau parsé avec l'index : {:?}", index);
-                            expr = Expression::IndexAccess(IndexAccess {
-                                array: Box::new(expr),
-                                index: Box::new(index),
-                            });
+                    Expression::FunctionCall(FunctionCall {
+                        name: Box::new(expr),
+                        arguments
+                    })
+                },
+                TokenType::DELIMITER(Delimiters::DOT) => {
+                    self.advance();
+                    if let Some(TokenType::IDENTIFIER { name }) = self.current_token().map(|t| &t.token_type) {
+                        let name = name.clone();
+                        self.advance();
+                        if self.check(&[TokenType::DELIMITER(Delimiters::LPAR)]) {
+                            self.advance();
+                            let arguments = self.parse_arguments_list()?;
+                            // self.expect_token(&TokenType::DELIMITER(Delimiters::RPAR))?;
+                            self.consume(TokenType::DELIMITER(Delimiters::RPAR))?;
+                            Expression::MethodCall(MethodCall {
+                                object: Box::new(expr),
+                                method: name,
+                                arguments
+                            })
+                        } else {
+                            Expression::MemberAccess(MemberAccess {
+                                object: Box::new(expr),
+                                member: name
+                            })
                         }
+                    } else {
+                        return Err(ParserError::new(UnexpectedToken, self.current_position()));
                     }
-                }
-            } else {
-                break;
-            }
+                },
+                _ => break,
+            };
         }
+
         Ok(expr)
     }
-
-
-
-
-
 
 
     pub fn parse_destructuring_assignment(&mut self) -> Result<Expression,ParserError>{
@@ -288,15 +418,6 @@ impl Parser {
                     Expression::Literal(Literal::Float { value })
                 }
 
-
-                // TokenType::STRING { value, .. } => {
-                //     let value = value.clone();
-                //     println!("Valeur de chaîne parsée : {}", value);
-                //     self.advance();
-                //     Expression::Literal(Literal::String(value))
-                // }
-
-
                 TokenType::STRING { value,.. } => {
                     let value = value.clone();
                     if value.len() == 1 && self.if_single_quote(&value) {
@@ -395,14 +516,12 @@ impl Parser {
             vec![ASTNode::Expression(expr)]
         } else if self.check(&[TokenType::DELIMITER(Delimiters::LCURBRACE)]) {
             // Bloc de code
-            //self.parse_block_expression()?
+            self.parse_block_expression()?
             //self.parse_body_block()?
-            self.parse_block()?
+            // self.parse_block()?
         } else {
             return Err(ParserError::new(ExpectedArrowOrBlock, self.current_position()));
         };
-
-
 
         Ok(Expression::LambdaExpression(LambdaExpression{
             parameters,

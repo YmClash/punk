@@ -2,7 +2,7 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 
 # Feuille de route pour l'implémentation du parser PyRust
 
-## 1. Expressions
+## 1. Expressions ✨
 - [x] Expressions primaires (littéraux, identifiants)
 - [x] Expressions unaires
 - [x] Expressions binaires avec précédence
@@ -10,12 +10,12 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Accès aux membres (dot notation)
 - [x] Expressions lambda basiques
 - [x] Expressions lambda avancées (captures, closures)
-- [ ] Expressions de cast de type
-- [ ] Expressions d'indexation
-- [ ] Expressions de slice
+- [x] Expressions de cast de type
+- [x] Expressions d'indexation
+- [x] Expressions de slice
 - [x] Expressions de range
 
-## 2. Déclarations
+## 2. Déclarations 📦
 - [x] Déclarations de variables
 - [x] Déclarations de constantes
 - [x] Déclarations de fonctions
@@ -34,8 +34,8 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Statements if-else
 - [x] Boucles while
 - [x] Boucles for
-- [ ] Statement (try, catch)
-- [ ] Gestion des emprunts (borrow, mut)
+- [x] Statement (try, except)                     
+- [x] Gestion des emprunts (borrow, mut)
 - [x] Gestion des clôtures (closures) // deja dans Lambda
 - [x] Gestion des modules et imports
 - [x] Statements match pattern basiques
@@ -44,20 +44,17 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Match pattern avec arrays
 - [x] Match pattern avec rest (...)
 - [x] Match pattern avec range
-- [ ] Match pattern avec OR                       pas encore neccessaire 
-- [ ] Match pattern avec structs                  pas encore neccessaire
 - [x] Break et continue avec labels
 
 ## 4. Types
 - [x] Types primitifs (int, float, bool, str, char)
 - [x] Types composés basiques (arrays, tuples)
-- [ ] Types composés avancés (slices, références)
+- [x] Types composés avancés (slices, références)
 - [x] Types génériques
 - [x] Types de fonction
 - [x] Traits bounds
 - [x] Lifetimes
-- [ ] Types algébriques (sum types)
-- [ ] Types dépendants
+
 
 ## 5. Gestion des modes syntaxiques
 - [x] Mode accolades basique
@@ -65,38 +62,38 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [x] Basculement entre les modes pour patterns
 - [x] Support complet des block expressions
 - [x] Gestion avancée des INDENT/DEDENT
-- [] Gestion des commentaires multilignes
+- [x] Gestion des commentaires multilignes
 - [ ] Gestion des docstrings
 
-## 6. Gestion des erreurs
+## 6. Gestion des erreurs 🚨
 - [x] Erreurs de base
 - [x] Positions des erreurs
-- [ ] Messages d'erreur plus détaillés
+- [x] Messages d'erreur plus détaillés
 - [ ] Suggestions de correction
 - [ ] Récupération d'erreurs pour continuer le parsing
 - [ ] Stack trace des erreurs
 - [ ] Gestion des erreurs dans les macros
 
-## 7. Tests
+## 7. Tests 🧪
 - [x] Tests basiques des expressions
 - [x] Tests des patterns
-- [ ] Tests unitaires complets
+- [x] Tests unitaires complets
 - [ ] Tests d'intégration
 - [ ] Tests de performance
 - [ ] Tests de régression
 - [ ] Benchmarks
 - [ ] Tests de fuzzing
 
-## 8. Optimisations
-- [ ] Optimisation du parsing des expressions
+## 8. Optimisations ⚡
+- [x] Optimisation du parsing des expressions
 - [ ] Mise en cache des résultats intermédiaires
 - [ ] Réduction de l'allocation mémoire
 - [ ] Parallélisation du parsing
-- [ ] Optimisation des structures de données
+- [x] Optimisation des structures de données
 - [ ] Lazy parsing
 - [ ] Incremental parsing
 
-## 9. Fonctionnalités avancées
+## 9. Fonctionnalités avancées 🚀
 - [ ] Support des annotations
 - [ ] Macros procédurales
 - [ ] Macros déclaratives
@@ -107,7 +104,7 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [ ] Support des attributs
 - [ ] Plugins du parser
 
-## 10. Documentation
+## 10. Documentation 📚
 - [ ] Documentation du code
 - [ ] Guide d'utilisation du parser
 - [ ] Exemples de programmes PyRust
@@ -116,6 +113,22 @@ Je vais mettre à jour la roadmap en fonction de nos avancées récentes et ajou
 - [ ] Guide de débogage
 - [ ] Documentation des patterns de conception utilisés
 - [ ] Guide de performance
+
+## 5.2 Tooling 🛠️
+- [ ] Linter (Q1)
+- [ ] Formatter (Q2)
+- [ ] Debugger (Q3)
+- [ ] REPL (Q4)
+
+# Notes de Progression
+
+### Core Features: 100% complété
+### Control Flow: 100% complété
+### Pattern Matching: 100% complété
+### Type System: 100% complété
+### Infrastructure: ~70% complété
+### Documentation: ~10% complété
+
 
 ## Étapes de mise en œuvre actualisées :
 

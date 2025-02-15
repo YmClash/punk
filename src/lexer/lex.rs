@@ -110,9 +110,7 @@ impl<'a> Lexer<'a> {
         keywords.insert("enum".to_string(), Keywords::ENUM);
         keywords.insert("except".to_string(), Keywords::EXCEPT);
         keywords.insert("false".to_string(), Keywords::FALSE);
-
         keywords.insert("finally".to_string(), Keywords::FINALLY);
-
         keywords.insert("fn".to_string(), Keywords::FN);
         keywords.insert("for".to_string(), Keywords::FOR);
         keywords.insert("from".to_string(), Keywords::FROM);
@@ -205,10 +203,8 @@ impl<'a> Lexer<'a> {
         operators.insert("/*".to_string(), Operators::SLASHSTAR);
         operators.insert("#".to_string(), Operators::DIESE);
         operators.insert("?".to_string(), Operators::INTERROGATION);
-
         operators.insert("_".to_string(), Operators::UNDERSCORE);
         operators.insert("=>".to_string(), Operators::FATARROW);
-
         operators.insert("..".to_string(), Operators::DOTDOT);
         operators.insert("..=".to_string(), Operators::DOTDOTEQUAL);
 
@@ -303,6 +299,27 @@ impl<'a> Lexer<'a> {
             // Si l'indentation est la même, on ne fait rien de spécial
         }
 
+        // if self.at_line_start && self.syntax_mode == SyntaxMode::Indentation {
+        //     self.at_line_start = false;
+        //     let current_indent = self.count_indentation();
+        //     let previous_indent = *self.indent_level.last().unwrap_or(&0);
+        //
+        //     if current_indent > previous_indent {
+        //         self.indent_level.push(current_indent);
+        //         return Some(TokenType::INDENT);
+        //     } else if current_indent < previous_indent {
+        //         // Stocker le niveau actuel pour le comparer après le pop
+        //         let current = current_indent;
+        //         if let Some(last_level) = self.indent_level.pop() {
+        //             if current < *self.indent_level.last().unwrap_or(&0) {
+        //                 // Remettre le niveau qu'on vient de retirer pour le prochain appel
+        //                 self.indent_level.push(last_level);
+        //             }
+        //             return Some(TokenType::DEDENT);
+        //         }
+        //     }
+        // }
+
         self.skip_whitespace(); // Sauter les espaces et tabulations
 
         // Vérifier le prochain caractère
@@ -323,7 +340,6 @@ impl<'a> Lexer<'a> {
 
                 }
             }
-
 
             Some('0'..='9') => Some(self.lex_number()),
             Some('a'..='z') | Some('A'..='Z') | Some('_') => Some(self.lex_identifier_or_keyword()),
@@ -351,9 +367,22 @@ impl<'a> Lexer<'a> {
                     return Some(TokenType::EOF);
                 }
             }
+            // None => {
+            //     if !self.indent_level.is_empty() && self.indent_level.len() > 1 {
+            //         self.indent_level.pop();
+            //         Some(TokenType::DEDENT)
+            //     } else if self.indent_level.len() == 1 {
+            //         // Dernier niveau d'indentation
+            //         self.indent_level.pop();
+            //         Some(TokenType::DEDENT)
+            //     } else {
+            //         Some(TokenType::EOF)
+            //     }
+            // }
+
             ////////////à surveiller si c'est correct et pas redondant
 
-            //None => Some(TokenType::EOF),   //Ajouter nouvelement
+            // None => Some(TokenType::EOF),   //Ajouter nouvelement
             _ => Some(self.lex_unknown()),
         }
     }
@@ -517,7 +546,6 @@ impl<'a> Lexer<'a> {
                 //s'affiche pas et si value.len() == 3  le caractère est parsé et s'affiche
 
                 //probleme resolu!!! la ligne suivante resoud le probleme
-
 
                 self.current_token_text = value.clone();
                 return TokenType::CHAR {
@@ -743,13 +771,7 @@ impl<'a> Lexer<'a> {
             }
 
         }
-        // while let Some(&ch) = self.source.peek() {
-        //     if ch.is_whitespace() && ch != '\n' {
-        //         self.advance();
-        //     } else {
-        //         break;
-        //     }
-        // }
+
     }
 
     /// C'est la deuxième methode principal avec get_token() pour obtenir les tokens
@@ -811,8 +833,6 @@ impl<'a> Lexer<'a> {
         self.at_line_start = true;
         TokenType::NEWLINE
     }
-
-
 
 }
 

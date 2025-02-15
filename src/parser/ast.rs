@@ -3,8 +3,7 @@ use crate::lexer::lex::Token;
 use crate::parser::parser_error::ParserError;
 
 use num_bigint::BigInt;
-use std::fmt;
-use std::fmt::Formatter;
+
 
 
 #[allow(dead_code)]
@@ -464,6 +463,7 @@ pub enum Expression {
     ArrayAccess(ArrayAccess), // transfere dans IndexAccess
     ArraySlice(ArraySlice), // pas encore completement implementé
     Slice(Slice), // pas encore completement implementé
+    RangeSlice(RangeSlice), // pas encore completement implementé
 
 
     MemberAccess(MemberAccess),
@@ -686,7 +686,7 @@ pub struct ArraySlice{
     pub start: Option<Box<Expression>>,
     pub end: Option<Box<Expression>>,
     pub step: Option<Box<Expression>>,
-    pub inclusive: bool,
+    // pub inclusive: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -696,6 +696,14 @@ pub struct Slice {
     pub step: Option<Box<Expression>>
 }
 
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct RangeSlice{
+    pub array: Box<Expression>,
+    pub range: Box<Expression>,
+    pub step: Option<Box<Expression>>,
+}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -813,21 +821,29 @@ pub struct ReturnStatement {
     // pub value: Expression
 }
 
+// #[allow(dead_code)]
+// #[derive(Clone, Debug)]
+// pub struct IfStatement {
+//     pub condition: Expression,
+//     pub elif_block: Vec<ASTNode>,
+//     pub else_block: Option<Vec<ASTNode>>,
+// }
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct IfStatement {
     pub condition: Expression,
-    pub elif_block: Vec<ASTNode>,
+    pub then_block: Vec<ASTNode>,
+    pub elif_block: Vec<ElifStatement>,
     pub else_block: Option<Vec<ASTNode>>,
+
 }
 
-#[allow(dead_code)]
-// #[derive(Clone, Debug)]
-// pub struct ElifStatement {
-//     pub condition: Expression,
-//     pub body: Body,
-// }
 
+#[derive(Clone, Debug, )]
+pub struct ElifStatement {
+    pub condition: Expression,
+    pub block: Vec<ASTNode>,
+}
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
