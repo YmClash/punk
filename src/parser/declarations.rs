@@ -973,7 +973,7 @@ impl Parser{
         }))
     }
 
-    fn parse_comprehension_for(&mut self) -> Result<ComprehensionFor, ParserError> {
+    pub fn parse_comprehension_for(&mut self) -> Result<ComprehensionFor, ParserError> {
         println!("Début du parsing de la boucle for de list comprehension");
         let pattern = self.parse_pattern()?;
         self.consume(TokenType::KEYWORD(Keywords::IN))?;
@@ -1040,6 +1040,14 @@ impl Parser{
     pub fn parse_dict_literal(&mut self) -> Result<Expression, ParserError> {
         println!("Debut du parsing d'un dictionnaire");
         self.consume(TokenType::DELIMITER(Delimiters::LCURBRACE))?;
+
+        // verifie si c'est un dictionnaire vide
+        if self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]){
+            self.advance();
+            println!("Fin du parsing du dictionnaire OK!!!!!!!!!!!!!!!!!!!!!!!");
+            return Ok(Expression::DictLiteral(DictLiteral { entries: vec![] }));
+        }
+
 
         // Parser la première paire clé-valeur
         let key = self.parse_expression(0)?;
