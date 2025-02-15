@@ -108,7 +108,7 @@ except Error as e:
 
         #[test]
         fn test_if_elif_else_brace() {
-            let input = r#"if x > 0 { print(x); } elif x < 0 { print(); } else { print(\"0\"); }"#;
+            let input = r#"if x > 0 { print("if"); } elif x < 0 {print("elif");}else{print("else");}"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_if_statement();
             assert!(result.is_ok());
@@ -116,11 +116,11 @@ except Error as e:
         #[test]
         fn test_if_elif_else_indent() {
             let input = r#"if x > 0 :
-    print(x)
-elif x < 0 :
-    print()
+    print("if")
+elif x < 0:
+    print("elif")
 else :
-    print(\"0\")
+    print("else")
 "#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_if_statement();
@@ -374,6 +374,44 @@ else :
             assert!(parser.parse_match_statement().is_ok());
 
         }
+
+        #[test]
+        fn test_complex_patterns_indent() {
+            let input = r#"match x :
+    [0, 0] => print("Origin")
+    [x, 0]:
+        print("X-axis")
+        print(x)
+    [0, y] if y > 0 => print("Positive Y-axis")
+    _ => print("Other")
+"#;
+
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            assert!(parser.parse_match_statement().is_ok());
+        }
+
+
+    }
+
+
+    mod lambda_tests{
+        use super::*;
+
+        #[test]
+        fn test_lambda_braces() {
+            // let input = r#"let add = |x, y| x + y;"#;
+            let input =r#"let add = lambda (x: int, y: int) -> int {x + y};"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            // let result = parser.parse_variable_declaration();
+            let result = parser.parse_lambda_expression();
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_lambda_indent() {
+            let input = r#"add = lambda (x: int, y: int) -> int: x + y";"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_lambda_expression();
     }
 
 
@@ -494,4 +532,267 @@ if x > 10:
             assert!(parser.parse_program().is_ok());
         }
     }
+
+
+
+    mod fonction_declaration_tests{
+        use pyrust::parser::ast::Visibility;
+        use super::*;
+
+        #[test]
+        fn test_function_declaration_braces() {
+            let input = r#"fn add(x: int, y: int) -> int {let mut result = x + y;return result}"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_function_declaration(Visibility::Public);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_function_declaration_indent(){
+            let input = r#"fn add(x: int, y: int) -> int:
+    let mut result = x + y
+    return result"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_function_declaration(Visibility::Public);
+            assert!(result.is_ok());
+        }
+    }
+
+    mod access_call_tests{
+        use super::*;
+
+        #[test]
+        fn test_function_call_method_braces(){
+            let input = r#"chat.danse(x,y);"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_function_call_method_indent(){
+            let input = r#"chat.danse(x,y)"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_complex_function_call_method_braces(){
+            // let input = r#"chat.danse(x,y).parle(z).mange(a,b);"#;
+            let input = r#"obj.method1().field.method2(1+2);"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+
+        fn test_complex_function_call_method_indent(){
+            let input = r#"obj.method1().field.method2(1+2)"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_array_access_braces(){
+            let input = r#"array[index];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_array_access_indent(){
+            let input = r#"array[index]"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_complex_array_access_braces(){
+            let input = r#"array[index].field[index];"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_complex_array_access_indent(){
+            let input = r#"array[index].field[index]"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+    }
+
+    mod destructuring_and_compound_tests{
+        use super::*;
+
+
+        #[test]
+        fn test_destructuring_braces(){
+            let input = r#"[x,y,z] = point3d;"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            // let result = parser.parse_variable_declaration();
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_destructuring_indent(){
+            let input = r#"[x,y,z] = point3d"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            // let result = parser.parse_variable_declaration();
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_compound_braces(){
+            let input = r#"counter += offset * 5"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            // let result = parser.parse_variable_declaration();
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_compound_indent(){
+            let input = r#"counter += offset * 5"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            // let result = parser.parse_variable_declaration();
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_assign_compound_braces(){
+            let input = r#"a = b = c = 0;"#;
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            // let result = parser.parse_variable_declaration();
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_assign_compound_indent(){
+            let input = r#"a = b = c = 0"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            // let result = parser.parse_variable_declaration();
+            let result = parser.parse_expression(0);
+            assert!(result.is_ok());
+        }
+
+    }
+    mod trait_tests {
+        use pyrust::parser::ast::Visibility;
+        use super::*;
+
+        #[test]
+        fn test_trait_declaration_braces() {
+            let input = r#"trait Drawable  {fn do_something(x: T) -> int;fn area(a:float)->float;fn do_something_else(x: char) -> int;type Color;}"#;
+
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_trait_declaration(Visibility::Public);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_trait_declaration_indent() {
+            let input = r#"trait Drawable:
+    fn do_something(x: int) -> int
+    fn do_something_else(x: int) -> int
+    fn area() -> float
+    type Color"#;
+
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_trait_declaration(Visibility::Public);
+            assert!(result.is_ok());
+        }
+    }
+        mod impl_tests {
+            use pyrust::parser::ast::Visibility;
+            use super::*;
+
+            #[test]
+            fn test_trait_impl_braces() {
+                let input = r#"impl<T> Drawable for MyType<T>{
+    fn draw(x:int) {
+        return self.x+1}
+    fn get_color() -> int {
+        return color.code()
+        }
+    }"#;
+
+                let mut parser = create_parser(input, SyntaxMode::Braces);
+                let result = parser.parse_impl_declaration(Visibility::Private);
+                assert!(result.is_ok());
+            }
+
+            #[test]
+            fn test_trait_impl_indent() {
+                let input = r#"impl<T> Drawable for MyType<T> where D: Display:
+    fn draw(x: T) -> bool:
+        return self.x + 1"#;
+
+                let mut parser = create_parser(input, SyntaxMode::Indentation);
+                let result = parser.parse_impl_declaration(Visibility::Private);
+                assert!(result.is_ok());
+            }
+
+        }
+
+
+        mod struct_tests {
+            use pyrust::parser::ast::Visibility;
+            use super::*;
+
+            #[test]
+            fn test_struct_declaration_braces() {
+                let input = r#"struct Point {x: int,y: int};"#;
+
+                let mut parser = create_parser(input, SyntaxMode::Braces);
+                let result = parser.parse_struct_declaration(Visibility::Public);
+                assert!(result.is_ok());
+            }
+
+            #[test]
+            fn test_struct_declaration_indent() {
+                let input = r#"struct Point {x: int,y: int}"#;
+
+                let mut parser = create_parser(input, SyntaxMode::Indentation);
+                let result = parser.parse_struct_declaration(Visibility::Public);
+                assert!(result.is_ok());
+            }
+        }
+
+        mod enum_tests {
+            use pyrust::parser::ast::Visibility;
+            use super::*;
+
+            #[test]
+            fn test_enum_declaration_braces() {
+                let input = r#"enum Color {x:int,y:float,z:str}"#;
+
+                let mut parser = create_parser(input, SyntaxMode::Braces);
+                let result = parser.parse_enum_declaration(Visibility::Public);
+                assert!(result.is_ok());
+            }
+
+            #[test]
+            fn test_enum_declaration_indent() {
+                let input = r#"enum Color {x:int,y:float,z:str}"#;
+
+                let mut parser = create_parser(input, SyntaxMode::Indentation);
+                let result = parser.parse_enum_declaration(Visibility::Public);
+                assert!(result.is_ok());
+            }
+        }
+
+
+}
 }
