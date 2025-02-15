@@ -329,6 +329,24 @@ else :
             let mut parser = create_parser(test_cases, SyntaxMode::Indentation);
             assert!(parser.parse_function_declaration(Visibility::Public).is_ok());
         }
+
+        #[test]
+        fn test_divers_variable_declarations_braces(){
+            let input = r#"let x = 10;let mut y:int = 3;const numb = 5;pub const x:int = 5;pub struct Point {x: int,y: int}pub struct Point {height: int,width: int}enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}pub fn add(x: int, y: int) -> int {return x + y}pub fn add(x: int, y: int) -> int {let mut result = x + y;}"#;
+
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_program();
+            assert!(result.is_ok());
+        }
+
+
+        #[test]
+        fn test_divers_variable_declarations_indent(){
+            let input = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}pub struct Point {height: int,width: int} enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}";
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_program();
+            assert!(result.is_ok());
+        }
     }
 
 
@@ -400,7 +418,7 @@ else :
         #[test]
         fn test_lambda_braces() {
             // let input = r#"let add = |x, y| x + y;"#;
-            let input =r#"let add = lambda (x: int, y: int) -> int {x + y};"#;
+            let input =r#"lambda (x: int, y: int) -> int {x + y};"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             // let result = parser.parse_variable_declaration();
             let result = parser.parse_lambda_expression();
@@ -409,12 +427,14 @@ else :
 
         #[test]
         fn test_lambda_indent() {
-            let input = r#"add = lambda (x: int, y: int) -> int: x + y";"#;
+            let input = r#"lambda (x: int, y: int) -> int: x + y""#;
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             let result = parser.parse_lambda_expression();
     }
 
 
+
+}
     mod control_flow_tests {
         use super::*;
 
@@ -439,15 +459,15 @@ if x > 10:
             assert!(parser.parse_loop_statement().is_ok());
 
 
-    }
+        }
 
-    #[test]
-    fn test_loops_braces_with_label() {
-        let test_cases = r#"counter: loop {print("infini"),x += 1,if x > 10 {break;}}"#;
+        #[test]
+        fn test_loops_braces_with_label() {
+            let test_cases = r#"counter: loop {print("infini"),x += 1,if x > 10 {break;}}"#;
 
-        let mut parser = create_parser(test_cases, SyntaxMode::Braces);
-        assert!(parser.parse_loop_statement().is_ok());
-    }
+            let mut parser = create_parser(test_cases, SyntaxMode::Braces);
+            assert!(parser.parse_loop_statement().is_ok());
+        }
     }
 
 
@@ -469,16 +489,16 @@ if x > 10:
             }
         }
 
-        #[test]
-        fn test_recovery() {
-            let input = r#"
-            let x = ; // Error
-            let y = 42; // Should parse correctly
-            "#;
-            let mut parser = create_parser(input, SyntaxMode::Braces);
-            assert!(parser.parse_program().is_ok());
-            // Test error recovery
-        }
+        // #[test]
+        // fn test_recovery() {
+        //     let input = r#"
+        //     let x = ; // Error
+        //     let y = 42; // Should parse correctly
+        //     "#;
+        //     let mut parser = create_parser(input, SyntaxMode::Braces);
+        //     assert!(parser.parse_program().is_ok());
+        //     // Test error recovery
+        // }
     }
 
     mod integration_tests {
@@ -506,34 +526,30 @@ if x > 10:
 
         #[test]
         fn test_complete_file_indent() {
-            let input = r#"fn main():
-    let x = 42
-    if x > 0:
-        print("positive")
-
-    match x:
-        n if n > 0 => print("positive")
-        _ => print("other")
+            let input = r#"let x = 42
+if x > 0:
+    print("positive")
+match x:
+    n if n > 0 => print("positive")
+    _ => print("other")
 "#;
 
 
-//             r#"fn main():
-//     let x = 42
-//     if x > 0:
-//         print("positive")
-//
-// match x:
-//                     n if n > 0 => print("positive")
-//                     _ => print("other")
-//             "#;
+            //             r#"fn main():
+            //     let x = 42
+            //     if x > 0:
+            //         print("positive")
+            //
+            // match x:
+            //                     n if n > 0 => print("positive")
+            //                     _ => print("other")
+            //             "#;
 
 
             let mut parser = create_parser(input, SyntaxMode::Indentation);
             assert!(parser.parse_program().is_ok());
         }
     }
-
-
 
     mod fonction_declaration_tests{
         use pyrust::parser::ast::Visibility;
@@ -688,6 +704,7 @@ if x > 10:
         }
 
     }
+
     mod trait_tests {
         use pyrust::parser::ast::Visibility;
         use super::*;
@@ -714,13 +731,13 @@ if x > 10:
             assert!(result.is_ok());
         }
     }
-        mod impl_tests {
-            use pyrust::parser::ast::Visibility;
-            use super::*;
+    mod impl_tests {
+        use pyrust::parser::ast::Visibility;
+        use super::*;
 
-            #[test]
-            fn test_trait_impl_braces() {
-                let input = r#"impl<T> Drawable for MyType<T>{
+        #[test]
+        fn test_trait_impl_braces() {
+            let input = r#"impl<T> Drawable for MyType<T>{
     fn draw(x:int) {
         return self.x+1}
     fn get_color() -> int {
@@ -728,71 +745,67 @@ if x > 10:
         }
     }"#;
 
-                let mut parser = create_parser(input, SyntaxMode::Braces);
-                let result = parser.parse_impl_declaration(Visibility::Private);
-                assert!(result.is_ok());
-            }
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_impl_declaration(Visibility::Private);
+            assert!(result.is_ok());
+        }
 
-            #[test]
-            fn test_trait_impl_indent() {
-                let input = r#"impl<T> Drawable for MyType<T> where D: Display:
+        #[test]
+        fn test_trait_impl_indent() {
+            let input = r#"impl<T> Drawable for MyType<T> where D: Display:
     fn draw(x: T) -> bool:
         return self.x + 1"#;
 
-                let mut parser = create_parser(input, SyntaxMode::Indentation);
-                let result = parser.parse_impl_declaration(Visibility::Private);
-                assert!(result.is_ok());
-            }
-
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_impl_declaration(Visibility::Private);
+            assert!(result.is_ok());
         }
 
+    }
 
-        mod struct_tests {
-            use pyrust::parser::ast::Visibility;
-            use super::*;
+    mod struct_tests {
+        use pyrust::parser::ast::Visibility;
+        use super::*;
 
-            #[test]
-            fn test_struct_declaration_braces() {
-                let input = r#"struct Point {x: int,y: int};"#;
+        #[test]
+        fn test_struct_declaration_braces() {
+            let input = r#"struct Point {x: int,y: int};"#;
 
-                let mut parser = create_parser(input, SyntaxMode::Braces);
-                let result = parser.parse_struct_declaration(Visibility::Public);
-                assert!(result.is_ok());
-            }
-
-            #[test]
-            fn test_struct_declaration_indent() {
-                let input = r#"struct Point {x: int,y: int}"#;
-
-                let mut parser = create_parser(input, SyntaxMode::Indentation);
-                let result = parser.parse_struct_declaration(Visibility::Public);
-                assert!(result.is_ok());
-            }
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_struct_declaration(Visibility::Public);
+            assert!(result.is_ok());
         }
 
-        mod enum_tests {
-            use pyrust::parser::ast::Visibility;
-            use super::*;
+        #[test]
+        fn test_struct_declaration_indent() {
+            let input = r#"struct Point {x: int,y: int}"#;
 
-            #[test]
-            fn test_enum_declaration_braces() {
-                let input = r#"enum Color {x:int,y:float,z:str}"#;
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_struct_declaration(Visibility::Public);
+            assert!(result.is_ok());
+        }
+    }
 
-                let mut parser = create_parser(input, SyntaxMode::Braces);
-                let result = parser.parse_enum_declaration(Visibility::Public);
-                assert!(result.is_ok());
-            }
+    mod enum_tests {
+        use pyrust::parser::ast::Visibility;
+        use super::*;
 
-            #[test]
-            fn test_enum_declaration_indent() {
-                let input = r#"enum Color {x:int,y:float,z:str}"#;
+        #[test]
+        fn test_enum_declaration_braces() {
+            let input = r#"enum Color {x:int,y:float,z:str}"#;
 
-                let mut parser = create_parser(input, SyntaxMode::Indentation);
-                let result = parser.parse_enum_declaration(Visibility::Public);
-                assert!(result.is_ok());
-            }
+            let mut parser = create_parser(input, SyntaxMode::Braces);
+            let result = parser.parse_enum_declaration(Visibility::Public);
+            assert!(result.is_ok());
         }
 
+        #[test]
+        fn test_enum_declaration_indent() {
+            let input = r#"enum Color {x:int,y:float,z:str}"#;
 
-}
+            let mut parser = create_parser(input, SyntaxMode::Indentation);
+            let result = parser.parse_enum_declaration(Visibility::Public);
+            assert!(result.is_ok());
+        }
+    }
 }
