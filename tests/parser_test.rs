@@ -4,7 +4,6 @@ mod tests {
     use pyrust::{Lexer, SyntaxMode};
     use pyrust::parser::ast::Expression;
 
-    use super::*;
 
     // Fonction d'aide pour créer un parser
     fn create_parser(source: &str, mode: SyntaxMode) -> Parser {
@@ -13,9 +12,9 @@ mod tests {
         Parser::new(tokens, mode)
     }
 
-    fn assert_ast_eq(actual: Expression, expected: Expression) {
-        assert_eq!(format!("{:#?}", actual), format!("{:#?}", expected));
-    }
+    // fn assert_ast_eq(actual: Expression, expected: Expression) {
+    //     assert_eq!(format!("{:#?}", actual), format!("{:#?}", expected));
+    // }
 
     mod expression_tests {
 
