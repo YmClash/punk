@@ -1,5 +1,7 @@
-mod analyser;
-mod semantic_error;
-mod ast_semantic;
-mod type_checker;
-mod borrow_check;
+pub mod analyser;
+pub mod semantic_error;
+pub mod ast_semantic;
+pub mod type_checker;
+pub mod borrow_check;
+pub mod typerror;
+pub mod symbols;
