@@ -45,6 +45,7 @@ pub enum SymbolError {
     InvalidVisibility(String),
     InvalidScope,
     ImportError(String),
+
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
@@ -178,7 +179,7 @@ impl SemanticError{
 }
 
 
-/// test unitaire isole
+/// Test unitaire isole
 #[cfg(test)]
 mod tests {
     use super::*;
