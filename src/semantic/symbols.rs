@@ -1,10 +1,11 @@
-// use crate::semantic::semantic_error::SymbolError;
+//src/semantic/symbols.rs
+
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::fmt;
-use crate::semantic::semantic_error::{Position, SemanticError};
-use crate::semantic::semantic_error::SemanticErrorType::{};
-use crate::semantic::semantic_error::SymbolError::SymbolAlreadyDeclared;
+use crate::parser::ast::Type;
+use crate::semantic::semantic_error::{Position, SymbolError};
+
 
 /// Type pour les identifiants uniques des symboles
 #[allow(dead_code)]
@@ -31,6 +32,7 @@ pub struct SourceLocation{
 pub enum SymbolKind {
     Variable,
     Function,
+    Class,
     Type,
     Module,
     Trait,
@@ -61,6 +63,8 @@ pub struct SymbolAttrs {
     pub is_initialized: bool,
     pub docstring: Option<String>,
     pub type_info: Option<TypeId>,
+    pub inferred_type: Option<Type>,
+    pub used: bool,
 
 }
 
@@ -71,7 +75,9 @@ impl Default for SymbolAttrs {
             is_mutable: false,
             is_initialized: false,
             type_info: None,
+            inferred_type: None,
             docstring: None,
+            used: false,
         }
     }
 }
@@ -117,9 +123,7 @@ impl Symbol {
             Visibility::Public => true,
             _ => false,
         }
-
     }
-
 }
 
 /// Un scope est une collection de symboles
@@ -134,7 +138,6 @@ pub enum ScopeKind {
     Trait,
     Struct,
     Implementation,
-
 }
 
 
@@ -191,22 +194,12 @@ impl Scope{
         Ok(())
     }
 
-    // pub fn add_symbol(&mut self,name:String,symbol_id:SymbolId) -> Result<(),SemanticError>{
-    //     if self.symbols.contains_key(&name){
-    //         // return Err(SemanticError::new(SymbolError(SymbolAlreadyDeclared(name.clone())),name),);
-    //         return Err(SemanticError::new(SymbolError(SymbolAlreadyDeclared(name.clone())),name)));
-    //     }
-    //     self.symbols.insert(name,symbol_id);
-    //     Ok(())
-    // }
-
     /// Recherche un symbole dans ce scope uniquement
     pub fn lookup_symbol(&self, name: &str) -> Option<SymbolId> {
         self.symbols.get(name).copied()
     }
 
     // ajouter un scope enfant
-
     pub fn add_child(&mut self, child_id: ScopeId) {
         self.children.push(child_id);
     }
@@ -218,36 +211,8 @@ impl Scope{
         }
     }
 
-
 }
 
-
-/// Erreurs possibles lors de la manipulation des symboles
-#[derive(Debug)]
-pub enum SymbolError {
-    SymbolNotFound(String),
-    SymbolAlreadyDeclared(String),
-    InvalidVisibility(String),
-    InvalidScope,
-    ImportError(String),
-}
-
-impl fmt::Display for SymbolError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SymbolError::SymbolNotFound(name) =>
-                write!(f, "Symbol not found: {}", name),
-            SymbolError::SymbolAlreadyDeclared(name) =>
-                write!(f, "Symbol already declared: {}", name),
-            SymbolError::InvalidVisibility(msg) =>
-                write!(f, "Invalid visibility: {}", msg),
-            SymbolError::InvalidScope =>
-                write!(f, "Invalid scope"),
-            SymbolError::ImportError(msg) =>
-                write!(f, "Import error: {}", msg),
-        }
-    }
-}
 
 // Tests unitaires
 #[cfg(test)]
@@ -301,4 +266,8 @@ mod tests {
         assert_eq!(scope.children.len(), 2);
         assert_eq!(scope.parent, Some(ScopeId(0)));
     }
+
+
+
+
 }

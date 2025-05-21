@@ -348,8 +348,8 @@ pub trait MutabilityManager {
     /// Enregistre un move
     fn register_move(&mut self, symbol_id: SymbolId, location: SourceLocation) -> Result<(), SemanticError>;
 }
-
-/// Implémentation du MutabilityManager pour SymbolTable
+//
+// /// Implémentation du MutabilityManager pour SymbolTable
 // impl MutabilityManager for SymbolTable {
 //     fn is_mutable(&self, symbol_id: SymbolId) -> Result<bool, SemanticError> {
 //         match self.get_symbol(symbol_id) {
