@@ -98,7 +98,7 @@ pub struct Position {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Addition,       // +
-    Substraction,   // -
+    Substraction,   // -        ortho a corrige
     Multiplication, // *
     Division,       // /
     Modulo,     // %
@@ -109,7 +109,7 @@ pub enum Operator {
     GreaterThan,   // >
     And, // &&
     Or, // ||
-    LesshanOrEqual, // <=
+    LesshanOrEqual, // <=         ortho a corrige
     GreaterThanOrEqual, // >=
     Range, // ..
     RangeInclusive, // ..=
@@ -1005,5 +1005,10 @@ pub struct  ArrayRest {
     pub before: Vec<Pattern>,
     pub after: Vec<Pattern>,
 }
+
+
+
+
+
 
 ///////////////////////////////// by YmC////////////////////////////////////////////////////////////
