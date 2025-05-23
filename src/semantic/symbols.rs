@@ -3,9 +3,9 @@
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::fmt;
-use crate::parser::ast::Type;
-use crate::semantic::semantic_error::{Position, SymbolError};
 
+use crate::semantic::semantic_error::{Position, SymbolError};
+use crate::semantic::types::type_system::Type;
 
 /// Type pour les identifiants uniques des symboles
 #[allow(dead_code)]
