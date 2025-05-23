@@ -15,6 +15,7 @@ pub struct TypeChecker {
     pub type_system: TypeSystem,
     // pub symbol_table: Rc<RefCell<SymbolTable>>,
     // pub type_system: Rc<RefCell<TypeSystem>>,
+
 }
 
 impl TypeChecker {
