@@ -162,18 +162,19 @@ fn borrow_error_to_semantic(error: BorrowErrorKind, position: Position) -> Seman
 }
 
 /// Gère l'état des emprunts et la mutabilité
+#[derive(Debug, Clone)]
 pub struct BorrowChecker {
     /// Borrows actifs par symbole
-    active_borrows: HashMap<SymbolId, Vec<BorrowInfo>>,
+    pub active_borrows: HashMap<SymbolId, Vec<BorrowInfo>>,
 
     /// Variables initialisées
-    initialized_variables: HashSet<SymbolId>,
+    pub initialized_variables: HashSet<SymbolId>,
 
     /// Variables moved
-    moved_variables: HashMap<SymbolId, SourceLocation>,
+    pub moved_variables: HashMap<SymbolId, SourceLocation>,
 
     /// Historique des borrows (pour debug et reporting)
-    borrow_history: Vec<BorrowInfo>,
+    pub borrow_history: Vec<BorrowInfo>,
 }
 
 impl BorrowChecker {
