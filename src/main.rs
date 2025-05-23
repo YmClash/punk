@@ -3,10 +3,10 @@
 //use pyrust::parser::parser::Parser;
 
 //use ymcrust::lexxer;
-use pyrust::lexer::lex::{Lexer, Token};
-use pyrust::lexer::lex::SyntaxMode;
-use pyrust::parser::parser::Parser;
-use pyrust::parser::ast::{ASTNode, Declaration, VariableDeclaration, FunctionDeclaration, ConstDeclaration,Expression,Literal};
+use punk::lexer::lex::{Lexer, Token};
+use punk::lexer::lex::SyntaxMode;
+use punk::parser::parser::Parser;
+use punk::parser::ast::{ASTNode, Declaration, VariableDeclaration, FunctionDeclaration, ConstDeclaration,Expression,Literal};
 
 
 fn mode(syntax_mode: SyntaxMode){
