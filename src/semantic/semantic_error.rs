@@ -1,12 +1,9 @@
-
-
-// This file defines the semantic error types used in the semantic analysis phase of the punk compiler.
+//src/semantic/semantic_error.rs
 
 
 use std::fmt;
-use std::collections::HashMap;
 use std::fmt::Display;
-use std::thread::Scope;
+
 
 
 #[allow(dead_code)]
