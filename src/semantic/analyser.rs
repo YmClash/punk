@@ -86,7 +86,7 @@ impl SemanticAnalyzer {
 
                 // Déclarer le symbole de la structure
                 let location = SourceLocation {
-                    file: "current_file.rs".to_string(), // À remplacer par le vrai nom de fichier
+                    file: "current_file.pk".to_string(), // À remplacer par le vrai nom de fichier
                     line: 1, // À remplacer par la vraie position
                     column: 1,
                 };
