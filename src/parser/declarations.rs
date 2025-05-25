@@ -7,6 +7,7 @@ use crate::parser::parser_error::ParserErrorType::{ExpectColon, MultipleConstruc
 use crate::SyntaxMode;
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
 
+
 impl Parser{
 
     /// fonction pour parser les déclarations de variables
