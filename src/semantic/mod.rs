@@ -9,4 +9,4 @@ pub mod symbol_table;
 pub mod types;
 pub mod flow;
 pub mod lifetimes;
-mod analyser;
+pub mod analyser;
