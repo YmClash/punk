@@ -1,3 +1,4 @@
+//src/main.rs
 #![allow(dead_code)]
 #![allow(unused)]
 //use pyrust::parser::parser::Parser;
@@ -7,6 +8,7 @@ use punk::lexer::lex::{Lexer, Token};
 use punk::lexer::lex::SyntaxMode;
 use punk::parser::parser::Parser;
 use punk::parser::ast::{ASTNode, Declaration, VariableDeclaration, FunctionDeclaration, ConstDeclaration,Expression,Literal};
+use punk::semantic::analyser::SemanticAnalyzer;
 
 
 fn mode(syntax_mode: SyntaxMode){
@@ -18,19 +20,103 @@ fn mode(syntax_mode: SyntaxMode){
 
 
 
-
 fn main() {
+    println!("=========================");
+    println!("Punk Lang  Compiler Test");
+    println!("=========================\n");
+    // println!("Mode de syntaxe :\n");
 
-    println!("Pyrust Compiler Test");
+
+    // let code_source = r#"let x:int = 5;"#;
+    let code_source = r#"
+        // Un exemple plus complet pour tester l'analyse sémantique
+        let x: int = 5;
+        let y:int = 10;
+        let z:int = x + y;
+
+        fn add(a: int, b: int) -> int {
+            return a + b;
+        }
+
+        let result = add(x, y);
+    "#;
+
+
+
+    // let mut lexer = Lexer::new(code_lambda_indent, SyntaxMode::Indentation);
+    let mut lexer = Lexer::new(code_source, SyntaxMode::Braces);
+    let tokens = lexer.tokenize();
+
+    // Affichage des tokens pour vérification
+    for (i, tok) in tokens.iter().enumerate() {
+        println!("{}:{:?}", i, tok);
+
+    }
+    println!("\n");
+
+    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+    let mut ast_nodes = Vec::new();
+
+
+    //parser  le  programme
+    while !parser.is_at_end() {
+        match parser.parse_program() {
+            Ok(ast) => {
+                println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                println!("AST généré pour la déclaration,l'expression ou le statement  :");
+                println!("{:#?}", ast);
+                ast_nodes.push(ast)
+            }
+            Err(e) => {
+                println!("Erreur lors du parsing : {}", e);
+                break;
+            }
+        }
+    }
+
+    println!("Parsing terminé\n");
+
+    println!("Debut de l'analyse sémantique\n");
+
+    let mut analyser = SemanticAnalyzer::new();
+    match analyser.analyze(&ast_nodes) {
+        Ok(()) => {
+            println!("Analyse sémantique réussie!");
+            let stats = analyser.get_analysis_stats();
+            println!("Statistiques de l'analyse sémantique:");
+            println!("Symboles: {}, Types: {}, Erreurs: {}, Avertissements: {}",
+                     stats.total_symbols, stats.total_types, stats.error_count, stats.warning_count);
+
+            // Afficher les avertissements s'il y en a
+            if stats.warning_count > 0 {
+                println!("\nAvertissements:");
+                for warning in analyser.get_warnings() {
+                    println!("- {:?}", warning);
+                }
+            }
+        },
+        Err(errors) => {
+            println!("Échec de l'analyse sémantique avec {} erreurs:", errors.len());
+            for (i, e) in errors.iter().enumerate() {
+                println!("Erreur {}: {:?}", i+1, e);
+            }
+        }
+    }
+
+
+    println!("\n");
+    println!("=========OK==========\n");
+    println!("PUnkLang Compiler By YmC");
     println!("===================\n");
-    println!("Mode de syntaxe :\n");
+    println!("\n");
 
+}
 
-
+fn code_source() {
     let code_source = r#"let x = 5; const v = 100;"#;
 
     let code_binary = "array[0][1]";
-
 
     let code_number = "a && b || c";
 
@@ -39,7 +125,6 @@ fn main() {
     let code_decl_indentation = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}pub struct Point {height: int,width: int} enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}";
 
     let solo_decl = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}}\n";
-
 
     let code_struct = "struct Point {pub x: int,pub y: int};";
 
@@ -66,9 +151,9 @@ fn main() {
         let mut result = x + y
         let z = result + 5
         return z"#;
-/////////////////////////////
+    /////////////////////////////
     let code_func_braces2 = r#"match x {1 => print("one"),2 => print("two"),_ => print("other")} let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5} obj.method1().field.method2(1+2);"#;
-////////////////////////////
+    ////////////////////////////
     let code_func_braces3 = "pub fn add() ->int{return 5};";
 
 
@@ -276,7 +361,6 @@ else:
     }"#;
 
 
-
     let code_test32 = r#"impl Color {def init(value: T) -> Self {MyType { value }}fn consume(self)-> T {&self.value} fn get_value(&self) -> &T {&self.value}fn set_value(&mut self, value: T) {self.value = value }}"#;
 
     let code_test33 = r#"impl<T> Drawable for MyType<S>:
@@ -297,7 +381,6 @@ else:
 
     fn set_value(&mut self, value: T):
         self.value = value"#;
-
 
 
     let code_test35 = r#"impl<T> Drawable for MyType<T> where D: Display:
@@ -363,67 +446,4 @@ match x :
 
 
     let code_test54 = r#"let x = result +1 ;"#;
-
-
-
-
-    // let mut lexer = Lexer::new(code_lambda_indent, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_test45, SyntaxMode::Braces);
-    let tokens = lexer.tokenize();
-
-    // Affichage des tokens pour vérification
-    for (i, tok) in tokens.iter().enumerate() {
-        println!("{}:{:?}", i, tok);
-    }
-    println!("\n");
-
-    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
-
-    // while !parser.is_at_end() {
-    //     match parser.parse_statement() {
-    //         Ok(ast) => {
-    //             println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    //             println!("AST généré pour la déclaration,l'expression ou le statement  :");
-    //             println!("{:#?}", ast);
-    //         }
-    //         Err(e) => {
-    //             println!("Erreur lors du parsing : {}", e);
-    //             break;
-    //         }
-    //     }
-    // }
-
-
-    //parser  le  programme
-    while !parser.is_at_end() {
-        match parser.parse_program() {
-            Ok(ast) => {
-                println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("AST généré pour la déclaration,l'expression ou le statement  :");
-                println!("{:#?}", ast);
-            }
-            Err(e) => {
-                println!("Erreur lors du parsing : {}", e);
-                break;
-            }
-        }
-    }
-
-
-
-
-    println!("Parsing terminé\n");
-    // println!("Sinon, Parsing des Statement \n");
-
-
-
-    println!("\n");
-    println!("=========OK==========\n");
-    println!("Pyrust Compiler By YmC");
-    println!("===================\n");
-    println!("\n");
-
-
-
 }

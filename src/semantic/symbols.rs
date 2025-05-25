@@ -2,7 +2,7 @@
 
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::fmt;
+
 
 use crate::semantic::semantic_error::{Position, SymbolError};
 use crate::semantic::types::type_system::Type;
@@ -53,7 +53,6 @@ pub enum Visibility{
     // Module,
 }
 
-
 /// Attribus additionnels pour les symboles
 
 #[allow(dead_code)]
@@ -67,7 +66,6 @@ pub struct SymbolAttrs {
     pub used: bool,
 
 }
-
 
 impl Default for SymbolAttrs {
     fn default() -> Self {
@@ -266,8 +264,5 @@ mod tests {
         assert_eq!(scope.children.len(), 2);
         assert_eq!(scope.parent, Some(ScopeId(0)));
     }
-
-
-
 
 }
