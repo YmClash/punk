@@ -1,4 +1,4 @@
-//src/semantic/symbol_table.rs - Intégration avec le système de types
+//src/semantic/symbol_table.rs
 
 use std::collections::HashMap;
 use crate::semantic::semantic_error::{SemanticError, SemanticErrorType, SymbolError, TypeError, Position};
@@ -751,7 +751,10 @@ fn create_semantic_error(error_type: SemanticErrorType, message: String, positio
 
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////Esssai //////////////////////////////////////////////////////////////
+
+
+
 // // src/semantic/symbol_table.rs
 //
 // use std::collections::HashMap;
