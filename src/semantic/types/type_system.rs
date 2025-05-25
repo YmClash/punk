@@ -2,10 +2,8 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use crate::parser::ast::{Expression, Literal, Operator, UnaryOperator, Type as ASTType};
-use crate::semantic::semantic_error::{Position, SemanticError, SemanticErrorType, TypeError};
-use crate::semantic::semantic_error::SemanticErrorType::{SymbolError};
-use crate::semantic::symbol_table::SymbolTable;
+use crate::parser::ast::{Type as ASTType};
+use crate::semantic::semantic_error::{TypeError};
 use crate::semantic::symbols::SymbolId;
 
 /// Identifiant unique pour les types
@@ -592,9 +590,153 @@ impl TypeSystem {
 
 
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Tests pour TypeRegistry
+    #[test]
+    fn test_type_registry_creation() {
+        let registry = TypeRegistry::new();
+
+        // Vérifier que les types primitifs sont créés
+        assert!(registry.get_type(registry.type_int).is_some());
+        assert!(registry.get_type(registry.type_float).is_some());
+        assert!(registry.get_type(registry.type_bool).is_some());
+        assert!(registry.get_type(registry.type_char).is_some());
+        assert!(registry.get_type(registry.type_string).is_some());
+    }
+
+    #[test]
+    fn test_array_type_creation() {
+        let mut registry = TypeRegistry::new();
+
+        // Créer un type array d'entiers
+        let array_type_id = registry.create_array_type(registry.type_int, Some(5));
+
+        // Vérifier le type créé
+        let array_type = registry.get_type(array_type_id).unwrap();
+        match &array_type.kind {
+            TypeKind::Array(elem_type, size) => {
+                assert_eq!(elem_type.id, registry.type_int);
+                assert_eq!(*size, Some(5));
+            },
+            _ => panic!("Expected array type"),
+        }
+    }
+
+    #[test]
+    fn test_tuple_type_creation() {
+        let mut registry = TypeRegistry::new();
+
+        // Créer un tuple (int, float)
+        let tuple_type_id = registry.create_tuple_type(vec![registry.type_int, registry.type_float]);
+
+        // Vérifier le type créé
+        let tuple_type = registry.get_type(tuple_type_id).unwrap();
+        match &tuple_type.kind {
+            TypeKind::Tuple(types) => {
+                assert_eq!(types.len(), 2);
+                assert_eq!(types[0].id, registry.type_int);
+                assert_eq!(types[1].id, registry.type_float);
+            },
+            _ => panic!("Expected tuple type"),
+        }
+    }
+
+    // Tests pour TypeSystem
+    #[test]
+    fn test_type_system_unification() {
+        let mut type_system = TypeSystem::new();
+
+        // Créer deux types identiques
+        let t1 = Type::new(TypeId(1), TypeKind::Int);
+        let t2 = Type::new(TypeId(2), TypeKind::Int);
+
+        // Vérifier l'unification
+        let result = type_system.unify(&t1, &t2);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_type_variable_inference() {
+        let mut type_system = TypeSystem::new();
+
+        // Créer une variable de type
+        let type_var_id = type_system.create_type_variable(Some("T".to_string()));
+        let infer_type = Type::new(TypeId(1), TypeKind::Infer(type_var_id.clone()));
+
+        // Unifier avec un type concret
+        let concrete_type = Type::new(TypeId(2), TypeKind::Int);
+        let result = type_system.unify(&infer_type, &concrete_type);
+
+        assert!(result.is_ok());
+        assert_eq!(type_system.resolve_type_variable(&type_var_id).unwrap().kind, TypeKind::Int);
+    }
+
+    #[test]
+    fn test_reference_type_creation() {
+        let mut registry = TypeRegistry::new();
+
+        // Créer une référence mutable vers un int
+        let ref_type_id = registry.create_reference_type(
+            registry.type_int,
+            Mutability::Mutable,
+            None
+        );
+
+        // Vérifier le type créé
+        let ref_type = registry.get_type(ref_type_id).unwrap();
+        match &ref_type.kind {
+            TypeKind::Reference(inner, mutability, lifetime) => {
+                assert_eq!(inner.id, registry.type_int);
+                assert_eq!(*mutability, Mutability::Mutable);
+                assert!(lifetime.is_none());
+            },
+            _ => panic!("Expected reference type"),
+        }
+    }
+
+    #[test]
+    fn test_function_type_creation() {
+        let mut registry = TypeRegistry::new();
+
+        // Créer un type fonction (int, float) -> bool
+        let func_type_id = registry.create_function_type(
+            vec![registry.type_int, registry.type_float],
+            registry.type_bool
+        );
+
+        // Vérifier le type créé
+        let func_type = registry.get_type(func_type_id).unwrap();
+        match &func_type.kind {
+            TypeKind::Function(ft) => {
+                assert_eq!(ft.params.len(), 2);
+                assert_eq!(ft.params[0].id, registry.type_int);
+                assert_eq!(ft.params[1].id, registry.type_float);
+                assert_eq!(ft.return_type.id, registry.type_bool);
+            },
+            _ => panic!("Expected function type"),
+        }
+    }
+
+    #[test]
+    fn test_incompatible_type_unification() {
+        let mut type_system = TypeSystem::new();
+
+        let int_type = Type::new(TypeId(1), TypeKind::Int);
+        let bool_type = Type::new(TypeId(2), TypeKind::Bool);
+
+        // L'unification devrait échouer pour des types incompatibles
+        let result = type_system.unify(&int_type, &bool_type);
+        assert!(result.is_err());
+    }
+}
 
 
-//*//*////////////////////////////////////////////////////////
+
+
+//*//*//////////////////////////////Essai 1 /////////////////////////
 
 
 // //src/semantic/types/type_system.rs
