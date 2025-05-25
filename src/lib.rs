@@ -2,7 +2,7 @@ pub mod lexer;
 //mod parser;
 mod codegen;
 pub mod parser;
-mod semantic;
+pub mod semantic;
 mod utils;
 
 //mod ast;

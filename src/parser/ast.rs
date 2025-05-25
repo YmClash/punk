@@ -1,33 +1,26 @@
+//src/parser/ast.rs
 
-use crate::lexer::lex::Token;
+
 use crate::parser::parser_error::ParserError;
-
 use num_bigint::BigInt;
-
 
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum ASTNode {
     Program(Vec<ASTNode>),
-    // Block(Block),
+
     Declaration(Declaration),
     Expression(Expression),
     Statement(Statement),
-
-     Error(ParserError),
-
-
-    Body(Body),
+    Error(ParserError),
+    // Body(Body),
 }
-
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Body {
-    pub statements: Vec<ASTNode>,
-}
-
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Body {
+//     pub statements: Vec<ASTNode>,
+// }
 
 //pour le moment on utilise vec<ASTNode> pour le corps des fonctions
 // l'idee plus tard c'est d'utilise Body pour les fonctions et les blocs
@@ -42,24 +35,24 @@ pub struct Body {
 //     // pub braces: Option<(Token, Token)>, // Pour le mode Braces (ouverture, fermeture)
 // }
 //////
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub enum BlockSyntax {
-    Indentation,
-    Braces ,
-}
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub enum BlockSyntax {
+//     Indentation,
+//     Braces ,
+// }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Indentation{
-    pub indent_level: usize,
-}
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Braces{
-    pub opening_brace: Token,
-    pub closing_brace: Token,
-}
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Indentation{
+//     pub indent_level: usize,
+// }
+// #[allow(dead_code)]
+// #[derive(Debug, Clone)]
+// pub struct Braces{
+//     pub opening_brace: Token,
+//     pub closing_brace: Token,
+// }
 
 
 #[allow(dead_code)]
@@ -105,17 +98,18 @@ pub struct Position {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Addition,       // +
-    Substraction,   // -
+    Substraction,   // -        ortho a corrige
     Multiplication, // *
     Division,       // /
     Modulo,     // %
-    Equal,  // ==
+    Equal,       // =
+    EqualEqual,  // ==
     NotEqual,   // !=
     LessThan,   // <
     GreaterThan,   // >
     And, // &&
     Or, // ||
-    LesshanOrEqual, // <=
+    LesshanOrEqual, // <=         ortho a corrige
     GreaterThanOrEqual, // >=
     Range, // ..
     RangeInclusive, // ..=
@@ -184,21 +178,17 @@ pub enum Type {
     Char,
     Array(Box<Type>),
     Tuple(Vec<Type>),
+    // Struct(StructTypeId),
     Custom(String),
     Generic(GenericType),
     Infer, // Type inféré déduire par le compilateur (Type Inference)
 
     //Trait(String), // pour Type Bounds
     Named(String),
-
     SelfType,
-
     //BorrowedType(Box<Type>),
-
     Reference(Box<Type>),
     ReferenceMutable(Box<Type>),
-
-
 
 }
 
@@ -304,11 +294,6 @@ pub struct Attribute {
     pub attr_type: Type,
     pub visibility: Visibility,
     pub mutability: Mutability,
-    // pub value: Option<Expression>,
-
-
-    // pub mutable: bool,
-    // pub default_value: Option<Expression>,
 }
 
 #[allow(dead_code)]
@@ -374,10 +359,6 @@ pub struct ArrayDeclaration {
     pub is_repeated: bool,
 
 }
-
-
-
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -460,10 +441,10 @@ pub enum Expression {
     UnaryOperation(UnaryOperation),
     FunctionCall(FunctionCall),
 
-    ArrayAccess(ArrayAccess), // transfere dans IndexAccess
-    ArraySlice(ArraySlice), // pas encore completement implementé
-    Slice(Slice), // pas encore completement implementé
-    RangeSlice(RangeSlice), // pas encore completement implementé
+    ArrayAccess(ArrayAccess),   // transfere dans IndexAccess
+    ArraySlice(ArraySlice),     // pas encore completement implementé
+    Slice(Slice),               // pas encore completement implementé
+    RangeSlice(RangeSlice),     // pas encore completement implementé
 
 
     MemberAccess(MemberAccess),
@@ -661,7 +642,7 @@ pub struct UnaryOperation {
 #[derive(Clone, Debug)]
 pub struct BinaryOperation {
     pub left: Box<Expression>,
-    pub operator: Operator,             ///////////////////// a changer
+    pub operator: Operator,
     pub right: Box<Expression>,
 }
 
@@ -821,13 +802,6 @@ pub struct ReturnStatement {
     // pub value: Expression
 }
 
-// #[allow(dead_code)]
-// #[derive(Clone, Debug)]
-// pub struct IfStatement {
-//     pub condition: Expression,
-//     pub elif_block: Vec<ASTNode>,
-//     pub else_block: Option<Vec<ASTNode>>,
-// }
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct IfStatement {
@@ -926,7 +900,8 @@ pub struct ExceptHandler{
 #[derive(Debug, Clone)]
 pub struct WithStatement {
     pub target: Expression,
-    pub body: Body,
+    pub body: Vec<ASTNode>,
+    // pub body: Body,
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -1031,64 +1006,9 @@ pub struct  ArrayRest {
     pub after: Vec<Pattern>,
 }
 
-//
-//
-// impl fmt::Display for ASTNode {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         match self {
-//             ASTNode::Program(statements) => {
-//                 for statement in statements {
-//                     write!(f, "{}", statement)?;
-//                 }
-//                 Ok(())
-//             }
-//             ASTNode::Declaration(decl) => write!(f, "{:?}", decl),
-//             ASTNode::Expression(expr) => write!(f, "{:?}", expr),
-//             ASTNode::Statement(stmt) => write!(f, "{:?}", stmt),
-//             //ASTNode::Function(func) => write!(f, "{:?}", func),
-//             ASTNode::Block(block) => write!(f, "{:?}", block),
-//             // ASTNode::IfStatement(ifstmt) => write!(f, "{}", ifstmt),
-//             // ASTNode::ForStatement(forstmt) => write!(f, "{}", forstmt),
-//             // ASTNode::WhileStatement(whilestmt) => write!(f, "{}", whilestmt),
-//             // ASTNode::ReturnStatement(retstmt) => write!(f, "{}", retstmt),
-//             // ASTNode::BinaryOperation(binop) => write!(f, "{}", binop),
-//             // ASTNode::UnaryOperation(unop) => write!(f, "{}", unop),
-//             // ASTNode::Identifier(ident) => write!(f, "{}", ident),
-//             // ASTNode::Literal(lit) => write!(f, "{}", lit),
-//             // ASTNode::Operator(op) => write!(f, "{}", op),
-//             ASTNode::Error(err) => write!(f, "{}", err),
-//
-//             ASTNode::Body(body) => write!(f, "{:?}", body),
-//
-//         }
-//     }
-// }
-//
-//
-//
-// impl ASTNode{
-//     pub fn program(statements: Vec<ASTNode>) -> Self{
-//         ASTNode::Program(statements)
-//     }
-//     pub fn block(block: Block) -> Self{
-//         ASTNode::Block(block)
-//     }
-//     pub fn declaration(declaration: Declaration) -> Self{
-//         ASTNode::Declaration(declaration)
-//     }
-//     pub fn expression(expression: Expression) -> Self{
-//         ASTNode::Expression(expression)
-//     }
-//     pub fn statement(statement: Statement) -> Self{
-//         ASTNode::Statement(statement)
-//     }
-//     // pub fn function(function: Function) -> Self{ ASTNode::Function(function)
-//     // }
-//     pub fn error(error: ParserError) -> Self{
-//         ASTNode::Error(error)
-//     }
-//
-//     pub fn body(body: Body) -> Self{ ASTNode::Body(body) }
-// }
+
+
+
+
 
 ///////////////////////////////// by YmC////////////////////////////////////////////////////////////

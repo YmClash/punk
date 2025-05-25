@@ -1,5 +1,12 @@
-mod analyser;
-mod semantic_error;
-mod ast_semantic;
-mod type_checker;
-mod borrow_check;
+pub mod semantic_analyser;
+pub mod semantic_error;
+pub mod ast_semantic;
+pub mod type_checker;
+pub mod borrow_checker;
+pub mod typerror;
+pub mod symbols;
+pub mod symbol_table;
+pub mod types;
+pub mod flow;
+pub mod lifetimes;
+pub mod analyser;

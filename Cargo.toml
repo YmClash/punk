@@ -1,5 +1,5 @@
 [package]
-name = "pyrust"
+name = "punk"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,7 +14,7 @@ num-bigint = "0.4.6"
 
 
 [lib]
-name = "pyrust"
+name = "punk"
 path = "src/lib.rs"
 
 

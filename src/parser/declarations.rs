@@ -7,6 +7,7 @@ use crate::parser::parser_error::ParserErrorType::{ExpectColon, MultipleConstruc
 use crate::SyntaxMode;
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
 
+
 impl Parser{
 
     /// fonction pour parser les déclarations de variables
@@ -14,7 +15,7 @@ impl Parser{
     /// // let mut x: int = 5;
     /// // let y: float = 3.14;
     /// // let z = 42;
-    /// // let a: bool = true ;
+    /// // let a: bool = true;
     /// Exemple: Indentation Mode
     /// // let mut x: int = 5
     /// // let y: float = 3.14
@@ -72,6 +73,14 @@ impl Parser{
         //let visibility = self.parse_visibility()?;
 
         self.consume(TokenType::KEYWORD(Keywords::CONST))?;
+
+        // //test pour la synchronisation
+        // self.consume(TokenType::KEYWORD(Keywords::CONST)).or_else(|e| {
+        //     // On synchronise ici
+        //     self.synchronize()?;
+        //     Err(e)
+        // })?;
+
 
         let name = self.consume_identifier()?;
 

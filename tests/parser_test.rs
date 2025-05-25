@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use pyrust::parser::parser::Parser;
-    use pyrust::{Lexer, SyntaxMode};
-    use pyrust::parser::ast::Expression;
+    use punk::parser::parser::Parser;
+    use punk::{Lexer, SyntaxMode};
+    use punk::parser::ast::Expression;
 
 
     // Fonction d'aide pour créer un parser
@@ -288,7 +288,7 @@ else :
 
 
     mod declaration_tests {
-        use pyrust::parser::ast::Visibility;
+        use punk::parser::ast::Visibility;
         use super::*;
 
         #[test]
@@ -507,7 +507,7 @@ if x > 10:
     }
 
     mod integration_tests {
-        use pyrust::SyntaxMode;
+        use punk::SyntaxMode;
         use super::*;
 
         #[test]
@@ -557,7 +557,7 @@ match x:
     }
 
     mod fonction_declaration_tests{
-        use pyrust::parser::ast::Visibility;
+        use punk::parser::ast::Visibility;
         use super::*;
 
         #[test]
@@ -711,7 +711,7 @@ match x:
     }
 
     mod trait_tests {
-        use pyrust::parser::ast::Visibility;
+        use punk::parser::ast::Visibility;
         use super::*;
 
         #[test]
@@ -737,7 +737,7 @@ match x:
         }
     }
     mod impl_tests {
-        use pyrust::parser::ast::Visibility;
+        use punk::parser::ast::Visibility;
         use super::*;
 
         #[test]
@@ -769,7 +769,7 @@ match x:
     }
 
     mod struct_tests {
-        use pyrust::parser::ast::Visibility;
+        use punk::parser::ast::Visibility;
         use super::*;
 
         #[test]
@@ -792,7 +792,7 @@ match x:
     }
 
     mod enum_tests {
-        use pyrust::parser::ast::Visibility;
+        use punk::parser::ast::Visibility;
         use super::*;
 
         #[test]
