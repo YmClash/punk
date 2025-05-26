@@ -35,10 +35,10 @@ fn main() {
         let z:int = x + y;
 
         fn add(a: int, b: int) -> int {
-            return a + b;
+            return a + b
         }
 
-        let result = add(x, y);
+        let result:int = add(x, y);
     "#;
 
 
