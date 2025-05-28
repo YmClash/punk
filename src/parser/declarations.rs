@@ -33,10 +33,8 @@ impl Parser{
         let  name = self.consume_identifier()?;
         println!("Nom de la variable parsé : {}", name);
 
-
         let variable_type = if self.match_token(&[TokenType::DELIMITER(Delimiters::COLON)]) {
             self.parse_type()?
-
         } else {
             Type::Infer
         };
@@ -51,7 +49,7 @@ impl Parser{
         //infere  le type si neccessaire
 
         // ici, on vas implementer la fonction parse_inference_type pour determiner le type de la variable
-        // let final_type = self.parse_inference_type(&variable_type,&value)?;
+        let final_type = self.parse_inference_type(&variable_type,&value)?;
 
 
         self.consume_seperator();
@@ -59,8 +57,8 @@ impl Parser{
 
         Ok(ASTNode::Declaration(Variable(VariableDeclaration {
             name,
-            // variable_type: Some(final_type),
-            variable_type: Some(variable_type),
+            variable_type: Some(final_type),
+            // variable_type: Some(variable_type),
             value: Some(value),
             mutability,
         })))
@@ -96,7 +94,7 @@ impl Parser{
         //transfer dan la fonction parse_inference_type
 
         //infere  le type si neccessaire
-        // let final_type = self.parse_inference_type(&variable_type,&value)?;
+        let final_type = self.parse_inference_type(&variable_type,&value)?;
 
         self.consume_seperator();
 
@@ -104,8 +102,8 @@ impl Parser{
 
         Ok(ASTNode::Declaration(Declaration::Constante(ConstDeclaration{
             name,
-            // constant_type: Some(final_type),
-            constant_type: Some(variable_type),
+            constant_type: Some(final_type),
+            // constant_type: Some(variable_type),
             value,
             visibility,
         })))
@@ -137,6 +135,8 @@ impl Parser{
         let body = self.parse_function_body()?;
 
         // let return_type = self.parse_return_type(return_type, &body)?;
+        // let return_type = self.parse_inference_type(&return_type, &Vec<ASTNode>)?;
+
 
         // self.consume_seperator();  plus de ; apres une fonction
 
