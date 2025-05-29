@@ -30,9 +30,9 @@ fn main() {
     // let code_source = r#"let x:int = 5;"#;
     let code_source = r#"
         // Un exemple plus complet pour tester l'analyse sémantique
-        let x: int = 5;
-        let y:int = 10;
-        let z:int = x + y;
+        let x = 5;
+        let y = 10;
+        let z = x + y;
 
         fn add(a: int, b: int) -> int {
             return a + b
@@ -82,7 +82,7 @@ fn main() {
     let mut analyser = SemanticAnalyzer::new();
     match analyser.analyze(&ast_nodes) {
         Ok(()) => {
-            println!("Analyse sémantique réussie!");
+            println!("Analyse sémantique réussie! OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             let stats = analyser.get_analysis_stats();
             println!("Statistiques de l'analyse sémantique:");
             println!("Symboles: {}, Types: {}, Erreurs: {}, Avertissements: {}",
