@@ -34,16 +34,20 @@ impl SemanticAnalyzer {
     /// Analyse un AST complet
     pub fn analyze(&mut self, ast: &[ASTNode]) -> Result<(), Vec<SemanticError>> {
         // Réinitialiser les erreurs
+        println!("Reunitialisation des erreur ");
         self.errors.clear();
         self.warnings.clear();
 
         // 1. Première passe: déclarer tous les symboles de haut niveau
+        println!("Première passe: déclaration des symboles de haut niveau");
         self.declare_top_level_symbols(ast);
 
         // 2. Deuxième passe: vérifier les types et la sémantique
+        println!("Deuxième passe: vérification des types et de la sémantique");
         self.check_semantics(ast);
 
         // 3. Troisième passe: validations finales
+        println!("Troisième passe: validations finales");
         self.final_validations();
 
         // Retourner les erreurs s'il y en a

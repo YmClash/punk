@@ -134,7 +134,7 @@ impl Parser{
 
         let body = self.parse_function_body()?;
 
-        // let return_type = self.parse_return_type(return_type, &body)?;
+        // let return_type = self.parse_inference_type(&return_type, &body.)?;
         // let return_type = self.parse_inference_type(&return_type, &Vec<ASTNode>)?;
 
 

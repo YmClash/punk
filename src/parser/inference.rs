@@ -34,6 +34,11 @@ impl TypeContext {
             Expression::BinaryOperation(binop) => self.infer_binary_op(binop),
             Expression::Assignment(assign) => self.infer_assignment(assign),
             Expression::UnaryOperation(unop) => self.infer_unary_op(unop),
+
+
+            // Expression::FunctionCall(name,args) => self.infer_function_declaration(name, args),
+
+
             _ => Ok(Type::Infer), // Pour les autres cas
         }
     }
@@ -117,6 +122,45 @@ impl TypeContext {
         }
     }
 
+
+
+
+
+
+    fn infer_function_declaration(&mut self, parameters: &[(String, Type)],
+                                   body: &Expression,
+                                   return_type: &Option<Type>) -> Result<Type, String> {
+        // Sauvegarde du contexte actuel
+        let saved_vars = self.type_vars.clone();
+
+        // Ajout des paramètres dans le contexte
+        for (param_name, param_type) in parameters {
+            self.type_vars.insert(param_name.clone(), param_type.clone());
+        }
+
+        // Inférence du type du corps de la fonction
+        let inferred_return_type = self.infer_expression(body)?;
+
+        // Vérification avec le type de retour explicite s'il existe
+        if let Some(explicit_return_type) = return_type {
+            if explicit_return_type != &Type::Infer &&
+                explicit_return_type != &inferred_return_type {
+                return Err(format!(
+                    "Return type mismatch: expected {:?}, found {:?}",
+                    explicit_return_type, inferred_return_type
+                ));
+            }
+            // Restauration du contexte
+            self.type_vars = saved_vars;
+            Ok(explicit_return_type.clone())
+        } else {
+            // Restauration du contexte
+            self.type_vars = saved_vars;
+            Ok(inferred_return_type)
+        }
+    }
+
+
     fn infer_unary_op(&mut self, unop: &UnaryOperation) -> Result<Type, String> {
         let operand_type = self.infer_expression(&unop.operand)?;
 
@@ -138,12 +182,9 @@ impl TypeContext {
             },
             UnaryOperator::Reference => Ok(Type::Array(Box::new(operand_type))),
             UnaryOperator::ReferenceMutable => Ok(Type::Array(Box::new(operand_type))),
-            _ => todo!(),
+            _ => Err("Unknown unary operator".to_string()),
         }
     }
-
-
-
 
 
     fn add_constraint(&mut self, constraint: TypeConstraint) {
@@ -156,7 +197,5 @@ impl TypeContext {
             .cloned()
             .ok_or_else(|| format!("Undefined variable: {}", name))
     }
-
-
 
 }
