@@ -562,7 +562,7 @@ match x:
 
         #[test]
         fn test_function_declaration_braces() {
-            let input = r#"fn add(x: int, y: int) -> int {let mut result = x + y;return result}"#;
+            let input = r#"fn add(x: int, y: int) -> int {let mut result = x + y; return result}"#;
             let mut parser = create_parser(input, SyntaxMode::Braces);
             let result = parser.parse_function_declaration(Visibility::Public);
             assert!(result.is_ok());

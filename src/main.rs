@@ -30,9 +30,9 @@ fn main() {
     // let code_source = r#"let x:int = 5;"#;
     let code_source = r#"
         // Un exemple plus complet pour tester l'analyse sémantique
-        let x = 5;
-        let y = 10;
-        let z = x + y;
+        let x:int = 5;
+        let y:int = 10;
+        let z:int = x + y;
 
         fn add(a: int, b: int) -> int {
             return a + b
@@ -151,9 +151,9 @@ fn code_source() {
         let mut result = x + y
         let z = result + 5
         return z"#;
-    /////////////////////////////
+
     let code_func_braces2 = r#"match x {1 => print("one"),2 => print("two"),_ => print("other")} let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5} obj.method1().field.method2(1+2);"#;
-    ////////////////////////////
+
     let code_func_braces3 = "pub fn add() ->int{return 5};";
 
 
