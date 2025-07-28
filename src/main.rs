@@ -22,7 +22,7 @@ fn mode(syntax_mode: SyntaxMode){
 
 fn main() {
     println!("=========================");
-    println!("Punk Lang  Compiler Test");
+    println!("PunkLang  Compiler Test");
     println!("=========================\n");
     // println!("Mode de syntaxe :\n");
 
