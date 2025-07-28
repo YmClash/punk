@@ -22,7 +22,7 @@ fn mode(syntax_mode: SyntaxMode){
 
 fn main() {
     println!("=========================");
-    println!("Punk Lang  Compiler Test");
+    println!("PunkLang  Compiler Test");
     println!("=========================\n");
     // println!("Mode de syntaxe :\n");
 
@@ -30,15 +30,13 @@ fn main() {
     // let code_source = r#"let x:int = 5;"#;
     let code_source = r#"
         // Un exemple plus complet pour tester l'analyse sémantique
-        let x: int = 5;
+        let x:int = 5;
         let y:int = 10;
         let z:int = x + y;
 
         fn add(a: int, b: int) -> int {
-            return a + b;
+            return a + b
         }
-
-        let result = add(x, y);
     "#;
 
 
@@ -82,7 +80,7 @@ fn main() {
     let mut analyser = SemanticAnalyzer::new();
     match analyser.analyze(&ast_nodes) {
         Ok(()) => {
-            println!("Analyse sémantique réussie!");
+            println!("Analyse sémantique réussie! OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             let stats = analyser.get_analysis_stats();
             println!("Statistiques de l'analyse sémantique:");
             println!("Symboles: {}, Types: {}, Erreurs: {}, Avertissements: {}",
@@ -151,9 +149,9 @@ fn code_source() {
         let mut result = x + y
         let z = result + 5
         return z"#;
-    /////////////////////////////
+
     let code_func_braces2 = r#"match x {1 => print("one"),2 => print("two"),_ => print("other")} let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5} obj.method1().field.method2(1+2);"#;
-    ////////////////////////////
+
     let code_func_braces3 = "pub fn add() ->int{return 5};";
 
 

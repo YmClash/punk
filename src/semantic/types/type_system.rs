@@ -14,6 +14,7 @@ pub struct TypeId(pub u32);
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeKind {
     // Types primitifs
+
     Int,
     Float,
     Bool,
@@ -36,7 +37,8 @@ pub enum TypeKind {
     Generic(String, Vec<TypeConstraint>),
 
     // Type polymorphique (ex: auto, var, _)
-    Infer(TypeVarId),
+    // Infer(TypeVarId),
+    Infer(TypeVarId),  // Variable de type pour l'inférence
 
     // Type utilisateur
     Named(String, Vec<Type>),  // Nom du type, arguments génériques

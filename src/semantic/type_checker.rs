@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use crate::parser::ast::{Expression, Statement, Operator, UnaryOperator, Literal,
                          VariableDeclaration, FunctionDeclaration, ASTNode, Declaration};
-use crate::semantic::symbols::{SymbolId, SourceLocation, SymbolKind};
+
 use crate::semantic::types::type_system::{TypeId, TypeKind, TypeSystem, Mutability};
 use crate::semantic::semantic_error::{SemanticError, TypeError, SemanticErrorType, Position};
 use crate::semantic::symbol_table::SymbolTable;
@@ -143,6 +143,7 @@ impl TypeChecker {
             Operator::Modulo => {
                 // Opérations arithmétiques
                 match (&left_type.kind, &right_type.kind) {
+                    // (TypeKind::Infer, TypeKind::Infer) => Ok(right_type_id),
                     (TypeKind::Int, TypeKind::Int) => Ok(left_type_id), // int op int -> int
                     (TypeKind::Float, TypeKind::Float) => Ok(left_type_id), // float op float -> float
                     (TypeKind::Int, TypeKind::Float) => Ok(right_type_id), // int op float -> float
