@@ -37,8 +37,6 @@ fn main() {
         fn add(a: int, b: int) -> int {
             return a + b
         }
-
-        let result:int = add(x, y);
     "#;
 
 
