@@ -1,219 +1,390 @@
-// struct UsageAnalyzer {
-//     symbol_table: SymbolTable,
-//     cfg: ControlFlowGraph,
-//     defined_variables: HashSet<SymbolId>,
-//     used_variables: HashSet<SymbolId>,
-// }
-//
-// impl UsageAnalyzer {
-//     // Analyse un CFG pour détecter les variables non utilisées
-//     pub fn analyze(&mut self) -> Vec<SymbolId> {
-//         self.visit_node(self.cfg.entry);
-//
-//         // Trouver les variables définies mais non utilisées
-//         self.defined_variables
-//             .difference(&self.used_variables)
-//             .cloned()
-//             .collect()
-//     }
-//
-//     // Visite un nœud du CFG
-//     fn visit_node(&mut self, node_id: NodeId) {
-//         if let Some(node) = self.cfg.nodes.get(&node_id) {
-//             self.analyze_node(node);
-//
-//             // Visiter les nœuds successeurs
-//             if let Some(successors) = self.cfg.edges.get(&node_id) {
-//                 for succ in successors {
-//                     self.visit_node(*succ);
-//                 }
-//             }
-//         }
-//     }
-//
-//     // Analyse un nœud pour détecter les utilisations et définitions
-//     fn analyze_node(&mut self, node: &CFGNode) {
-//         match node {
-//             CFGNode::Declaration(decl) => {
-//                 // Une variable est définie
-//                 let symbol_id = self.symbol_table.lookup_symbol(&decl.name).unwrap();
-//                 self.defined_variables.insert(symbol_id);
-//             },
-//             CFGNode::Assignment(target, value) => {
-//                 // La cible est définie, la valeur est utilisée
-//                 self.analyze_expr_usage(target, ExprUsage::Definition);
-//                 self.analyze_expr_usage(value, ExprUsage::Usage);
-//             },
-//             CFGNode::Expression(expr) => {
-//                 // L'expression est utilisée
-//                 self.analyze_expr_usage(expr, ExprUsage::Usage);
-//             },
-//             // Autres cas...
-//         }
-//     }
-//
-//     // Analyse l'utilisation des variables dans une expression
-//     fn analyze_expr_usage(&mut self, expr: &Expr, usage: ExprUsage) {
-//         match expr {
-//             Expr::Variable(name) => {
-//                 let symbol_id = self.symbol_table.lookup_symbol(name).unwrap();
-//                 match usage {
-//                     ExprUsage::Definition => {
-//                         self.defined_variables.insert(symbol_id);
-//                     },
-//                     ExprUsage::Usage => {
-//                         self.used_variables.insert(symbol_id);
-//                     },
-//                     ExprUsage::Both => {
-//                         self.defined_variables.insert(symbol_id);
-//                         self.used_variables.insert(symbol_id);
-//                     },
-//                 }
-//             },
-//             Expr::BinaryOp(_, left, right) => {
-//                 // Les opérandes sont utilisées
-//                 self.analyze_expr_usage(left, ExprUsage::Usage);
-//                 self.analyze_expr_usage(right, ExprUsage::Usage);
-//             },
-//             // Autres cas...
-//         }
-//     }
-// }
-//
-// enum ExprUsage {
-//     Definition,  // La variable est définie
-//     Usage,       // La variable est utilisée
-//     Both,        // La variable est à la fois définie et utilisée
-// }
-//
-//
-// struct ReturnPathAnalyzer {
-//     cfg: ControlFlowGraph,
-//     paths_with_return: HashSet<NodeId>,
-// }
-//
-// impl ReturnPathAnalyzer {
-//     // Vérifie si tous les chemins de retour sont bien définis
-//     pub fn all_paths_return(&mut self) -> bool {
-//         // Marquer les nœuds avec un return
-//         self.mark_return_nodes();
-//
-//         // Vérifier si tous les chemins depuis l'entrée jusqu'aux sorties contiennent un return
-//         let mut visited = HashSet::new();
-//         self.check_path(self.cfg.entry, &mut visited)
-//     }
-//
-//     // Marque les nœuds qui ont un return ou qui mènent à un return
-//     fn mark_return_nodes(&mut self) {
-//         // 1. Marquer les nœuds qui contiennent un return
-//         for (id, node) in &self.cfg.nodes {
-//             if let CFGNode::Return(_) = node {
-//                 self.paths_with_return.insert(*id);
-//             }
-//         }
-//
-//         // 2. Marquer les nœuds qui mènent tous à un return
-//         let mut changed = true;
-//         while changed {
-//             changed = false;
-//
-//             for (node_id, successors) in &self.cfg.edges {
-//                 if self.paths_with_return.contains(node_id) {
-//                     continue;  // Déjà marqué
-//                 }
-//
-//                 // Si tous les successeurs mènent à un return, ce nœud aussi
-//                 if !successors.is_empty() && successors.iter().all(|succ| self.paths_with_return.contains(succ)) {
-//                     self.paths_with_return.insert(*node_id);
-//                     changed = true;
-//                 }
-//             }
-//         }
-//     }
-//
-//     // Vérifie si un chemin depuis node_id contient un return
-//     fn check_path(&self, node_id: NodeId, visited: &mut HashSet<NodeId>) -> bool {
-//         if visited.contains(&node_id) {
-//             return true;  // Éviter les cycles
-//         }
-//
-//         visited.insert(node_id);
-//
-//         // Si ce nœud mène à un return, c'est bon
-//         if self.paths_with_return.contains(&node_id) {
-//             return true;
-//         }
-//
-//         // Si c'est une sortie sans return, c'est un problème
-//         if self.cfg.exits.contains(&node_id) {
-//             return false;
-//         }
-//
-//         // Vérifier tous les successeurs
-//         if let Some(successors) = self.cfg.edges.get(&node_id) {
-//             // S'il n'y a pas de successeurs, c'est une fin de chemin sans return
-//             if successors.is_empty() {
-//                 return false;
-//             }
-//
-//             // Vérifier que tous les successeurs mènent à un return
-//             successors.iter().all(|succ| self.check_path(*succ, visited))
-//         } else {
-//             false  // Pas de successeurs = fin de chemin sans return
-//         }
-//     }
-// }
-//
-//
-//
-// struct DefUseAnalyzer {
-//     cfg: ControlFlowGraph,
-//     symbol_table: SymbolTable,
-//
-//     // Définitions par nœud (node_id -> définitions)
-//     defs: HashMap<NodeId, HashSet<SymbolId>>,
-//
-//     // Utilisations par nœud (node_id -> utilisations)
-//     uses: HashMap<NodeId, HashSet<SymbolId>>,
-//
-//     // Définitions qui atteignent un nœud (node_id -> définitions)
-//     reaching_defs: HashMap<NodeId, HashSet<(NodeId, SymbolId)>>,
-// }
-//
-// impl DefUseAnalyzer {
-//     // Réalise l'analyse des définitions atteignant chaque nœud
-//     pub fn analyze_reaching_definitions(&mut self) {
-//         // 1. Initialiser les ensembles de définitions et d'utilisations par nœud
-//         self.init_def_use();
-//
-//         // 2. Calculer les définitions atteignant chaque nœud
-//         self.compute_reaching_defs();
-//     }
-//
-//     // Initialise les ensembles de définitions et d'utilisations
-//     fn init_def_use(&mut self) {
-//         for (node_id, node) in &self.cfg.nodes {
-//             let (defs, uses) = self.analyze_def_use(node);
-//             self.defs.insert(*node_id, defs);
-//             self.uses.insert(*node_id, uses);
-//         }
-//     }
-//
-//     // Analyse les définitions et utilisations dans un nœud
-//     fn analyze_def_use(&self, node: &CFGNode) -> (HashSet<SymbolId>, HashSet<SymbolId>) {
-//         let mut defs = HashSet::new();
-//         let mut uses = HashSet::new();
-//
-//         match node {
-//             CFGNode::Declaration(decl) => {
-//                 let symbol_id = self.symbol_table.lookup_symbol(&decl.name).unwrap();
-//                 defs.insert(symbol_id);
-//
-//                 // Si la déclaration a une initialisation, c'est aussi une utilisation
-//                 if let Some(init) = &decl.initializer {
-//                     self.collect_uses(init, &mut uses);
-//                 }
-//             }
-//         }
-//     }
-// }
+//src/semantic/flow/analyser.rs
+
+use std::collections::{HashMap, HashSet};
+use crate::semantic::symbol_table::SymbolTable;
+use crate::semantic::symbols::SymbolId;
+use crate::semantic::flow::control_flow_graph::{ControlFlowGraph, BlockId, Instruction, Terminator};
+use crate::parser::ast::Expression;
+
+pub struct UsageAnalyzer {
+    symbol_table: SymbolTable,
+    cfg: ControlFlowGraph,
+    defined_variables: HashSet<SymbolId>,
+    used_variables: HashSet<SymbolId>,
+}
+
+impl UsageAnalyzer {
+    pub fn new(symbol_table: SymbolTable, cfg: ControlFlowGraph) -> Self {
+        UsageAnalyzer {
+            symbol_table,
+            cfg,
+            defined_variables: HashSet::new(),
+            used_variables: HashSet::new(),
+        }
+    }
+    
+    /// Analyse l'utilisation des variables
+    pub fn analyze(&mut self) -> Vec<SymbolId> {
+        // Cloner les blocks pour éviter les conflits d'emprunt
+        let blocks = self.cfg.blocks.clone();
+        
+        // Parcourir le CFG pour identifier les variables définies et utilisées
+        for (_, block) in blocks.iter() {
+            for instruction in &block.instructions {
+                self.analyze_instruction(instruction);
+            }
+            
+            // Analyser le terminateur
+            self.analyze_terminator(&block.terminator);
+        }
+        
+        // Retourner les variables définies mais non utilisées
+        self.defined_variables
+            .difference(&self.used_variables)
+            .copied()
+            .collect()
+    }
+    
+    fn analyze_instruction(&mut self, instruction: &Instruction) {
+        match instruction {
+            Instruction::VarDecl { name, value, .. } => {
+                // Marquer la variable comme définie
+                if let Ok(symbol_id) = self.symbol_table.lookup_symbol(name) {
+                    self.defined_variables.insert(symbol_id);
+                }
+                
+                // Si il y a une valeur, analyser les variables utilisées dedans
+                if let Some(expr) = value {
+                    self.analyze_expression_usage(expr);
+                }
+            }
+            Instruction::Assignment { target, value, .. } => {
+                // La cible est une définition, la valeur est une utilisation
+                if let Ok(symbol_id) = self.symbol_table.lookup_symbol(target) {
+                    self.defined_variables.insert(symbol_id);
+                }
+                self.analyze_expression_usage(value);
+            }
+            Instruction::Expression { expr, .. } => {
+                self.analyze_expression_usage(expr);
+            }
+            Instruction::Phi { var, sources, .. } => {
+                // Variable définie par le phi node
+                if let Ok(symbol_id) = self.symbol_table.lookup_symbol(var) {
+                    self.defined_variables.insert(symbol_id);
+                }
+                // Sources utilisées
+                for (_, source_var) in sources {
+                    if let Ok(symbol_id) = self.symbol_table.lookup_symbol(source_var) {
+                        self.used_variables.insert(symbol_id);
+                    }
+                }
+            }
+        }
+    }
+    
+    fn analyze_terminator(&mut self, terminator: &Terminator) {
+        match terminator {
+            Terminator::ConditionalJump { condition, .. } => {
+                self.analyze_expression_usage(condition);
+            }
+            Terminator::Return(Some(expr)) => {
+                self.analyze_expression_usage(expr);
+            }
+            _ => {}
+        }
+    }
+    
+    fn analyze_expression_usage(&mut self, expr: &Expression) {
+        match expr {
+            Expression::Identifier(name) => {
+                // Marquer la variable comme utilisée
+                if let Ok(symbol_id) = self.symbol_table.lookup_symbol(name) {
+                    self.used_variables.insert(symbol_id);
+                }
+            }
+            Expression::BinaryOperation(binop) => {
+                self.analyze_expression_usage(&binop.left);
+                self.analyze_expression_usage(&binop.right);
+            }
+            Expression::UnaryOperation(unop) => {
+                self.analyze_expression_usage(&unop.operand);
+            }
+            Expression::FunctionCall(call) => {
+                for arg in &call.arguments {
+                    self.analyze_expression_usage(arg);
+                }
+            }
+            Expression::Array(array) => {
+                for elem in &array.elements {
+                    self.analyze_expression_usage(elem);
+                }
+            }
+            Expression::IndexAccess(access) => {
+                self.analyze_expression_usage(&access.array);
+                self.analyze_expression_usage(&access.index);
+            }
+            Expression::MemberAccess(access) => {
+                self.analyze_expression_usage(&access.object);
+            }
+            Expression::Assignment(assign) => {
+                self.analyze_expression_usage(&assign.target);
+                self.analyze_expression_usage(&assign.value);
+            }
+            Expression::MethodCall(method) => {
+                self.analyze_expression_usage(&method.object);
+                for arg in &method.arguments {
+                    self.analyze_expression_usage(arg);
+                }
+            }
+            Expression::TypeCast(cast) => {
+                self.analyze_expression_usage(&cast.expression);
+            }
+            _ => {
+                // Autres cas (literals, etc.)
+            }
+        }
+    }
+}
+
+pub struct ReturnPathAnalyzer {
+    cfg: ControlFlowGraph,
+    paths_with_return: HashSet<BlockId>,
+}
+
+impl ReturnPathAnalyzer {
+    pub fn new(cfg: ControlFlowGraph) -> Self {
+        ReturnPathAnalyzer {
+            cfg,
+            paths_with_return: HashSet::new(),
+        }
+    }
+    
+    /// Vérifie si tous les chemins d'exécution retournent une valeur
+    pub fn all_paths_return(&mut self) -> bool {
+        let mut visited = HashSet::new();
+        self.check_path(self.cfg.entry, &mut visited)
+    }
+    
+    fn check_path(&self, block_id: BlockId, visited: &mut HashSet<BlockId>) -> bool {
+        if visited.contains(&block_id) {
+            return false; // Déjà visité, éviter les boucles infinies
+        }
+        visited.insert(block_id);
+        
+        if let Some(block) = self.cfg.blocks.get(&block_id) {
+            match &block.terminator {
+                Terminator::Return(_) => true,
+                Terminator::Jump(next) => self.check_path(*next, visited),
+                Terminator::ConditionalJump { then_block, else_block, .. } => {
+                    let mut then_visited = visited.clone();
+                    let mut else_visited = visited.clone();
+                    let then_returns = self.check_path(*then_block, &mut then_visited);
+                    let else_returns = self.check_path(*else_block, &mut else_visited);
+                    then_returns && else_returns
+                }
+                Terminator::Unreachable => false,
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
+}
+
+pub struct DefUseAnalyzer {
+    cfg: ControlFlowGraph,
+    symbol_table: SymbolTable,
+    defs: HashMap<BlockId, HashSet<SymbolId>>,
+    uses: HashMap<BlockId, HashSet<SymbolId>>,
+    reaching_defs: HashMap<BlockId, HashSet<(BlockId, SymbolId)>>,
+}
+
+impl DefUseAnalyzer {
+    pub fn new(cfg: ControlFlowGraph, symbol_table: SymbolTable) -> Self {
+        DefUseAnalyzer {
+            cfg,
+            symbol_table,
+            defs: HashMap::new(),
+            uses: HashMap::new(),
+            reaching_defs: HashMap::new(),
+        }
+    }
+    
+    /// Analyse les définitions atteignables
+    pub fn analyze_reaching_definitions(&mut self) {
+        // Initialiser les ensembles de définitions et d'utilisations par bloc
+        self.init_def_use();
+        
+        // Calculer les définitions atteignant chaque bloc
+        self.compute_reaching_defs();
+    }
+    
+    fn init_def_use(&mut self) {
+        for (block_id, block) in &self.cfg.blocks {
+            let mut defs = HashSet::new();
+            let mut uses = HashSet::new();
+            
+            for instruction in &block.instructions {
+                match instruction {
+                    Instruction::VarDecl { name, value, .. } => {
+                        if let Ok(symbol_id) = self.symbol_table.lookup_symbol(name) {
+                            defs.insert(symbol_id);
+                        }
+                        if let Some(expr) = value {
+                            self.collect_uses(expr, &mut uses);
+                        }
+                    }
+                    Instruction::Assignment { target, value, .. } => {
+                        if let Ok(symbol_id) = self.symbol_table.lookup_symbol(target) {
+                            defs.insert(symbol_id);
+                        }
+                        self.collect_uses(value, &mut uses);
+                    }
+                    Instruction::Expression { expr, .. } => {
+                        self.collect_uses(expr, &mut uses);
+                    }
+                    Instruction::Phi { var, sources, .. } => {
+                        if let Ok(symbol_id) = self.symbol_table.lookup_symbol(var) {
+                            defs.insert(symbol_id);
+                        }
+                        for (_, source_var) in sources {
+                            if let Ok(symbol_id) = self.symbol_table.lookup_symbol(source_var) {
+                                uses.insert(symbol_id);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            self.defs.insert(*block_id, defs);
+            self.uses.insert(*block_id, uses);
+        }
+    }
+    
+    fn collect_uses(&self, expr: &Expression, uses: &mut HashSet<SymbolId>) {
+        match expr {
+            Expression::Identifier(name) => {
+                if let Ok(symbol_id) = self.symbol_table.lookup_symbol(name) {
+                    uses.insert(symbol_id);
+                }
+            }
+            Expression::BinaryOperation(binop) => {
+                self.collect_uses(&binop.left, uses);
+                self.collect_uses(&binop.right, uses);
+            }
+            Expression::UnaryOperation(unop) => {
+                self.collect_uses(&unop.operand, uses);
+            }
+            _ => {}
+        }
+    }
+    
+    fn compute_reaching_defs(&mut self) {
+        // Algorithme de point fixe pour calculer les définitions atteignables
+        let mut changed = true;
+        
+        // Initialisation
+        for block_id in self.cfg.blocks.keys() {
+            self.reaching_defs.insert(*block_id, HashSet::new());
+        }
+        
+        while changed {
+            changed = false;
+            
+            for (block_id, block) in &self.cfg.blocks {
+                let mut new_reaching = HashSet::new();
+                
+                // Union des définitions des prédécesseurs
+                for &pred in &block.predecessors {
+                    if let Some(pred_reaching) = self.reaching_defs.get(&pred) {
+                        new_reaching.extend(pred_reaching.iter().copied());
+                    }
+                    
+                    // Ajouter les définitions du prédécesseur
+                    if let Some(pred_defs) = self.defs.get(&pred) {
+                        for &symbol_id in pred_defs {
+                            new_reaching.insert((pred, symbol_id));
+                        }
+                    }
+                }
+                
+                // Vérifier si l'ensemble a changé
+                if self.reaching_defs.get(block_id) != Some(&new_reaching) {
+                    self.reaching_defs.insert(*block_id, new_reaching);
+                    changed = true;
+                }
+            }
+        }
+    }
+    
+    /// Vérifie les variables non initialisées
+    pub fn check_uninitialized_variables(&self) -> Vec<(SymbolId, BlockId)> {
+        let mut uninitialized = Vec::new();
+        
+        for (block_id, block_uses) in &self.uses {
+            if let Some(reaching) = self.reaching_defs.get(block_id) {
+                for &symbol_id in block_uses {
+                    // Vérifier si la variable est définie avant utilisation
+                    let is_defined = reaching.iter().any(|(_, def_symbol)| *def_symbol == symbol_id);
+                    
+                    if !is_defined {
+                        uninitialized.push((symbol_id, *block_id));
+                    }
+                }
+            }
+        }
+        
+        uninitialized
+    }
+}
+
+pub struct ExecutionPathAnalyzer {
+    cfg: ControlFlowGraph,
+}
+
+impl ExecutionPathAnalyzer {
+    pub fn new(cfg: ControlFlowGraph) -> Self {
+        ExecutionPathAnalyzer { cfg }
+    }
+    
+    /// Trouve tous les chemins d'exécution possibles
+    pub fn find_all_paths(&self) -> Vec<Vec<BlockId>> {
+        let mut paths = Vec::new();
+        let mut current_path = Vec::new();
+        let mut visited = HashSet::new();
+        
+        self.find_paths_recursive(self.cfg.entry, &mut current_path, &mut visited, &mut paths);
+        
+        paths
+    }
+    
+    fn find_paths_recursive(
+        &self,
+        block_id: BlockId,
+        current_path: &mut Vec<BlockId>,
+        visited: &mut HashSet<BlockId>,
+        all_paths: &mut Vec<Vec<BlockId>>
+    ) {
+        if visited.contains(&block_id) {
+            return; // Éviter les cycles
+        }
+        
+        current_path.push(block_id);
+        visited.insert(block_id);
+        
+        if let Some(block) = self.cfg.blocks.get(&block_id) {
+            if block.successors.is_empty() || self.cfg.exits.contains(&block_id) {
+                // C'est un noeud terminal
+                all_paths.push(current_path.clone());
+            } else {
+                for &successor in &block.successors {
+                    self.find_paths_recursive(successor, current_path, visited, all_paths);
+                }
+            }
+        }
+        
+        current_path.pop();
+        visited.remove(&block_id);
+    }
+}
