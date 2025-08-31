@@ -1,7 +1,7 @@
 //src/semantic/types/type_system.rs
 
 use std::collections::HashMap;
-use std::fmt;
+use std::{fmt,marker::Sized};
 use crate::parser::ast::{Type as ASTType};
 use crate::semantic::semantic_error::{TypeError};
 use crate::semantic::symbols::SymbolId;
@@ -210,7 +210,7 @@ impl fmt::Display for Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -222,6 +222,8 @@ pub struct FunctionType {
     pub return_type: Box<Type>,
     pub lifetime_params: Vec<LifetimeId>,
     pub type_params: Vec<TypeVarId>,
+    pub is_variadic: bool,
+    pub lifetimes: Vec<LifetimeId>,  // Alias pour lifetime_params pour compatibilité
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -249,18 +251,33 @@ pub struct TypeVarId {
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeId {
     pub id: TypeId,
     pub name: String,
 }
 
-/// Registre des types pour créer et suivre les types
-#[derive(Clone, Debug)]
-pub struct TypeRegistry {
-    pub types: HashMap<TypeId, Type>,
-    pub next_type_id: u32,
+/// Information sur un lifetime
+#[derive(Debug, Clone)]
+pub struct LifetimeInfo {
+    pub id: LifetimeId,
+    pub bounds: Vec<LifetimeId>,  // Lifetimes qui doivent outlive ce lifetime
+    pub is_static: bool,
+}
 
+// TypeRegistry a été unifié avec TypeSystem - voir la structure TypeSystem plus haut
+// Toutes les fonctionnalités de TypeRegistry sont maintenant intégrées dans TypeSystem
+
+/// Système unifié de gestion des types et d'inférence
+/// Unifie TypeRegistry et TypeSystem en un seul composant cohérent
+#[derive(Debug, Clone)]
+pub struct TypeSystem {
+    // ===== Registre des types (anciennement TypeRegistry) =====
+    /// Tous les types enregistrés
+    pub types: HashMap<TypeId, Type>,
+    /// Prochain ID de type disponible
+    next_type_id: u32,
+    
     // Types primitifs pré-définis
     pub type_int: TypeId,
     pub type_float: TypeId,
@@ -269,12 +286,32 @@ pub struct TypeRegistry {
     pub type_string: TypeId,
     pub type_unit: TypeId,
     pub type_error: TypeId,
+    pub type_never: TypeId,
+    
+    // ===== Système d'inférence =====
+    /// Variables de type pour l'inférence
+    type_variables: HashMap<TypeVarId, Option<Type>>,
+    /// Contraintes de types collectées
+    type_constraints: Vec<TypeConstraint>,
+    /// Prochain ID de variable de type
+    next_type_var_id: u32,
+    
+    // ===== Gestion des lifetimes =====
+    /// Lifetimes enregistrées
+    lifetimes: HashMap<LifetimeId, LifetimeInfo>,
+    /// Prochain ID de lifetime
+    next_lifetime_id: u32,
+    
+    // ===== Cache et optimisations =====
+    /// Cache pour les types canoniques (utilise une représentation string car TypeKind n'implémente pas Hash)
+    canonical_cache: HashMap<String, TypeId>,
+    /// Cache pour les relations de sous-typage
+    subtype_cache: HashMap<(TypeId, TypeId), bool>,
 }
 
-impl TypeRegistry {
-    /// Crée un nouveau registre avec les types primitifs pré-définis
+impl TypeSystem {
     pub fn new() -> Self {
-        let mut registry = TypeRegistry {
+        let mut system = TypeSystem {
             types: HashMap::new(),
             next_type_id: 1,
             type_int: TypeId(0),
@@ -284,200 +321,64 @@ impl TypeRegistry {
             type_string: TypeId(0),
             type_unit: TypeId(0),
             type_error: TypeId(0),
-        };
-
-        // Créer les types primitifs
-        registry.type_int = registry.register_type(TypeKind::Int);
-        registry.type_float = registry.register_type(TypeKind::Float);
-        registry.type_bool = registry.register_type(TypeKind::Bool);
-        registry.type_char = registry.register_type(TypeKind::Char);
-        registry.type_string = registry.register_type(TypeKind::String);
-        registry.type_unit = registry.register_type(TypeKind::Unit);
-        registry.type_error = registry.register_type(TypeKind::Error);
-
-        registry
-    }
-
-    /// Enregistre un nouveau type et retourne son ID
-    pub fn register_type(&mut self, kind: TypeKind) -> TypeId {
-        let id = TypeId(self.next_type_id);
-        self.next_type_id += 1;
-
-        let type_obj = Type::new(id, kind);
-        self.types.insert(id, type_obj);
-
-        id
-    }
-
-    /// Récupère un type par son ID
-    pub fn get_type(&self, id: TypeId) -> Option<&Type> {
-        self.types.get(&id)
-    }
-
-    /// Récupère un type par son ID de manière mutable
-    pub fn get_type_mut(&mut self, id: TypeId) -> Option<&mut Type> {
-        self.types.get_mut(&id)
-    }
-
-    /// Crée un type array
-    pub fn create_array_type(&mut self, element_type_id: TypeId, size: Option<usize>) -> TypeId {
-        if let Some(element_type) = self.get_type(element_type_id).cloned() {
-            self.register_type(TypeKind::Array(Box::new(element_type), size))
-        } else {
-            self.type_error
-        }
-    }
-
-    /// Crée un type tuple
-    pub fn create_tuple_type(&mut self, element_type_ids: Vec<TypeId>) -> TypeId {
-        let mut element_types = Vec::with_capacity(element_type_ids.len());
-
-        for type_id in element_type_ids {
-            if let Some(element_type) = self.get_type(type_id).cloned() {
-                element_types.push(element_type);
-            } else {
-                return self.type_error;
-            }
-        }
-
-        self.register_type(TypeKind::Tuple(element_types))
-    }
-
-    /// Crée un type fonction
-    pub fn create_function_type(&mut self, param_type_ids: Vec<TypeId>, return_type_id: TypeId) -> TypeId {
-        let mut param_types = Vec::with_capacity(param_type_ids.len());
-
-        for type_id in param_type_ids {
-            if let Some(param_type) = self.get_type(type_id).cloned() {
-                param_types.push(param_type);
-            } else {
-                return self.type_error;
-            }
-        }
-
-        if let Some(return_type) = self.get_type(return_type_id).cloned() {
-            let func_type = FunctionType {
-                params: param_types,
-                return_type: Box::new(return_type),
-                lifetime_params: Vec::new(),
-                type_params: Vec::new(),
-            };
-            self.register_type(TypeKind::Function(func_type))
-        } else {
-            self.type_error
-        }
-    }
-
-    /// Crée un type référence
-    pub fn create_reference_type(&mut self, inner_type_id: TypeId, mutability: Mutability, lifetime: Option<LifetimeId>) -> TypeId {
-        if let Some(inner_type) = self.get_type(inner_type_id).cloned() {
-            self.register_type(TypeKind::Reference(
-                Box::new(inner_type),
-                mutability,
-                lifetime
-            ))
-        } else {
-            self.type_error
-        }
-    }
-
-    /// Convertit un type AST en TypeId
-    pub fn convert_ast_type(&mut self, ast_type: &ASTType) -> TypeId {
-        match ast_type {
-            // Cas simples (types primitifs)
-            ASTType::Int => self.type_int,
-            ASTType::Float => self.type_float,
-            ASTType::Bool => self.type_bool,
-            ASTType::Char => self.type_char,
-            ASTType::String => self.type_string,
-
-            // Cas qui nécessitent des clones pour éviter les problèmes d'emprunt
-            ASTType::Array(elem_type) => {
-                // Convertir d'abord le type d'élément
-                let elem_type_id = self.convert_ast_type(elem_type);
-                self.create_array_type(elem_type_id, None)
-            },
-
-            ASTType::Tuple(elem_types) => {
-                // Convertir tous les types d'éléments d'abord
-                let elem_type_ids: Vec<TypeId> = elem_types.iter()
-                    .map(|t| self.convert_ast_type(t))
-                    .collect();
-                self.create_tuple_type(elem_type_ids)
-            },
-
-            ASTType::Generic(generic_type) => {
-                // Faire une conversion en deux étapes
-                let type_params: Vec<TypeId> = generic_type.type_parameters.iter()
-                    .map(|t| self.convert_ast_type(t))
-                    .collect();
-
-                // Maintenant, créer les types
-                let type_args: Vec<Type> = type_params.iter()
-                    .filter_map(|&id| self.get_type(id).cloned())
-                    .collect();
-
-                self.register_type(TypeKind::Named(generic_type.base.clone(), type_args))
-            },
-
-            // Autres cas...
-            ASTType::Reference(inner_type) => {
-                let inner_type_id = self.convert_ast_type(inner_type);
-                self.create_reference_type(inner_type_id, Mutability::Immutable, None)
-            },
-
-            ASTType::ReferenceMutable(inner_type) => {
-                let inner_type_id = self.convert_ast_type(inner_type);
-                self.create_reference_type(inner_type_id, Mutability::Mutable, None)
-            },
-
-            ASTType::Named(name) => {
-                self.register_type(TypeKind::Named(name.clone(), Vec::new()))
-            },
-
-            ASTType::Custom(name) => {
-                self.register_type(TypeKind::Named(name.clone(), Vec::new()))
-            },
-
-            ASTType::Infer => {
-                let type_var = TypeVarId {
-                    id: TypeId(self.next_type_id),
-                    name: format!("T{}", self.next_type_id),
-                };
-                self.register_type(TypeKind::Infer(type_var))
-            },
-
-            ASTType::SelfType => {
-                self.register_type(TypeKind::SelfType)
-            },
-        }
-    }
-}
-
-/// Système d'unification pour l'inférence de types
-#[derive(Debug, Clone)]
-pub struct TypeSystem {
-    pub type_registry: TypeRegistry,
-
-    // Mappages pour l'inférence de types
-    type_variables: HashMap<TypeVarId, Option<Type>>,
-
-    // Contraintes de types
-    type_constraints: Vec<TypeConstraint>,
-
-    // Compteurs pour générer des identifiants uniques
-    next_type_var_id: u32,
-    next_lifetime_id: u32,
-}
-
-impl TypeSystem {
-    pub fn new() -> Self {
-        TypeSystem {
-            type_registry: TypeRegistry::new(),
+            type_never: TypeId(0),
             type_variables: HashMap::new(),
             type_constraints: Vec::new(),
             next_type_var_id: 1,
+            lifetimes: HashMap::new(),
             next_lifetime_id: 1,
+            canonical_cache: HashMap::new(),
+            subtype_cache: HashMap::new(),
+        };
+        
+        // Initialiser les types primitifs
+        system.type_int = system.register_type(TypeKind::Int);
+        system.type_float = system.register_type(TypeKind::Float);
+        system.type_bool = system.register_type(TypeKind::Bool);
+        system.type_char = system.register_type(TypeKind::Char);
+        system.type_string = system.register_type(TypeKind::String);
+        system.type_unit = system.register_type(TypeKind::Unit);
+        system.type_error = system.register_type(TypeKind::Error);
+        system.type_never = system.register_type(TypeKind::Never);
+        
+        system
+    }
+    
+    /// Réinitialise le système de types
+    pub fn clear(&mut self) {
+        // Sauvegarder puis restaurer les types primitifs
+        let new_system = TypeSystem::new();
+        *self = new_system;
+    }
+    
+    /// Valide le système de types
+    pub fn validate(&self) -> Result<(), TypeError> {
+        // TODO: Implémenter la validation
+        Ok(())
+    }
+    
+    /// Compte le nombre de types enregistrés
+    pub fn type_count(&self) -> usize {
+        self.types.len()
+    }
+    
+    /// Vérifie si deux types sont compatibles
+    pub fn are_types_compatible(&self, t1: TypeId, t2: TypeId) -> bool {
+        // Vérifier le cache d'abord
+        if let Some(&result) = self.subtype_cache.get(&(t1, t2)) {
+            return result;
+        }
+        
+        if t1 == t2 {
+            return true;
+        }
+        
+        let type1 = self.get_type(t1);
+        let type2 = self.get_type(t2);
+        
+        match (type1, type2) {
+            (Some(t1), Some(t2)) => t1.is_compatible_with(t2),
+            _ => false,
         }
     }
 
@@ -485,7 +386,7 @@ impl TypeSystem {
     pub fn unify(&mut self, t1: &Type, t2: &Type) -> Result<Type, TypeError> {
         match (&t1.kind, &t2.kind) {
             // Cas de base: types identiques
-            (a, b) if a == b => Ok(t1.clone()),
+            (a, b) if *a == *b => Ok(t1.clone()),
 
             // Cas avec variable de type
             (TypeKind::Infer(id), _) => {
@@ -498,7 +399,7 @@ impl TypeSystem {
             // Cas avec types structurellement similaires
             (TypeKind::Array(elem1, size1), TypeKind::Array(elem2, size2)) => {
                 let unified_elem = self.unify(elem1, elem2)?;
-                if size1 != size2 {
+                if *size1 != *size2 {
                     return Err(TypeError::TypeMismatch(format!(
                         "Array size mismatch: {:?} vs {:?}", size1, size2
                     )));
@@ -585,6 +486,226 @@ impl TypeSystem {
     pub fn resolve_type_variable(&self, id: &TypeVarId) -> Option<&Type> {
         self.type_variables.get(id).and_then(|opt| opt.as_ref())
     }
+    
+    // ===== Méthodes héritées de TypeRegistry =====
+    
+    /// Enregistre un nouveau type et retourne son ID
+    pub fn register_type(&mut self, kind: TypeKind) -> TypeId {
+        // Créer une clé string pour le cache
+        let cache_key = format!("{:?}", kind);
+        
+        // Vérifier le cache canonique d'abord
+        if let Some(&cached_id) = self.canonical_cache.get(&cache_key) {
+            return cached_id;
+        }
+        
+        let id = TypeId(self.next_type_id);
+        self.next_type_id += 1;
+        
+        let type_obj = Type::new(id, kind);
+        self.types.insert(id, type_obj);
+        
+        // Ajouter au cache canonique pour éviter les doublons
+        self.canonical_cache.insert(cache_key, id);
+        
+        id
+    }
+    
+    /// Récupère un type par son ID
+    pub fn get_type(&self, id: TypeId) -> Option<&Type> {
+        self.types.get(&id)
+    }
+    
+    /// Récupère un type par son ID de manière mutable
+    pub fn get_type_mut(&mut self, id: TypeId) -> Option<&mut Type> {
+        self.types.get_mut(&id)
+    }
+    
+    /// Crée un type array
+    pub fn create_array_type(&mut self, element_type_id: TypeId, size: Option<usize>) -> TypeId {
+        if let Some(element_type) = self.get_type(element_type_id).cloned() {
+            self.register_type(TypeKind::Array(Box::new(element_type), size))
+        } else {
+            self.type_error
+        }
+    }
+    
+    /// Crée un type tuple
+    pub fn create_tuple_type(&mut self, element_type_ids: Vec<TypeId>) -> TypeId {
+        let mut element_types = Vec::with_capacity(element_type_ids.len());
+        
+        for type_id in element_type_ids {
+            if let Some(element_type) = self.get_type(type_id).cloned() {
+                element_types.push(element_type);
+            } else {
+                return self.type_error;
+            }
+        }
+        
+        self.register_type(TypeKind::Tuple(element_types))
+    }
+    
+    /// Crée un type fonction
+    pub fn create_function_type(&mut self, param_type_ids: Vec<TypeId>, return_type_id: TypeId) -> TypeId {
+        let mut param_types = Vec::with_capacity(param_type_ids.len());
+        
+        for type_id in param_type_ids {
+            if let Some(param_type) = self.get_type(type_id).cloned() {
+                param_types.push(param_type);
+            } else {
+                return self.type_error;
+            }
+        }
+        
+        if let Some(return_type) = self.get_type(return_type_id).cloned() {
+            self.register_type(TypeKind::Function(FunctionType {
+                params: param_types,
+                return_type: Box::new(return_type),
+                lifetime_params: Vec::new(),
+                type_params: Vec::new(),
+                is_variadic: false,
+                lifetimes: Vec::new(),
+            }))
+        } else {
+            self.type_error
+        }
+    }
+    
+    /// Crée un type référence
+    pub fn create_reference_type(&mut self, inner_type_id: TypeId, mutability: Mutability, lifetime: Option<LifetimeId>) -> TypeId {
+        if let Some(inner_type) = self.get_type(inner_type_id).cloned() {
+            self.register_type(TypeKind::Reference(Box::new(inner_type), mutability, lifetime))
+        } else {
+            self.type_error
+        }
+    }
+    
+    /// Crée un type nommé (type défini par l'utilisateur)
+    pub fn create_named_type(&mut self, name: String, type_args: Vec<TypeId>) -> TypeId {
+        let mut args = Vec::with_capacity(type_args.len());
+        
+        for type_id in type_args {
+            if let Some(arg_type) = self.get_type(type_id).cloned() {
+                args.push(arg_type);
+            } else {
+                return self.type_error;
+            }
+        }
+        
+        self.register_type(TypeKind::Named(name, args))
+    }
+    
+    /// Convertit un type AST en type du système  
+    pub fn from_ast_type(&mut self, ast_type: &ASTType) -> TypeId {
+        match ast_type {
+            ASTType::Int => self.type_int,
+            ASTType::Float => self.type_float,
+            ASTType::Bool => self.type_bool,
+            ASTType::Char => self.type_char,
+            ASTType::String => self.type_string,
+            // ASTType::Unit n'existe pas dans l'AST, utiliser un cas par défaut
+            // ASTType::Unit => self.type_unit,
+            ASTType::Array(element_type) => {
+                let element_type_id = self.from_ast_type(element_type);
+                self.create_array_type(element_type_id, None)  // Taille non spécifiée dans l'AST
+            },
+            ASTType::Tuple(types) => {
+                let type_ids: Vec<TypeId> = types.iter().map(|t| self.from_ast_type(t)).collect();
+                self.create_tuple_type(type_ids)
+            },
+            // ASTType::Function n'existe pas dans l'AST actuel
+            // Pour gérer les types de fonction, il faudrait les ajouter à l'AST
+            ASTType::Named(name) => {
+                // Named n'a pas d'arguments de type dans l'AST actuel
+                self.create_named_type(name.clone(), Vec::new())
+            },
+            ASTType::Reference(inner_type) => {
+                let inner_id = self.from_ast_type(inner_type);
+                self.create_reference_type(inner_id, Mutability::Immutable, None)
+            },
+            ASTType::ReferenceMutable(inner_type) => {
+                let inner_id = self.from_ast_type(inner_type);
+                self.create_reference_type(inner_id, Mutability::Mutable, None)
+            },
+            ASTType::Generic(generic_type) => {
+                // Generic contient un GenericType avec base et type_parameters
+                // Pour l'instant, créer un type nommé avec les paramètres
+                let base_name = &generic_type.base;
+                let type_var = self.create_type_variable(Some(base_name.clone()));
+                self.register_type(TypeKind::Infer(type_var))
+            },
+            ASTType::SelfType => {
+                self.register_type(TypeKind::SelfType)
+            },
+            ASTType::Custom(name) => {
+                // Custom est un type défini par l'utilisateur
+                self.create_named_type(name.clone(), Vec::new())
+            },
+            ASTType::Infer => {
+                // Type à inférer
+                let type_var = self.create_type_variable(None);
+                self.register_type(TypeKind::Infer(type_var))
+            },
+        }
+    }
+    
+    // ===== Gestion des lifetimes =====
+    
+    /// Crée un nouveau lifetime
+    pub fn create_lifetime(&mut self, name: Option<String>) -> LifetimeId {
+        let id = LifetimeId {
+            id: TypeId(self.next_lifetime_id + 1000000), // Offset pour éviter les collisions avec les TypeId
+            name: name.unwrap_or_else(|| format!("'l{}", self.next_lifetime_id)),
+        };
+        self.next_lifetime_id += 1;
+        
+        let info = LifetimeInfo {
+            id: id.clone(),
+            bounds: Vec::new(),
+            is_static: false,
+        };
+        
+        self.lifetimes.insert(id.clone(), info);
+        id
+    }
+    
+    /// Crée le lifetime 'static
+    pub fn static_lifetime(&mut self) -> LifetimeId {
+        let id = LifetimeId {
+            id: TypeId(0),
+            name: "'static".to_string(),
+        };
+        
+        if !self.lifetimes.contains_key(&id) {
+            let info = LifetimeInfo {
+                id: id.clone(),
+                bounds: Vec::new(),
+                is_static: true,
+            };
+            self.lifetimes.insert(id.clone(), info);
+        }
+        
+        id
+    }
+    
+    /// Ajoute une contrainte de lifetime (l1 outlives l2)
+    pub fn add_lifetime_bound(&mut self, l1: LifetimeId, l2: LifetimeId) {
+        if let Some(info) = self.lifetimes.get_mut(&l1) {
+            if !info.bounds.contains(&l2) {
+                info.bounds.push(l2);
+            }
+        }
+    }
+    
+    /// Invalide le cache de sous-typage
+    pub fn invalidate_subtype_cache(&mut self) {
+        self.subtype_cache.clear();
+    }
+    
+    /// Alias pour from_ast_type pour compatibilité avec l'ancien TypeRegistry
+    pub fn convert_ast_type(&mut self, ast_type: &ASTType) -> TypeId {
+        self.from_ast_type(ast_type)
+    }
 }
 
 
@@ -596,31 +717,31 @@ impl TypeSystem {
 mod tests {
     use super::*;
 
-    // Tests pour TypeRegistry
+    // Tests pour TypeSystem unifié (anciennement TypeRegistry)
     #[test]
-    fn test_type_registry_creation() {
-        let registry = TypeRegistry::new();
+    fn test_type_system_creation() {
+        let system = TypeSystem::new();
 
         // Vérifier que les types primitifs sont créés
-        assert!(registry.get_type(registry.type_int).is_some());
-        assert!(registry.get_type(registry.type_float).is_some());
-        assert!(registry.get_type(registry.type_bool).is_some());
-        assert!(registry.get_type(registry.type_char).is_some());
-        assert!(registry.get_type(registry.type_string).is_some());
+        assert!(system.get_type(system.type_int).is_some());
+        assert!(system.get_type(system.type_float).is_some());
+        assert!(system.get_type(system.type_bool).is_some());
+        assert!(system.get_type(system.type_char).is_some());
+        assert!(system.get_type(system.type_string).is_some());
     }
 
     #[test]
     fn test_array_type_creation() {
-        let mut registry = TypeRegistry::new();
+        let mut system = TypeSystem::new();
 
         // Créer un type array d'entiers
-        let array_type_id = registry.create_array_type(registry.type_int, Some(5));
+        let array_type_id = system.create_array_type(system.type_int, Some(5));
 
         // Vérifier le type créé
-        let array_type = registry.get_type(array_type_id).unwrap();
+        let array_type = system.get_type(array_type_id).unwrap();
         match &array_type.kind {
             TypeKind::Array(elem_type, size) => {
-                assert_eq!(elem_type.id, registry.type_int);
+                assert_eq!(elem_type.id, system.type_int);
                 assert_eq!(*size, Some(5));
             },
             _ => panic!("Expected array type"),
@@ -629,18 +750,18 @@ mod tests {
 
     #[test]
     fn test_tuple_type_creation() {
-        let mut registry = TypeRegistry::new();
+        let mut system = TypeSystem::new();
 
         // Créer un tuple (int, float)
-        let tuple_type_id = registry.create_tuple_type(vec![registry.type_int, registry.type_float]);
+        let tuple_type_id = system.create_tuple_type(vec![system.type_int, system.type_float]);
 
         // Vérifier le type créé
-        let tuple_type = registry.get_type(tuple_type_id).unwrap();
+        let tuple_type = system.get_type(tuple_type_id).unwrap();
         match &tuple_type.kind {
             TypeKind::Tuple(types) => {
                 assert_eq!(types.len(), 2);
-                assert_eq!(types[0].id, registry.type_int);
-                assert_eq!(types[1].id, registry.type_float);
+                assert_eq!(types[0].id, system.type_int);
+                assert_eq!(types[1].id, system.type_float);
             },
             _ => panic!("Expected tuple type"),
         }
@@ -678,20 +799,20 @@ mod tests {
 
     #[test]
     fn test_reference_type_creation() {
-        let mut registry = TypeRegistry::new();
+        let mut system = TypeSystem::new();
 
         // Créer une référence mutable vers un int
-        let ref_type_id = registry.create_reference_type(
-            registry.type_int,
+        let ref_type_id = system.create_reference_type(
+            system.type_int,
             Mutability::Mutable,
             None
         );
 
         // Vérifier le type créé
-        let ref_type = registry.get_type(ref_type_id).unwrap();
+        let ref_type = system.get_type(ref_type_id).unwrap();
         match &ref_type.kind {
             TypeKind::Reference(inner, mutability, lifetime) => {
-                assert_eq!(inner.id, registry.type_int);
+                assert_eq!(inner.id, system.type_int);
                 assert_eq!(*mutability, Mutability::Mutable);
                 assert!(lifetime.is_none());
             },
@@ -701,22 +822,22 @@ mod tests {
 
     #[test]
     fn test_function_type_creation() {
-        let mut registry = TypeRegistry::new();
+        let mut system = TypeSystem::new();
 
         // Créer un type fonction (int, float) -> bool
-        let func_type_id = registry.create_function_type(
-            vec![registry.type_int, registry.type_float],
-            registry.type_bool
+        let func_type_id = system.create_function_type(
+            vec![system.type_int, system.type_float],
+            system.type_bool
         );
 
         // Vérifier le type créé
-        let func_type = registry.get_type(func_type_id).unwrap();
+        let func_type = system.get_type(func_type_id).unwrap();
         match &func_type.kind {
             TypeKind::Function(ft) => {
                 assert_eq!(ft.params.len(), 2);
-                assert_eq!(ft.params[0].id, registry.type_int);
-                assert_eq!(ft.params[1].id, registry.type_float);
-                assert_eq!(ft.return_type.id, registry.type_bool);
+                assert_eq!(ft.params[0].id, system.type_int);
+                assert_eq!(ft.params[1].id, system.type_float);
+                assert_eq!(ft.return_type.id, system.type_bool);
             },
             _ => panic!("Expected function type"),
         }
@@ -735,530 +856,3 @@ mod tests {
     }
 }
 
-
-
-
-//*//*//////////////////////////////Essai 1 /////////////////////////
-
-
-// //src/semantic/types/type_system.rs
-// // use std::any::TypeId;
-// use std::collections::HashMap;
-// use crate::parser::ast::{Assignment, BinaryOperation, Expression, Literal, Operator, UnaryOperation, UnaryOperator};
-// use crate::semantic::semantic_error::{Position, SemanticError, SemanticErrorType};
-// use crate::semantic::semantic_error::SemanticErrorType::{SymbolError, TypeError};
-// use crate::semantic::symbol_table::SymbolTable;
-// use crate::semantic::symbols::SymbolId;
-//
-//
-//
-// /// Identifiant unique pour les types
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-// pub struct TypeId(pub u32);
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum TypeKind {
-//     // Types primitifs
-//     Int,
-//     Float,
-//     Bool,
-//     Char,
-//     String,
-//
-//     // Conteneurs et structures
-//     Array(Box<Type>, Option<usize>),  // Type, longueur optionnelle
-//     Tuple(Vec<Type>),
-//     Struct(StructTypeId),
-//     Enum(EnumTypeId),
-//
-//     // Types pour les fonctions
-//     Function(FunctionType),
-//
-//     // Types pour les références
-//     Reference(Box<Type>, Mutability, Option<LifetimeId>),
-//
-//     // Type générique
-//     Generic(String, Vec<TypeConstraint>),
-//
-//     // Type polymorphique (ex: auto, var, _)
-//     Infer(TypeVarId),
-//
-//     // Type utilisateur
-//     Named(String, Vec<Type>),  // Nom du type, arguments génériques
-//
-//     // Trait comme Contraintes
-//     TraitBound(SymbolId),
-//
-//     // Type d'une méthode associée à un self
-//     SelfType,
-//
-//     // Type "unit" pour les fonctions sans retour
-//     Unit,
-//
-//     // Type pour les valeurs impossibles (jamais atteintes)
-//     Never,
-//
-//     // Type pour représenter une erreur
-//     Error
-// }
-//
-// /// Structure d'un Type
-// #[derive(Debug,Clone,PartialEq)]
-// pub struct Type{
-//     pub id: TypeId,
-//     pub kind: TypeKind,
-//     pub nullable: bool,
-// }
-//
-//
-//
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum Mutability {
-//     Mutable,
-//     Immutable,
-// }
-//
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct FunctionType {
-//     pub params: Vec<Type>,
-//     pub return_type: Box<Type>,
-//     pub lifetime_params: Vec<LifetimeId>,
-//     pub type_params: Vec<TypeVarId>,
-// }
-//
-// #[allow(dead_code)]
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum TypeConstraint {
-//     Equal(Type, Type),
-//     Subtype(Type, Type),
-//     Instance(Type, Vec<Type>),
-// }
-//
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct StructTypeId {
-//     pub id: TypeId,
-//     pub name: String,
-//
-// }
-//
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct EnumTypeId {
-//     pub id: TypeId,
-//     pub name: String,
-// }
-//
-// #[derive(Debug, Clone, PartialEq,Eq, Hash)]
-// pub struct TypeVarId {
-//     pub id: TypeId,
-//     pub name: String,
-// }
-//
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct LifetimeId {
-//     pub id: TypeId,
-//     pub name: String,
-// }
-//
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct TraitId {
-//     pub id: TypeId,
-//     pub name: String,
-// }
-//
-//
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct TypeDefinition {
-//     pub id: TypeId,
-//     pub name: String,
-//     pub kind: TypeKind,
-//     pub type_params: Vec<TypeVarId>,
-//     pub lifetime_params: Vec<LifetimeId>,
-//     pub fields: Vec<(String, Type)>,  // Nom du champ et son type
-// }
-//
-//
-//
-//
-// pub struct TypeSystem {
-//     // Table des types nommés (structs, enums, etc.)
-//     named_types: HashMap<String, TypeId>,
-//
-//     // Table des définitions de types
-//     type_definitions: HashMap<TypeId, TypeDefinition>,
-//
-//     // Mappages pour l'inférence de types
-//     type_variables: HashMap<TypeVarId, Option<Type>>,
-//
-//     // Contraintes de types
-//     type_constraints: Vec<TypeConstraint>,
-//
-//     // Compteurs pour générer des identifiants uniques
-//     next_type_id: u32,
-//     next_type_var_id: u32,
-//     next_lifetime_id: u32,
-// }
-//
-//
-// impl TypeSystem {
-//     // Unifie deux types, en résolvant les variables de type
-//     pub fn unify(&mut self, t1: &Type, t2: &Type) -> Result<Type, TypeError> {
-//         match (t1, t2) {
-//             // Cas de base: types identiques
-//             (a, b) if a == b => Ok(a.clone()),
-//
-//             // Cas avec variable de type
-//             (TypeKind::Infer(id), other) | (other, TypeKind::Infer(id)) => {
-//                 self.unify_var(*id.clone(), other.clone())
-//             },
-//
-//             // Cas avec types structurellement similaires
-//             (TypeKind::Array(elem1, size1), TypeKind::Array(elem2, size2)) => {
-//                 let unified_elem = self.unify(elem1, elem2)?;
-//                 if size1 != size2 {
-//                     return Err(TypeError::SizeMismatch(*size1, *size2));
-//                 }
-//                 Ok(Type::Array(Box::new(unified_elem), *size1))
-//             },
-//
-//             // Autres cas similaires pour Tuple, Function, etc.
-//
-//             // Cas par défaut: types incompatibles
-//             _ => Err(TypeError::TypeMismatch(t1.clone(), t2.clone())),
-//         }
-//     }
-//
-//     // Unifie une variable de type avec un type
-//     fn unify_var(&mut self, id: TypeVarId, typ: Type) -> Result<Type, TypeError> {
-//         // Vérifier si la variable a déjà une valeur
-//         if let Some(Some(existing)) = self.type_variables.get(&id) {
-//             return self.unify(existing, &typ);
-//         }
-//
-//         // Vérifier l'occurrence de la variable dans le type (pour éviter les types récursifs)
-//         if self.occurs_check(id.clone(), &typ) {
-//             return Err(TypeError::RecursiveType);
-//         }
-//
-//         // Assigner le type à la variable
-//         self.type_variables.insert(id, Some(typ.clone()));
-//         Ok(typ)
-//     }
-//
-//     // Vérifie si une variable de type apparaît dans un type (occurs check)
-//     fn occurs_check(&self, id: TypeVarId, typ: &Type) -> bool {
-//         match typ {
-//             Type::Infer(var_id) => *var_id == id,
-//             Type::Array(elem, _) => self.occurs_check(id, elem),
-//             Type::Tuple(types) => types.iter().any(|t| self.occurs_check(id, t)),
-//             // Autres cas...
-//             _ => false,
-//         }
-//     }
-// }
-//
-//
-// /// Registre des types pour créer et suivre les types
-// pub struct TypeRegistry {
-//     types: HashMap<TypeId, Type>,
-//     next_type_id: u32,
-//
-//     // Types primitifs pré-définis
-//     pub type_int: TypeId,
-//     pub type_float: TypeId,
-//     pub type_bool: TypeId,
-//     pub type_char: TypeId,
-//     pub type_string: TypeId,
-//     pub type_void: TypeId,
-//     pub type_error: TypeId,
-// }
-//
-// impl TypeRegistry {
-//     /// Crée un nouveau registre avec les types primitifs pré-définis
-//     pub fn new() -> Self {
-//         let mut registry = TypeRegistry {
-//             types: HashMap::new(),
-//             next_type_id: 1,
-//             type_int: TypeId(0),
-//             type_float: TypeId(0),
-//             type_bool: TypeId(0),
-//             type_char: TypeId(0),
-//             type_string: TypeId(0),
-//             type_void: TypeId(0),
-//             type_error: TypeId(0),
-//         };
-//
-//         // Créer les types primitifs
-//         registry.type_int = registry.register_type(TypeKind::Int);
-//         registry.type_float = registry.register_type(TypeKind::Float);
-//         registry.type_bool = registry.register_type(TypeKind::Bool);
-//         registry.type_char = registry.register_type(TypeKind::Char);
-//         registry.type_string = registry.register_type(TypeKind::String);
-//         registry.type_void = registry.register_type(TypeKind::Tuple(vec![])); // Unit type ()
-//         registry.type_error = registry.register_type(TypeKind::Error);
-//
-//         registry
-//     }
-//
-//     /// Enregistre un nouveau type et retourne son ID
-//     pub fn register_type(&mut self, kind: TypeKind) -> TypeId {
-//         let id = TypeId(self.next_type_id);
-//         self.next_type_id += 1;
-//
-//         let type_obj = Type::new(id, kind);
-//         self.types.insert(id, type_obj);
-//
-//         id
-//     }
-//
-//     /// Récupère un type par son ID
-//     pub fn get_type(&self, id: TypeId) -> Option<&Type> {
-//         self.types.get(&id)
-//     }
-//
-//     /// Récupère un type par son ID de manière mutable
-//     pub fn get_type_mut(&mut self, id: TypeId) -> Option<&mut Type> {
-//         self.types.get_mut(&id)
-//     }
-//
-//     /// Crée un type array
-//     pub fn create_array_type(&mut self, element_type_id: TypeId) -> TypeId {
-//         if let Some(element_type) = self.get_type(element_type_id).cloned() {
-//             self.register_type(TypeKind::Array(Box::new(element_type)))
-//         } else {
-//             self.type_error
-//         }
-//     }
-//
-//     /// Crée un type tuple
-//     pub fn create_tuple_type(&mut self, element_type_ids: Vec<TypeId>) -> TypeId {
-//         let mut element_types = Vec::with_capacity(element_type_ids.len());
-//
-//         for type_id in element_type_ids {
-//             if let Some(element_type) = self.get_type(type_id).cloned() {
-//                 element_types.push(element_type);
-//             } else {
-//                 return self.type_error;
-//             }
-//         }
-//
-//         self.register_type(TypeKind::Tuple(element_types))
-//     }
-//
-//     /// Crée un type fonction
-//     pub fn create_function_type(&mut self, param_type_ids: Vec<TypeId>, return_type_id: TypeId) -> TypeId {
-//         let mut param_types = Vec::with_capacity(param_type_ids.len());
-//
-//         for type_id in param_type_ids {
-//             if let Some(param_type) = self.get_type(type_id).cloned() {
-//                 param_types.push(param_type);
-//             } else {
-//                 return self.type_error;
-//             }
-//         }
-//
-//         if let Some(return_type) = self.get_type(return_type_id).cloned() {
-//             self.register_type(TypeKind::Function {
-//                 params: param_types,
-//                 return_type: Box::new(return_type),
-//             })
-//         } else {
-//             self.type_error
-//         }
-//     }
-//
-//     /// Crée un type référence
-//     pub fn create_reference_type(&mut self, inner_type_id: TypeId, is_mutable: bool, lifetime: Option<String>) -> TypeId {
-//         if let Some(inner_type) = self.get_type(inner_type_id).cloned() {
-//             self.register_type(TypeKind::Reference {
-//                 inner: Box::new(inner_type),
-//                 is_mutable,
-//                 lifetime,
-//             })
-//         } else {
-//             self.type_error
-//         }
-//     }
-// }
-//
-// impl SymbolTable{
-//     /// Définit le type d'un symbole
-//     pub fn set_symbol_type(&mut self, symbol_id: SymbolId, type_id: TypeId) -> Result<(), SemanticError> {
-//         if let Some(symbol) = self.symbols.get_mut(&symbol_id) {
-//             // Mettre à jour le type du symbole
-//             symbol.attributes.inferred_type = Some(self.type_registry.get_type(type_id)
-//                 .ok_or_else(||
-//                     TypeError(TypeError::TypeNotFound(format!("{:?}", type_id))),
-//                     "Type not found".to_string(),
-//                     Position { index: 0 }
-//                 ))?.clone();
-//             Ok(())
-//         } else {
-//             Err(
-//                 SymbolError::SymbolNotFound(format!("{:?}", symbol_id),
-//                 Position { index: 0 }
-//             ))
-//         }
-//     }
-//
-//     /// Récupère le type d'un symbole
-//     pub fn get_symbol_type(&self, symbol_id: SymbolId) -> Result<Option<&Type>, SemanticError> {
-//         let symbol = self.get_symbol(symbol_id)?;
-//         Ok(symbol.attributes.inferred_type.as_ref())
-//     }
-//     //
-// }
-//
-//
-//
-//
-// //
-// //
-// //
-// // impl TypeChecker {
-// //     pub fn infer_expression(&mut self, expr: &Expression) -> Result<Type, String> {
-// //         match expr {
-// //             Expression::Literal(lit) => self.infer_literal(lit),
-// //             Expression::Identifier(name) => self.lookup_type(name),
-// //             Expression::BinaryOperation(binop) => self.infer_binary_op(binop),
-// //             Expression::Assignment(assign) => self.infer_assignment(assign),
-// //             Expression::UnaryOperation(unop) => self.infer_unary_op(unop),
-// //             _ => Ok(Type::Infer), // Pour les autres cas
-// //         }
-// //     }
-// //
-// //     fn infer_literal(&self, lit: &Literal) -> Result<crate::parser::ast::Type, String> {
-// //         match lit {
-// //             Literal::Integer { .. } => Ok(crate::parser::ast::Type::Int),
-// //             Literal::Float { .. } => Ok(crate::parser::ast::Type::Float),
-// //             // Literal::String(_) => Ok(Type::String),
-// //             Literal::String(s) => {
-// //                 // Si c'est un seul caractère entre guillemets simples
-// //                 if s.len() == 1 && s.starts_with('\'') && s.ends_with('\'') {
-// //                     Ok(crate::parser::ast::Type::Char)
-// //                 } else {
-// //                     Ok(crate::parser::ast::Type::String)
-// //                 }
-// //             }
-// //             Literal::Boolean(_) => Ok(crate::parser::ast::Type::Bool),
-// //             Literal::Char(_) => Ok(crate::parser::ast::Type::Char), // Ajout  l'inference de type pour les caractères
-// //             _ => Ok(crate::parser::ast::Type::Infer),
-// //         }
-// //     }
-// //
-// //     fn infer_binary_op(&mut self, binop: &BinaryOperation) -> Result<crate::parser::ast::Type, String> {
-// //         let left_type = self.infer_expression(&binop.left)?;
-// //         let right_type = self.infer_expression(&binop.right)?;
-// //
-// //         match binop.operator {
-// //             Operator::Addition | Operator::Substraction |
-// //             Operator::Multiplication | Operator::Division => {
-// //                 if left_type == crate::parser::ast::Type::Int && right_type == crate::parser::ast::Type::Int {
-// //                     Ok(crate::parser::ast::Type::Int)
-// //                 } else if left_type == crate::parser::ast::Type::Float || right_type == crate::parser::ast::Type::Float {
-// //                     Ok(crate::parser::ast::Type::Float)
-// //                 } else if left_type == crate::parser::ast::Type::Infer || right_type == crate::parser::ast::Type::Infer {
-// //                     Ok(crate::parser::ast::Type::Infer)
-// //                 } else {
-// //                     Err("Type mismatch in binary operation".to_string())
-// //                 }
-// //             },
-// //             Operator::Equal | Operator::NotEqual |
-// //             Operator::LessThan | Operator::GreaterThan |
-// //             Operator::LesshanOrEqual | Operator::GreaterThanOrEqual => {
-// //                 self.add_constraint(TypeConstraint::Equal(left_type, right_type));
-// //                 Ok(crate::parser::ast::Type::Bool)
-// //             },
-// //             _ => Ok(crate::parser::ast::Type::Infer),
-// //         }
-// //     }
-// //
-// //     fn infer_assignment(&mut self, assign: &Assignment) -> Result<crate::parser::ast::Type, String> {
-// //         let value_type = self.infer_expression(&assign.value)?;
-// //
-// //         match &*assign.target {
-// //             Expression::Identifier(name) => {
-// //                 self.type_vars.insert(name.clone(), value_type.clone());
-// //                 Ok(value_type)
-// //             },
-// //             _ => Err("Invalid assignment target".to_string())
-// //         }
-// //     }
-// //
-// //
-// //     fn infer_unary_op(&mut self, unop: &UnaryOperation) -> Result<crate::parser::ast::Type, String> {
-// //         let operand_type = self.infer_expression(&unop.operand)?;
-// //
-// //         match unop.operator {
-// //             UnaryOperator::Negative => {
-// //                 match operand_type {
-// //                     crate::parser::ast::Type::Int => Ok(crate::parser::ast::Type::Int),
-// //                     crate::parser::ast::Type::Float => Ok(crate::parser::ast::Type::Float),
-// //                     crate::parser::ast::Type::Infer => Ok(crate::parser::ast::Type::Infer),
-// //                     _ => Err("Operator '-' cannot be applied to this type".to_string())
-// //                 }
-// //             },
-// //             UnaryOperator::Not => {
-// //                 match operand_type {
-// //                     crate::parser::ast::Type::Bool => Ok(crate::parser::ast::Type::Bool),
-// //                     crate::parser::ast::Type::Infer => Ok(crate::parser::ast::Type::Infer),
-// //                     _ => Err("Operator '!' can only be applied to boolean types".to_string())
-// //                 }
-// //             },
-// //             UnaryOperator::Reference => Ok(crate::parser::ast::Type::Array(Box::new(operand_type))),
-// //             UnaryOperator::ReferenceMutable => Ok(crate::parser::ast::Type::Array(Box::new(operand_type))),
-// //             _ => todo!(),
-// //         }
-// //     }
-// //
-// //
-// //
-// //     pub fn check_assignment(&mut self, target: &Expression, value: &Expression) -> Result<(), TypeError> {
-// //         // 1. Vérifier que la cible est assignable (lvalue)
-// //         if !self.is_lvalue(target) {
-// //             return Err(TypeError::NotAssignable);
-// //         }
-// //
-// //         // 2. Vérifier que la cible est mutable
-// //         self.check_mutability(target)?;
-// //
-// //         // 3. Inférer les types
-// //         let target_type = self.infer_expression(target)?;
-// //         let value_type = self.infer_expression(value)?;
-// //
-// //         // 4. Vérifier la compatibilité des types
-// //         self.type_system.unify(&target_type, &value_type)
-// //             .map(|_| ())
-// //             .map_err(|_| TypeError::AssignmentMismatch(target_type, value_type))
-// //     }
-// //
-// //     fn is_lvalue(&self, expr: &Expression) -> bool {
-// //         match expr {
-// //             Expression::Identifier(_) => true,
-// //             Expression::Literal(_) => false,
-// //             Expression::BinaryOperation(_) => false,
-// //             Expression::UnaryOperation(_) => false,
-// //             Expression::Assignment(_) => false,
-// //             Expression::MethodCall(_) => false,
-// //
-// //             // Expression::Variable(_) => true,
-// //             // Expr::FieldAccess(_, _) => true,
-// //             // Expr::Index(_, _) => true,
-// //             // D'autres expressions qui peuvent être à gauche d'une affectation
-// //             _ => false,
-// //         }
-// //     }
-// //
-// //     fn check_mutability(&self, expr: &Expression) -> Result<(), TypeError> {
-// //         match expr {
-// //             Expression::Variable(name) => {
-// //                 let symbol_id = self.symbol_table.lookup_symbol(name)?;
-// //                 if !self.symbol_table.is_mutable(symbol_id)? {
-// //                     return Err(TypeError::ImmutableAssignment(name.clone()));
-// //                 }
-// //                 Ok(())
-// //             },
-// //             // Autres cas...
-// //             _ => Ok(()),
-// //         }
-// //     }
-// // }
-// //
