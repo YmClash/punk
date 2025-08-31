@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ymcrust = {git = "https://github.com/Ymclash/ymcrust.git"}
+ymcrust = {git = "https://github.com/Ymclash/ymcrust.git"} # Personal library
 nom = "7.0"
 float-derive = "0.1.0"
 num-traits = "0.2.14"
