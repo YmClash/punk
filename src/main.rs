@@ -3,7 +3,6 @@
 #![allow(unused)]
 //use pyrust::parser::parser::Parser;
 
-//use ymcrust::lexxer;
 use punk::lexer::lex::{Lexer, Token};
 use punk::lexer::lex::SyntaxMode;
 use punk::parser::parser::Parser;
@@ -13,36 +12,131 @@ use punk::semantic::analyser::SemanticAnalyzer;
 
 fn mode(syntax_mode: SyntaxMode){
     match syntax_mode {
-        SyntaxMode::Braces => println!("Braces"),
-        SyntaxMode::Indentation => println!("Indentation"),
+        SyntaxMode::Braces => println!("Mode Braces"),
+        SyntaxMode::Indentation => println!("Mode Indentation"),
     }
+}
+
+fn print_separator(title: &str) {
+    println!("\n{:-^50}", format!(" {} ", title));
 }
 
 
 
 fn main() {
+    // Test en mode Brace
+    let syntax_mode = SyntaxMode::Braces;
     println!("=========================");
     println!("PunkLang  Compiler Test");
     println!("=========================\n");
-    // println!("Mode de syntaxe :\n");
+    println!("Mode de syntaxe : ");
+    mode(syntax_mode);
+
+
+
 
 
     // let code_source = r#"let x:int = 5;"#;
-    let code_source = r#"
-        // Un exemple plus complet pour tester l'analyse sémantique
-        let x:int = 5;
-        let y:int = 10;
-        let z:int = x + y;
+    // let code_source = r#"
+    //     let x:int = 5;
+    //     let y:int = 10;
+    //     let z:int = x + y;
+    //     let w:int = undefined_var + 10;
+    //
+    //     fn add(a: int, b: int) -> int {
+    //         let b = 20;
+    //         return a + b
+    //     }
+    // "#;
 
-        fn add(a: int, b: int) -> int {
-            return a + b
-        }
-    "#;
+    // Code Fibonacci en mode indentation
+    let code_source_indentation = r#"
+fn fibonacci(n: int) -> int:
+    if n <= 1:
+        return n
+    
+    let mut a = 0
+    let mut b = 1
+    let mut i = 2
+    
+    while i <= n:
+        let temp = a + b
+        a = b
+        b = temp
+        i = i + 1
+    
+    return b"#;
+
+    // Code Fibonacci en mode brace
+    let code_source_brace = r#"
+fn fibonacci(n: int) -> int {
+    if n <= 1 {
+        return n;
+    }
+
+    let mut a = 0;
+    let mut b = 1;
+    let mut i = 2;
+
+    while i <= n {
+        let temp = a + b;
+        a = b;
+        b = temp;
+        i = i + 1;
+    }
+
+    return b;
+}"#;
+
+    // Sélection du code selon le mode
+    let code_source = if matches!(syntax_mode, SyntaxMode::Indentation) {
+        code_source_indentation
+    } else {
+        code_source_brace
+    };
 
 
+
+    // let code_source = r#"let x = 10
+// let mut y = 10
+// let z:int = 1.5
+// fn get_color(x:int) -> int:
+//     return self.x+1"#;
+
+
+    // Test du constant folding, dead code elimination et alias analysis
+    // let code_source = r#"let x = 10
+// let y = 20
+// let z = x
+// let w = x
+// let p = y
+// let q = &mut y
+// let result = x + y
+// fn main() -> int:
+//     let a = 100
+//     let b = a
+//     let c = a
+//     return a
+// "#;
+
+
+    // let code_source = r#"match x :
+    // (0, 0) => print("Origin")
+    // (x, 0):
+    //     print("X-axis")
+    //     print(x)
+    // (0, y) if y > 0 => print("Positive Y-axis")
+    // (x, y) => print("MOMO")
+    // _ => print("Other")
+// "#;
+
+
+
+
+    print_separator("Analyse lexicale et tokenization \n");
 
     // let mut lexer = Lexer::new(code_lambda_indent, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_source, SyntaxMode::Braces);
+    let mut lexer = Lexer::new(code_source, syntax_mode);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
@@ -52,8 +146,10 @@ fn main() {
     }
     println!("\n");
 
+    print_separator("Analyse syntaxique et génération de l'AST \n");
+
     // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
+    let mut parser = Parser::new(tokens, syntax_mode);
     let mut ast_nodes = Vec::new();
 
 
@@ -62,44 +158,122 @@ fn main() {
         match parser.parse_program() {
             Ok(ast) => {
                 println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("AST généré pour la déclaration,l'expression ou le statement  :");
+                println!("AST généré pour la déclaration,l'expression ou le statement ✅ :");
                 println!("{:#?}", ast);
                 ast_nodes.push(ast)
             }
             Err(e) => {
-                println!("Erreur lors du parsing : {}", e);
+                println!(" ❌ Erreur lors du parsing : {}", e);
                 break;
             }
         }
     }
+    if ast_nodes.is_empty() {
+        println!("Aucun AST généré, le code source peut être vide ou invalide.");
+    } else {
+        println!("AST généré avec succès pour {} nœuds.", ast_nodes.len());
+    }
 
     println!("Parsing terminé\n");
 
-    println!("Debut de l'analyse sémantique\n");
+    println!("=======Debut de l'analyse sémantique=======\n");
 
     let mut analyser = SemanticAnalyzer::new();
+    
+    // Activer le système de récupération d'erreurs
+    use std::rc::Rc;
+    use std::cell::RefCell;
+    use punk::semantic::context::CompilationContext;
+    
+    let context = Rc::new(RefCell::new(CompilationContext::new()));
+    analyser.enable_error_recovery(context.clone());
+
     match analyser.analyze(&ast_nodes) {
         Ok(()) => {
+            println!("✅ Analyse sémantique réussie!");
             println!("Analyse sémantique réussie! OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             let stats = analyser.get_analysis_stats();
             println!("Statistiques de l'analyse sémantique:");
-            println!("Symboles: {}, Types: {}, Erreurs: {}, Avertissements: {}",
-                     stats.total_symbols, stats.total_types, stats.error_count, stats.warning_count);
+            println!("Symboles: {}, Types: {}, Scopes {} ,Erreurs: {}, Avertissements: {}",
+                     stats.total_symbols, stats.total_types,stats.total_scopes, stats.error_count, stats.warning_count);
+            
+            // Appliquer les optimisations
+            let mut optimized_ast = ast_nodes.clone();
+            analyser.optimize_ast(&mut optimized_ast, context.clone());
+            
+            println!("\nAST après optimisation:");
+            for node in &optimized_ast {
+                println!("{:#?}", node);
+            }
 
             // Afficher les avertissements s'il y en a
             if stats.warning_count > 0 {
-                println!("\nAvertissements:");
+                println!("\n ⚠️ Avertissements:");
                 for warning in analyser.get_warnings() {
-                    println!("- {:?}", warning);
+                    // Affichage formaté des avertissements
+                    match &warning.error {
+                        punk::semantic::semantic_error::SemanticErrorType::SymbolError(
+                            punk::semantic::semantic_error::SymbolError::UnusedSymbol(name)
+                        ) => {
+                            println!("  - [{}] Symbol '{}' is declared but never used", 
+                                     warning.position, name);
+                        }
+                        _ => {
+                            println!("  - [{}] {}", warning.position, warning.message);
+                        }
+                    }
                 }
             }
+
+            // Afficher le rapport de récupération d'erreurs si disponible
+            analyser.display_error_recovery_report();
+            
+            // Afficher les diagnostics améliorés
+            println!("\n=== Enhanced Diagnostics ===");
+            analyser.display_diagnostics();
+            
+            println!("\nTable des Symboles:");
+            for (id, symbol) in &analyser.symbol_table.symbols {
+                let scope_id = symbol.scope_id;
+                let scope_kind = analyser.symbol_table.scopes.get(&scope_id)
+                    .map_or("Unknown", |s| match s.kind {
+                        punk::semantic::symbols::ScopeKind::Global => "Global",
+                        punk::semantic::symbols::ScopeKind::Function => "Function",
+                        punk::semantic::symbols::ScopeKind::Block => "Block",
+                        punk::semantic::symbols::ScopeKind::Loop => "Loop",
+                        punk::semantic::symbols::ScopeKind::Trait => "Trait",
+                        punk::semantic::symbols::ScopeKind::Class => "Class",
+                        punk::semantic::symbols::ScopeKind::Module => "Module",
+                        punk::semantic::symbols::ScopeKind::Implementation => "Impl",
+                        _ => "Other",
+                    });
+
+                let type_info = analyser.symbol_table.get_symbol_type(*id)
+                    .map_or("No type".to_string(), |t| {
+                        t.map_or("Inferred".to_string(), |typ| format!("{}", typ))
+                    });
+
+
+                // println!("Symbol ID: {}, Name: {}, Kind: {:?}, Scope: {}, Type: {}, Visibility: {:?}, Location: {:?}",
+                //          id, symbol.name, symbol.kind, scope_kind, type_info, symbol.visibility, symbol.location);
+
+                println!("  • {}: {:?} (scope: {}, type: {})",
+                         symbol.name,
+                         symbol.kind,
+                         scope_kind,
+                         type_info);
+
+            }
+
         },
         Err(errors) => {
-            println!("Échec de l'analyse sémantique avec {} erreurs:", errors.len());
+            println!("❌Échec de l'analyse sémantique avec {} erreurs:", errors.len());
             for (i, e) in errors.iter().enumerate() {
                 println!("Erreur {}: {:?}", i+1, e);
             }
         }
+
+
     }
 
 
