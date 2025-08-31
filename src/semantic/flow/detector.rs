@@ -1,231 +1,185 @@
-// struct DeadCodeDetector {
-//     cfg: ControlFlowGraph,
-//
-//     // Nœuds accessibles depuis l'entrée
-//     reachable: HashSet<NodeId>,
-// }
-//
-// impl DeadCodeDetector {
-//     // Détecte les nœuds inaccessibles (code mort)
-//     pub fn detect_dead_code(&mut self) -> Vec<NodeId> {
-//         // Calculer les nœuds accessibles
-//         self.compute_reachable_nodes();
-//
-//         // Trouver les nœuds inaccessibles
-//         self.cfg.nodes.keys()
-//             .filter(|node_id| !self.reachable.contains(node_id))
-//             .cloned()
-//             .collect()
-//     }
-//
-//     // Calcule les nœuds accessibles depuis l'entrée
-//     fn compute_reachable_nodes(&mut self) {
-//         self.reachable.clear();
-//
-//         // Partir du nœud d'entrée
-//         let mut to_visit = vec![self.cfg.entry];
-//         self.reachable.insert(self.cfg.entry);
-//
-//         // Parcourir le graphe
-//         while let Some(node_id) = to_visit.pop() {
-//             if let Some(successors) = self.cfg.edges.get(&node_id) {
-//                 for succ in successors {
-//                     if !self.reachable.contains(succ) {
-//                         self.reachable.insert(*succ);
-//                         to_visit.push(*succ);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//
-//     // Détecte les expressions dont la valeur n'est jamais utilisée
-//     pub fn detect_unused_expressions(&self) -> Vec<NodeId> {
-//         let mut unused = Vec::new();
-//
-//         for (node_id, node) in &self.cfg.nodes {
-//             // On ne s'intéresse qu'aux expressions qui sont reachable
-//             if !self.reachable.contains(node_id) {
-//                 continue;
-//             }
-//
-//             match node {
-//                 CFGNode::Expression(expr) => {
-//                     // Vérifier si cette expression a un effet de bord
-//                     if !self.has_side_effect(expr) {
-//                         unused.push(*node_id);
-//                     }
-//                 },
-//                 // Autres cas...
-//                 _ => {},
-//             }
-//         }
-//
-//         unused
-//     }
-//
-//     // Vérifie si une expression a un effet de bord
-//     fn has_side_effect(&self, expr: &Expr) -> bool {
-//         match expr {
-//             Expr::Call(..) => true,  // Les appels de fonction peuvent avoir des effets de bord
-//             Expr::Assign(..) => true,  // Les affectations ont des effets de bord
-//             Expr::UnaryOp(op, operand) => {
-//                 // Les opérateurs ++ et -- ont des effets de bord
-//                 matches!(op, UnaryOp::PreIncrement | UnaryOp::PostIncrement |
-//                              UnaryOp::PreDecrement | UnaryOp::PostDecrement) ||
-//                     self.has_side_effect(operand)
-//             },
-//             Expr::BinaryOp(_, left, right) => {
-//                 self.has_side_effect(left) || self.has_side_effect(right)
-//             },
-//             // Autres cas...
-//             _ => false,
-//         }
-//     }
-// }
-//
-//
-// struct FlowAnalyzer {
-//     cfg_builder: CFGBuilder,
-//     def_use_analyzer: DefUseAnalyzer,
-//     execution_path_analyzer: ExecutionPathAnalyzer,
-//     dead_code_detector: DeadCodeDetector,
-//     usage_analyzer: UsageAnalyzer,
-//     return_path_analyzer: ReturnPathAnalyzer,
-//
-//     // Résultats de l'analyse
-//     uninitialized_vars: Vec<(SymbolId, NodeId)>,
-//     unused_vars: Vec<SymbolId>,
-//     dead_code: Vec<NodeId>,
-//     missing_returns: bool,
-// }
-//
-// impl FlowAnalyzer {
-//     // Analyse complète d'une fonction
-//     pub fn analyze_function(&mut self, func: &Function) -> Result<FlowAnalysisResult, FlowError> {
-//         // 1. Construire le CFG
-//         let cfg = self.cfg_builder.build_cfg(&func.body)?;
-//
-//         // 2. Initialiser les différents analyseurs avec le CFG
-//         self.initialize_analyzers(cfg, &func.symbol_table);
-//
-//         // 3. Analyse des définitions-utilisations
-//         self.def_use_analyzer.analyze_reaching_definitions();
-//         self.uninitialized_vars = self.def_use_analyzer.check_uninitialized_variables();
-//
-//         // 4. Analyse des variables non utilisées
-//         self.unused_vars = self.usage_analyzer.analyze();
-//
-//         // 5. Détection de code mort
-//         self.dead_code = self.dead_code_detector.detect_dead_code();
-//
-//         // 6. Vérification des chemins de retour
-//         self.missing_returns = !self.return_path_analyzer.all_paths_return();
-//
-//         // 7. Construire le résultat
-//         Ok(FlowAnalysisResult {
-//             uninitialized_vars: self.uninitialized_vars.clone(),
-//             unused_vars: self.unused_vars.clone(),
-//             dead_code: self.dead_code.clone(),
-//             missing_returns: self.missing_returns,
-//         })
-//     }
-//
-//     // Initialise les analyseurs avec le CFG et la table des symboles
-//     fn initialize_analyzers(&mut self, cfg: ControlFlowGraph, symbol_table: &SymbolTable) {
-//         // Initialisation de chaque analyseur...
-//     }
-// }
-//
-// struct FlowAnalysisResult {
-//     uninitialized_vars: Vec<(SymbolId, NodeId)>,
-//     unused_vars: Vec<SymbolId>,
-//     dead_code: Vec<NodeId>,
-//     missing_returns: bool,
-// }
-//
-//
-//
-//
-//
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn test_cfg_construction() {
-//         // Créer un bloc simple: x = 1; y = x + 2; return y;
-//         let block = create_test_block();
-//
-//         let mut builder = CFGBuilder::new();
-//         let cfg = builder.build_cfg(&block).unwrap();
-//
-//         // Vérifier la structure du CFG
-//         assert_eq!(cfg.nodes.len(), 5);  // entry, 3 instructions, exit
-//
-//         // Vérifier les connexions
-//         assert!(cfg.edges.get(&cfg.entry).unwrap().len() == 1);
-//
-//         // Autres assertions...
-//     }
-//
-//     #[test]
-//     fn test_uninitialized_vars() {
-//         // Créer un bloc avec une utilisation avant définition
-//         let block = create_uninitialized_block();
-//
-//         let mut analyzer = FlowAnalyzer::new();
-//         let result = analyzer.analyze_function(&Function {
-//             name: "test".to_string(),
-//             body: block,
-//             // Autres champs...
-//         }).unwrap();
-//
-//         assert!(!result.uninitialized_vars.is_empty());
-//     }
-//
-//     #[test]
-//     fn test_unused_vars() {
-//         // Créer un bloc avec une variable non utilisée
-//         let block = create_unused_var_block();
-//
-//         let mut analyzer = FlowAnalyzer::new();
-//         let result = analyzer.analyze_function(&Function {
-//             name: "test".to_string(),
-//             body: block,
-//             // Autres champs...
-//         }).unwrap();
-//
-//         assert!(!result.unused_vars.is_empty());
-//     }
-//
-//     #[test]
-//     fn test_dead_code() {
-//         // Créer un bloc avec du code mort
-//         let block = create_dead_code_block();
-//
-//         let mut analyzer = FlowAnalyzer::new();
-//         let result = analyzer.analyze_function(&Function {
-//             name: "test".to_string(),
-//             body: block,
-//             // Autres champs...
-//         }).unwrap();
-//
-//         assert!(!result.dead_code.is_empty());
-//     }
-//
-//     #[test]
-//     fn test_return_paths() {
-//         // Créer un bloc avec des chemins sans return
-//         let block = create_missing_return_block();
-//
-//         let mut analyzer = FlowAnalyzer::new();
-//         let result = analyzer.analyze_function(&Function {
-//             name: "test".to_string(),
-//             body: block,
-//             // Autres champs...
-//         }).unwrap();
-//
-//         assert!(result.missing_returns);
-//     }
-// }
+//src/semantic/flow/detector.rs
+
+use std::collections::HashSet;
+use crate::semantic::flow::control_flow_graph::{ControlFlowGraph, BlockId};
+use crate::semantic::symbols::SymbolId;
+use crate::semantic::symbol_table::SymbolTable;
+use crate::parser::ast::Expression;
+
+pub struct DeadCodeDetector {
+    cfg: ControlFlowGraph,
+    reachable: HashSet<BlockId>,
+}
+
+impl DeadCodeDetector {
+    pub fn new(cfg: ControlFlowGraph) -> Self {
+        DeadCodeDetector {
+            cfg,
+            reachable: HashSet::new(),
+        }
+    }
+    
+    /// Détecte les blocs inaccessibles (code mort)
+    pub fn detect_dead_code(&mut self) -> Vec<BlockId> {
+        // Calculer les blocs accessibles
+        self.compute_reachable_blocks();
+        
+        // Trouver les blocs inaccessibles
+        self.cfg.blocks.keys()
+            .filter(|block_id| !self.reachable.contains(block_id))
+            .copied()
+            .collect()
+    }
+    
+    /// Calcule les blocs accessibles depuis l'entrée
+    fn compute_reachable_blocks(&mut self) {
+        self.reachable.clear();
+        
+        let mut to_visit = vec![self.cfg.entry];
+        self.reachable.insert(self.cfg.entry);
+        
+        while let Some(block_id) = to_visit.pop() {
+            if let Some(block) = self.cfg.blocks.get(&block_id) {
+                for &successor in &block.successors {
+                    if !self.reachable.contains(&successor) {
+                        self.reachable.insert(successor);
+                        to_visit.push(successor);
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Détecte les expressions dont la valeur n'est jamais utilisée
+    pub fn detect_unused_expressions(&self) -> Vec<BlockId> {
+        let mut unused = Vec::new();
+        
+        for (block_id, block) in &self.cfg.blocks {
+            // On ne s'intéresse qu'aux blocs qui sont accessibles
+            if !self.reachable.contains(block_id) {
+                continue;
+            }
+            
+            // Analyser les instructions du bloc
+            for instruction in &block.instructions {
+                use crate::semantic::flow::control_flow_graph::Instruction;
+                
+                match instruction {
+                    Instruction::Expression { expr, .. } => {
+                        // Vérifier si cette expression a un effet de bord
+                        if !self.has_side_effect(expr) {
+                            unused.push(*block_id);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        
+        unused
+    }
+    
+    /// Vérifie si une expression a un effet de bord
+    fn has_side_effect(&self, expr: &Expression) -> bool {
+        match expr {
+            Expression::FunctionCall(_) => true, // Les appels de fonction peuvent avoir des effets de bord
+            Expression::Assignment(_) => true, // Les affectations ont des effets de bord
+            Expression::MethodCall(_) => true, // Les appels de méthode peuvent avoir des effets de bord
+            Expression::UnaryOperation(unop) => {
+                // Certains opérateurs unaires peuvent avoir des effets de bord
+                self.has_side_effect(&unop.operand)
+            }
+            Expression::BinaryOperation(binop) => {
+                self.has_side_effect(&binop.left) || self.has_side_effect(&binop.right)
+            }
+            _ => false,
+        }
+    }
+}
+
+/// Analyseur de flux complet
+pub struct FlowAnalyzer {
+    symbol_table: SymbolTable,
+}
+
+impl FlowAnalyzer {
+    pub fn new(symbol_table: SymbolTable) -> Self {
+        FlowAnalyzer { symbol_table }
+    }
+    
+    /// Analyse complète d'une fonction
+    pub fn analyze_function(&mut self, ast: &crate::parser::ast::ASTNode) -> Result<FlowAnalysisResult, String> {
+        use crate::semantic::flow::control_flow_graph::CFGBuilder;
+        use crate::semantic::flow::analyser::{DefUseAnalyzer, UsageAnalyzer, ReturnPathAnalyzer};
+        
+        // 1. Construire le CFG
+        let cfg_builder = CFGBuilder::new();
+        let cfg = cfg_builder.build(ast).map_err(|e| format!("CFG build error: {:?}", e))?;
+        
+        // 2. Analyse des définitions-utilisations
+        let mut def_use_analyzer = DefUseAnalyzer::new(cfg.clone(), self.symbol_table.clone());
+        def_use_analyzer.analyze_reaching_definitions();
+        let uninitialized_vars = def_use_analyzer.check_uninitialized_variables();
+        
+        // 3. Analyse des variables non utilisées
+        let mut usage_analyzer = UsageAnalyzer::new(self.symbol_table.clone(), cfg.clone());
+        let unused_vars = usage_analyzer.analyze();
+        
+        // 4. Détection de code mort
+        let mut dead_code_detector = DeadCodeDetector::new(cfg.clone());
+        let dead_blocks = dead_code_detector.detect_dead_code();
+        
+        // 5. Vérification des chemins de retour
+        let mut return_analyzer = ReturnPathAnalyzer::new(cfg);
+        let all_paths_return = return_analyzer.all_paths_return();
+        
+        // 6. Construire le résultat
+        Ok(FlowAnalysisResult {
+            uninitialized_vars,
+            unused_vars,
+            dead_blocks,
+            all_paths_return,
+        })
+    }
+}
+
+/// Résultat de l'analyse de flux
+#[derive(Debug, Clone)]
+pub struct FlowAnalysisResult {
+    pub uninitialized_vars: Vec<(SymbolId, BlockId)>,
+    pub unused_vars: Vec<SymbolId>,
+    pub dead_blocks: Vec<BlockId>,
+    pub all_paths_return: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_dead_code_detection() {
+        // Test basique de détection de code mort
+        let cfg = ControlFlowGraph::new();
+        let mut detector = DeadCodeDetector::new(cfg);
+        let dead_blocks = detector.detect_dead_code();
+        assert!(dead_blocks.is_empty()); // Avec un CFG vide, pas de code mort
+    }
+    
+    #[test]
+    fn test_side_effect_detection() {
+        use crate::parser::ast::{FunctionCallExpression, Literal};
+        
+        let detector = DeadCodeDetector::new(ControlFlowGraph::new());
+        
+        // Un appel de fonction a des effets de bord
+        let func_call = Expression::FunctionCall(FunctionCallExpression {
+            name: "print".to_string(),
+            arguments: vec![],
+        });
+        assert!(detector.has_side_effect(&func_call));
+        
+        // Un littéral n'a pas d'effet de bord
+        let literal = Expression::Literal(Literal::Integer { value: 42 });
+        assert!(!detector.has_side_effect(&literal));
+    }
+}
