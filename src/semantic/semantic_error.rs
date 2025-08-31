@@ -42,15 +42,17 @@ pub enum SymbolError {
     InvalidVisibility(String),
     InvalidScope,
     ImportError(String),
-
+    UnusedSymbol(String),
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
     TypeMismatch(String),
     InvalidType(String),
     UndefinedType(String),
+    UndefinedVariable(String),
     TypeNotFound(String),
     InvalidTypeParameter(String),
+    InfiniteType(String),
 }
 
 
@@ -79,7 +81,14 @@ impl Position {
 /// Implementation de l'affichage de Position
 impl Display for Position{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Position index: {}", self.index)
+        // Si l'index est dans le format ligne * 1000 + colonne
+        if self.index >= 1000 {
+            let line = self.index / 1000;
+            let column = self.index % 1000;
+            write!(f, "line {}, column {}", line, column)
+        } else {
+            write!(f, "position {}", self.index)
+        }
     }
 }
 
@@ -105,6 +114,9 @@ impl Display for SemanticErrorType{
             SemanticErrorType::SymbolError(SymbolError::ImportError(name)) => {
                 write!(f, "Symbol Error: Import error for symbol '{}'", name)
             }
+            SemanticErrorType::SymbolError(SymbolError::UnusedSymbol(name)) => {
+                write!(f, "Warning: Symbol '{}' is declared but never used", name)
+            }
             SemanticErrorType::TypeError(TypeError::TypeMismatch(name)) => {
                 write!(f, "Type Error: Type mismatch for symbol '{}'", name)
             }
@@ -119,6 +131,12 @@ impl Display for SemanticErrorType{
             }
             SemanticErrorType::TypeError(TypeError::InvalidTypeParameter(name)) => {
                 write!(f, "Type Error: Invalid type parameter for symbol '{}'", name)
+            }
+            SemanticErrorType::TypeError(TypeError::UndefinedVariable(name)) => {
+                write!(f, "Type Error: Undefined variable '{}'", name)
+            }
+            SemanticErrorType::TypeError(TypeError::InfiniteType(msg)) => {
+                write!(f, "Type Error: Infinite type - {}", msg)
             }
 
         }
@@ -148,6 +166,9 @@ impl SemanticError{
             SemanticErrorType::SymbolError(SymbolError::ImportError(name)) => {
                 format!("Import error for symbol '{}'", name)
             }
+            SemanticErrorType::SymbolError(SymbolError::UnusedSymbol(name)) => {
+                format!("Symbol '{}' is declared but never used", name)
+            }
             SemanticErrorType::TypeError(TypeError::TypeMismatch(name)) => {
                 format!("Type mismatch for symbol '{}'", name)
             }
@@ -162,6 +183,12 @@ impl SemanticError{
             }
             SemanticErrorType::TypeError(TypeError::InvalidTypeParameter(name)) => {
                 format!("Invalid type parameter for symbol '{}'", name)
+            }
+            SemanticErrorType::TypeError(TypeError::UndefinedVariable(name)) => {
+                format!("Undefined variable '{}'", name)
+            }
+            SemanticErrorType::TypeError(TypeError::InfiniteType(msg)) => {
+                format!("Infinite type - {}", msg)
             }
 
         };
