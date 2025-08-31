@@ -1,9 +1,13 @@
-// src/semantic/symbols/borrow_checker.rs
+// src/semantic/borrow_checker.rs
 
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::semantic::semantic_error::{SemanticError, SemanticErrorType, Position};
-use crate::semantic::symbols::{Symbol, SymbolId, ScopeId, SourceLocation};
+use crate::semantic::symbols::{SymbolId, ScopeId, SourceLocation};
 use crate::semantic::symbol_table::SymbolTable;
+use crate::semantic::flow::control_flow_graph::{ControlFlowGraph, BlockId, CFGInstruction};
+use crate::semantic::context::CompilationContext;
 
 /// Types de références possibles pour une variable
 #[derive(Debug, Clone, PartialEq)]
@@ -161,7 +165,7 @@ fn borrow_error_to_semantic(error: BorrowErrorKind, position: Position) -> Seman
     }
 }
 
-/// Gère l'état des emprunts et la mutabilité
+/// Gère l'état des emprunts et la mutabilité avec intégration CFG
 #[derive(Debug, Clone)]
 pub struct BorrowChecker {
     /// Borrows actifs par symbole
@@ -175,6 +179,31 @@ pub struct BorrowChecker {
 
     /// Historique des borrows (pour debug et reporting)
     pub borrow_history: Vec<BorrowInfo>,
+    
+    /// Control Flow Graph pour l'analyse basée sur le flux
+    cfg: Option<Rc<RefCell<ControlFlowGraph>>>,
+    
+    /// État des emprunts par bloc du CFG
+    block_borrow_states: HashMap<BlockId, BlockBorrowState>,
+    
+    /// Contexte de compilation partagé
+    context: Option<Rc<RefCell<CompilationContext>>>,
+}
+
+/// État des emprunts dans un bloc du CFG
+#[derive(Debug, Clone)]
+pub struct BlockBorrowState {
+    /// Emprunts actifs à l'entrée du bloc
+    pub entry_borrows: HashMap<SymbolId, Vec<BorrowInfo>>,
+    
+    /// Emprunts actifs à la sortie du bloc
+    pub exit_borrows: HashMap<SymbolId, Vec<BorrowInfo>>,
+    
+    /// Variables initialisées dans ce bloc
+    pub initialized: HashSet<SymbolId>,
+    
+    /// Variables moved dans ce bloc
+    pub moved: HashMap<SymbolId, SourceLocation>,
 }
 
 impl BorrowChecker {
@@ -185,7 +214,22 @@ impl BorrowChecker {
             initialized_variables: HashSet::new(),
             moved_variables: HashMap::new(),
             borrow_history: Vec::new(),
+            cfg: None,
+            block_borrow_states: HashMap::new(),
+            context: None,
         }
+    }
+    
+    /// Associe un CFG au borrow checker
+    pub fn with_cfg(mut self, cfg: Rc<RefCell<ControlFlowGraph>>) -> Self {
+        self.cfg = Some(cfg);
+        self
+    }
+    
+    /// Associe un contexte de compilation
+    pub fn with_context(mut self, context: Rc<RefCell<CompilationContext>>) -> Self {
+        self.context = Some(context);
+        self
     }
 
     /// Vérifie si une variable est initialisée
@@ -319,6 +363,299 @@ impl BorrowChecker {
         match self.active_borrows.get(&symbol_id) {
             Some(borrows) => borrows.iter().collect(),
             None => Vec::new(),
+        }
+    }
+    
+    
+    // ===== Méthodes d'analyse basées sur le CFG =====
+    
+    /// Analyse les emprunts en utilisant le Control Flow Graph
+    pub fn analyze_with_cfg(&mut self) -> Result<(), Vec<BorrowErrorKind>> {
+        if self.cfg.is_none() {
+            // Pas de CFG, utiliser l'analyse classique
+            return Ok(());
+        }
+        
+        let mut errors = Vec::new();
+        
+        // D'abord, obtenir les informations nécessaires du CFG
+        let (all_blocks, sorted_blocks) = {
+            let cfg = self.cfg.as_ref().unwrap().borrow();
+            (cfg.get_all_blocks(), cfg.topological_sort())
+        };
+        
+        // Initialiser l'état pour chaque bloc
+        for block_id in all_blocks {
+            self.block_borrow_states.insert(block_id, BlockBorrowState {
+                entry_borrows: HashMap::new(),
+                exit_borrows: HashMap::new(),
+                initialized: HashSet::new(),
+                moved: HashMap::new(),
+            });
+        }
+        
+        // Analyser chaque bloc dans l'ordre topologique
+        for block_id in sorted_blocks {
+            // Obtenir les informations du bloc avant l'analyse
+            let block_instructions = {
+                let cfg = self.cfg.as_ref().unwrap().borrow();
+                cfg.get_block(block_id).map(|block| block.instructions.clone())
+            };
+            
+            // Analyser le bloc avec les informations extraites
+            if let Some(instructions) = block_instructions {
+                if let Err(block_errors) = self.analyze_block_instructions(block_id, &instructions) {
+                    errors.extend(block_errors);
+                }
+            }
+        }
+        
+        // Vérifier la cohérence entre les blocs
+        {
+            let cfg = self.cfg.as_ref().unwrap().borrow();
+            if let Err(flow_errors) = self.verify_dataflow_consistency(&*cfg) {
+                errors.extend(flow_errors);
+            }
+        }
+        
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+    
+    /// Analyse les instructions d'un bloc du CFG
+    fn analyze_block_instructions(&mut self, block_id: BlockId, instructions: &[crate::semantic::flow::control_flow_graph::Instruction]) -> Result<(), Vec<BorrowErrorKind>> {
+        let mut errors = Vec::new();
+        
+        // Récupérer l'état d'entrée (merge des prédécesseurs)
+        let entry_state = {
+            let cfg = self.cfg.as_ref().unwrap().borrow();
+            self.compute_entry_state(&*cfg, block_id)
+        };
+        
+        // Appliquer l'état d'entrée
+        self.apply_block_state(&entry_state);
+        
+        // Analyser chaque instruction du bloc
+        for instruction in instructions {
+            // Convertir Instruction en CFGInstruction
+            let cfg_instruction = CFGInstruction::Generic(instruction.clone());
+            if let Err(err) = self.analyze_instruction(&cfg_instruction) {
+                errors.push(err);
+            }
+        }
+        
+        // Sauvegarder l'état de sortie
+        if let Some(state) = self.block_borrow_states.get_mut(&block_id) {
+            state.exit_borrows = self.active_borrows.clone();
+            state.initialized = self.initialized_variables.clone();
+            state.moved = self.moved_variables.clone();
+        }
+        
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+    
+    /// Calcule l'état d'entrée d'un bloc (merge des prédécesseurs)
+    fn compute_entry_state(&self, cfg: &ControlFlowGraph, block_id: BlockId) -> BlockBorrowState {
+        let predecessors = cfg.get_predecessors(block_id);
+        
+        if predecessors.is_empty() {
+            // Bloc d'entrée : état initial vide
+            return BlockBorrowState {
+                entry_borrows: HashMap::new(),
+                exit_borrows: HashMap::new(),
+                initialized: HashSet::new(),
+                moved: HashMap::new(),
+            };
+        }
+        
+        // Merger les états de sortie des prédécesseurs
+        let mut merged_state = BlockBorrowState {
+            entry_borrows: HashMap::new(),
+            exit_borrows: HashMap::new(),
+            initialized: HashSet::new(),
+            moved: HashMap::new(),
+        };
+        
+        // Pour les variables initialisées : intersection (doivent être initialisées dans tous les chemins)
+        let mut first = true;
+        for pred_id in &predecessors {
+            if let Some(pred_state) = self.block_borrow_states.get(pred_id) {
+                if first {
+                    merged_state.initialized = pred_state.initialized.clone();
+                    first = false;
+                } else {
+                    merged_state.initialized = merged_state.initialized
+                        .intersection(&pred_state.initialized)
+                        .cloned()
+                        .collect();
+                }
+            }
+        }
+        
+        // Pour les emprunts : union (tous les emprunts possibles)
+        for pred_id in &predecessors {
+            if let Some(pred_state) = self.block_borrow_states.get(pred_id) {
+                for (symbol, borrows) in &pred_state.exit_borrows {
+                    merged_state.entry_borrows
+                        .entry(*symbol)
+                        .or_insert_with(Vec::new)
+                        .extend(borrows.clone());
+                }
+            }
+        }
+        
+        // Pour les moves : union (si moved dans n'importe quel chemin)
+        for pred_id in &predecessors {
+            if let Some(pred_state) = self.block_borrow_states.get(pred_id) {
+                merged_state.moved.extend(pred_state.moved.clone());
+            }
+        }
+        
+        merged_state
+    }
+    
+    /// Applique un état de bloc au checker
+    fn apply_block_state(&mut self, state: &BlockBorrowState) {
+        self.active_borrows = state.entry_borrows.clone();
+        self.initialized_variables = state.initialized.clone();
+        self.moved_variables = state.moved.clone();
+    }
+    
+    /// Analyse une instruction du CFG
+    fn analyze_instruction(&mut self, instruction: &CFGInstruction) -> Result<(), BorrowErrorKind> {
+        match instruction {
+            CFGInstruction::Assign { target, value: _ } => {
+                // Marquer la variable comme initialisée
+                self.mark_initialized(*target);
+                Ok(())
+            }
+            CFGInstruction::Read(symbol_id) => {
+                // Vérifier que la variable est initialisée et non moved
+                if !self.is_initialized(*symbol_id) {
+                    return Err(BorrowErrorKind::UninitializedVariable {
+                        symbol_id: *symbol_id,
+                        use_location: SourceLocation::default(),
+                    });
+                }
+                
+                if let Some(move_loc) = self.moved_variables.get(symbol_id) {
+                    return Err(BorrowErrorKind::UseAfterMove {
+                        symbol_id: *symbol_id,
+                        move_location: move_loc.clone(),
+                        use_location: SourceLocation::default(),
+                    });
+                }
+                
+                Ok(())
+            }
+            CFGInstruction::Write(symbol_id) => {
+                // Vérifier qu'il n'y a pas d'emprunts actifs
+                if let Some(borrows) = self.active_borrows.get(symbol_id) {
+                    if !borrows.is_empty() {
+                        let locations: Vec<_> = borrows.iter().map(|b| b.location.clone()).collect();
+                        return Err(BorrowErrorKind::MutableBorrowWithImmutableBorrows {
+                            symbol_id: *symbol_id,
+                            immutable_locations: locations,
+                            mutable_location: SourceLocation::default(),
+                        });
+                    }
+                }
+                
+                self.mark_initialized(*symbol_id);
+                Ok(())
+            }
+            CFGInstruction::Borrow { target, source, is_mutable } => {
+                // Enregistrer l'emprunt
+                let kind = if *is_mutable {
+                    BorrowKind::Mutable
+                } else {
+                    BorrowKind::Immutable
+                };
+                
+                self.register_borrow(
+                    *source,
+                    kind,
+                    SourceLocation::default(),
+                    ScopeId(0), // À améliorer avec le vrai scope
+                    None,
+                )?;
+                
+                // Marquer la cible comme initialisée
+                self.mark_initialized(*target);
+                Ok(())
+            }
+            CFGInstruction::Move { target, source } => {
+                // Enregistrer le move
+                self.moved_variables.insert(*source, SourceLocation::default());
+                self.active_borrows.remove(source);
+                
+                // Marquer la cible comme initialisée
+                self.mark_initialized(*target);
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+    
+    /// Vérifie la cohérence du flux de données entre les blocs
+    fn verify_dataflow_consistency(&self, cfg: &ControlFlowGraph) -> Result<(), Vec<BorrowErrorKind>> {
+        let mut errors = Vec::new();
+        
+        // Vérifier que les emprunts sont valides à travers les edges du CFG
+        for block_id in cfg.get_all_blocks() {
+            let successors = cfg.get_successors(block_id);
+            
+            if let Some(block_state) = self.block_borrow_states.get(&block_id) {
+                for succ_id in successors {
+                    if let Some(succ_state) = self.block_borrow_states.get(&succ_id) {
+                        // Vérifier que les emprunts actifs sont cohérents
+                        for (symbol, borrows) in &block_state.exit_borrows {
+                            if let Some(succ_borrows) = succ_state.entry_borrows.get(symbol) {
+                                // Vérifier la compatibilité des emprunts
+                                if !self.are_borrows_compatible(borrows, succ_borrows) {
+                                    errors.push(BorrowErrorKind::InvalidLifetime {
+                                        symbol_id: *symbol,
+                                        location: SourceLocation::default(),
+                                        message: "Incompatible borrows across control flow edge".to_string(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+    
+    /// Vérifie si deux ensembles d'emprunts sont compatibles
+    fn are_borrows_compatible(&self, borrows1: &[BorrowInfo], borrows2: &[BorrowInfo]) -> bool {
+        // Règles de compatibilité :
+        // - Plusieurs emprunts immutables sont OK
+        // - Un seul emprunt mutable à la fois
+        // - Pas de mélange immutable/mutable
+        
+        let has_mutable1 = borrows1.iter().any(|b| matches!(b.kind, BorrowKind::Mutable));
+        let has_mutable2 = borrows2.iter().any(|b| matches!(b.kind, BorrowKind::Mutable));
+        
+        if has_mutable1 || has_mutable2 {
+            // S'il y a un emprunt mutable, il doit être le seul
+            borrows1.len() <= 1 && borrows2.len() <= 1
+        } else {
+            // Emprunts immutables uniquement : toujours compatibles
+            true
         }
     }
 }
