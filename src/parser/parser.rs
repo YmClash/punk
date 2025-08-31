@@ -9,18 +9,12 @@ use crate::parser::parser_error::{ParserError, ParserErrorType, Position};
 use crate::tok::{Delimiters, Keywords, Operators, TokenType};
 use crate::parser::inference::{TypeContext};
 
-
-
-//use crate::tok::TokenType::EOF;
-//////////////////////Debut///////////////////////////
-
 pub struct Parser {
     pub(crate) tokens: Vec<Token>, // liste des tokens genere par le lexer
     pub(crate) current: usize,     // index du token actuel
     pub(crate) syntax_mode: SyntaxMode,
     indent_level: Vec<usize>,
 }
-
 
 impl Parser {
     pub fn new(tokens: Vec<Token>, syntax_mode: SyntaxMode) -> Self {
@@ -151,40 +145,20 @@ impl Parser {
         todo!()
     }
 
-    // fn parse_labeled_statement(&mut self) -> Result<Option<ASTNode>, ParserError> {
-    //     if let Some(label_name) = self.check_for_label()? {
-    //         // Après avoir consommé le label, on vérifie quelle instruction suit
-    //         if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]) {
-    //             return self.parse_loop_statement().map(Some);
-    //         } else {
-    //             // Vous pouvez étendre ici pour d'autres instructions qui peuvent être labellisées
-    //             return Err(ParserError::new(UnexpectedToken, self.current_position()));
-    //         }
-    //     }
-    //
-    //     // Pas de label, retourner None
-    //     Ok(None)
-    // }
+    fn parse_labeled_statement(&mut self) -> Result<Option<ASTNode>, ParserError> {
+        if let Some(label_name) = self.check_for_label()? {
+            // Après avoir consommé le label, on vérifie quelle instruction suit
+            if self.check(&[TokenType::KEYWORD(Keywords::LOOP)]) {
+                return self.parse_loop_statement().map(Some);
+            } else {
+                // Vous pouvez étendre ici pour d'autres instructions qui peuvent être labellisées
+                return Err(ParserError::new(UnexpectedToken, self.current_position()));
+            }
+        }
 
-    // fn parse_labeled_statement(&mut self) -> Result<ASTNode, ParserError> {
-    //     if let Some(current) = self.peek_token() {
-    //         if let Some(next) = self.peek_next_token() {
-    //             if matches!(current.token_type, TokenType::IDENTIFIER { .. }) &&
-    //                 matches!(next.token_type, TokenType::DELIMITER(Delimiters::COLON)) {
-    //                 // Si le token suivant est 'loop', c'est un label de boucle
-    //                 if let Some(third) = self.tokens.get(self.current + 2) {
-    //                     if matches!(third.token_type, TokenType::KEYWORD(Keywords::LOOP)) {
-    //                         return self.parse_loop_statement();
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    //
-    //
-    // }
-
-
+        // Pas de label, retourner None
+        Ok(None)
+    }
 
     pub(crate) fn parse_function_parameters(&mut self) -> Result<Vec<Parameter>, ParserError> {
         println!("Début du parsing des paramètres de fonction");
@@ -687,7 +661,7 @@ impl Parser {
         } else if let Some(token) = self.current_token() {
             match &token.token_type {
                 TokenType::IDENTIFIER { name } => {
-                    if name == "_" {
+                    if *name == "_" {
                         self.advance();
                         Ok(Pattern::Wildcard)
                     } else {
@@ -888,7 +862,7 @@ impl Parser {
 
         match explicit_type {
             Type::Infer => Ok(inferred_type),
-            explicit if explicit == &inferred_type => Ok(explicit.clone()),
+            explicit if *explicit == *&inferred_type => Ok(explicit.clone()),
             _explicit => Err(ParserError::new(
                 ParserErrorType::TypeInferenceError,
                 self.current_position(),
@@ -1161,12 +1135,7 @@ impl Parser {
         }else { false }
     }
 
-
-
 }
 
 ////////////////////////////////PyRust////Dev////by YmC///////////////////////////////////
-
-
-
-/////////////////////////////////fin de mon  parse///////////////////////////////////// */
+/////////////////////////////////fin de mon  parse/////////////////////////////////////*/
