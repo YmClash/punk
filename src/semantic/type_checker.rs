@@ -5,25 +5,48 @@ use std::rc::Rc;
 use crate::parser::ast::{Expression, Statement, Operator, UnaryOperator, Literal,
                          VariableDeclaration, FunctionDeclaration, ASTNode, Declaration};
 
-use crate::semantic::types::type_system::{TypeId, TypeKind, TypeSystem, Mutability};
+use crate::semantic::types::type_system::{Type, TypeId, TypeKind, TypeSystem, Mutability};
 use crate::semantic::semantic_error::{SemanticError, TypeError, SemanticErrorType, Position};
 use crate::semantic::symbol_table::SymbolTable;
-use num_bigint::BigInt;
+use crate::semantic::context::CompilationContext;
 
 pub struct TypeChecker {
-    pub symbol_table: SymbolTable,
-    pub type_system: TypeSystem,
-    // pub symbol_table: Rc<RefCell<SymbolTable>>,
-    // pub type_system: Rc<RefCell<TypeSystem>>,
-
+    context: Rc<RefCell<CompilationContext>>,
+    // Keep direct references for performance in hot paths
+    symbol_table_ref: Rc<RefCell<SymbolTable>>,
+    type_system_ref: Rc<RefCell<TypeSystem>>,
 }
 
 impl TypeChecker {
-    pub fn new(symbol_table: SymbolTable) -> Self {
+    pub fn new(context: Rc<RefCell<CompilationContext>>) -> Self {
+        let symbol_table_ref = context.borrow().symbols.clone();
+        let type_system_ref = context.borrow().types.clone();
+        
         TypeChecker {
-            symbol_table,
-            type_system: TypeSystem::new(),
+            context,
+            symbol_table_ref,
+            type_system_ref,
         }
+    }
+    
+    /// Crée un TypeChecker à partir de composants existants (pour compatibilité)
+    pub fn from_components(symbol_table: SymbolTable, type_system: TypeSystem) -> Self {
+        let context = Rc::new(RefCell::new(
+            CompilationContext::from_existing(type_system, symbol_table)
+        ));
+        Self::new(context)
+    }
+    
+    /// Méthode helper pour obtenir un type de manière safe
+    fn get_type(&self, type_id: TypeId) -> Result<Type, SemanticError> {
+        let type_system = self.type_system_ref.borrow();
+        type_system.get_type(type_id)
+            .ok_or_else(|| create_semantic_error(
+                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", type_id))),
+                "Type not found".to_string(),
+                Position { index: 0 }
+            ))
+            .map(|t| t.clone())
     }
 
     /// Vérifie et infère le type d'une expression
@@ -35,10 +58,10 @@ impl TypeChecker {
 
             Expression::Identifier(name) => {
                 // Rechercher l'identifiant dans la table des symboles
-                let symbol_id = self.symbol_table.lookup_symbol(name)?;
+                let symbol_id = self.symbol_table_ref.borrow().lookup_symbol(name)?;
 
                 // Récupérer le type associé au symbole
-                if let Some(type_obj) = self.symbol_table.get_symbol_type(symbol_id)? {
+                if let Some(type_obj) = self.symbol_table_ref.borrow().get_symbol_type(symbol_id)? {
                     Ok(type_obj.id)
                 } else {
                     Err(create_semantic_error(
@@ -100,11 +123,11 @@ impl TypeChecker {
     /// Vérifie le type d'un littéral
     fn check_literal(&mut self, literal: &Literal) -> Result<TypeId, SemanticError> {
         match literal {
-            Literal::Integer { .. } => Ok(self.type_system.type_registry.type_int),
-            Literal::Float { .. } => Ok(self.type_system.type_registry.type_float),
-            Literal::Boolean(_) => Ok(self.type_system.type_registry.type_bool),
-            Literal::String(_) => Ok(self.type_system.type_registry.type_string),
-            Literal::Char(_) => Ok(self.type_system.type_registry.type_char),
+            Literal::Integer { .. } => Ok(self.type_system_ref.borrow().type_int),
+            Literal::Float { .. } => Ok(self.type_system_ref.borrow().type_float),
+            Literal::Boolean(_) => Ok(self.type_system_ref.borrow().type_bool),
+            Literal::String(_) => Ok(self.type_system_ref.borrow().type_string),
+            Literal::Char(_) => Ok(self.type_system_ref.borrow().type_char),
             Literal::Array(elements) => {
                 self.check_array_literal(elements)
             },
@@ -122,19 +145,21 @@ impl TypeChecker {
         let right_type_id = self.check_expression(right)?;
 
         // Récupérer les objets Type
-        let left_type = self.type_system.type_registry.get_type(left_type_id)
+        let type_system = self.type_system_ref.borrow();
+        let left_type = type_system.get_type(left_type_id)
             .ok_or_else(|| create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", left_type_id))),
                 "Type not found".to_string(),
                 Position { index: 0 }
-            ))?;
+            ))?.clone();
 
-        let right_type = self.type_system.type_registry.get_type(right_type_id)
+        let right_type = type_system.get_type(right_type_id)
             .ok_or_else(|| create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", right_type_id))),
                 "Type not found".to_string(),
                 Position { index: 0 }
-            ))?;
+            ))?.clone();
+        drop(type_system); // Libérer l'emprunt avant d'utiliser les types
 
         // Vérifier la compatibilité des opérandes selon l'opérateur
         match operator {
@@ -165,8 +190,8 @@ impl TypeChecker {
 
             Operator::EqualEqual | Operator::NotEqual => {
                 // Opérations d'égalité (==, !=) peuvent être appliquées à tous les types comparables
-                if left_type.is_compatible_with(right_type) || right_type.is_compatible_with(left_type) {
-                    Ok(self.type_system.type_registry.type_bool) // Résultat est toujours bool
+                if left_type.is_compatible_with(&right_type) || right_type.is_compatible_with(&left_type) {
+                    Ok(self.type_system_ref.borrow().type_bool) // Résultat est toujours bool
                 } else {
                     Err(create_semantic_error(
                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
@@ -187,7 +212,7 @@ impl TypeChecker {
                     (TypeKind::Int, TypeKind::Float) |
                     (TypeKind::Float, TypeKind::Int) |
                     (TypeKind::Char, TypeKind::Char) => {
-                        Ok(self.type_system.type_registry.type_bool) // Résultat est toujours bool
+                        Ok(self.type_system_ref.borrow().type_bool) // Résultat est toujours bool
                     },
                     _ => Err(create_semantic_error(
                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
@@ -203,7 +228,7 @@ impl TypeChecker {
             Operator::And | Operator::Or => {
                 // Opérations logiques (&&, ||)
                 if left_type.kind == TypeKind::Bool && right_type.kind == TypeKind::Bool {
-                    Ok(self.type_system.type_registry.type_bool) // bool op bool -> bool
+                    Ok(self.type_system_ref.borrow().type_bool) // bool op bool -> bool
                 } else {
                     Err(create_semantic_error(
                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
@@ -219,7 +244,7 @@ impl TypeChecker {
             // Assignment operator
             Operator::Equal => {
                 // Pour l'assignation, vérifier que les types sont compatibles
-                if right_type.is_compatible_with(left_type) {
+                if right_type.is_compatible_with(&left_type) {
                     Ok(left_type_id) // Retourner le type de la variable assignée
                 } else {
                     Err(create_semantic_error(
@@ -236,9 +261,9 @@ impl TypeChecker {
             // Range operators
             Operator::Range | Operator::RangeInclusive => {
                 // Les ranges nécessitent des types compatibles
-                if left_type.is_compatible_with(right_type) || right_type.is_compatible_with(left_type) {
+                if left_type.is_compatible_with(&right_type) || right_type.is_compatible_with(&left_type) {
                     // Créer un type range (pour l'instant, utilisons un type nommé)
-                    let range_type_id = self.type_system.type_registry.register_type(
+                    let range_type_id = self.type_system_ref.borrow_mut().register_type(
                         TypeKind::Named("Range".to_string(), vec![left_type.clone()])
                     );
                     Ok(range_type_id)
@@ -263,12 +288,14 @@ impl TypeChecker {
         operand: &Box<Expression>
     ) -> Result<TypeId, SemanticError> {
         let operand_type_id = self.check_expression(operand)?;
-        let operand_type = self.type_system.type_registry.get_type(operand_type_id)
+        let type_system = self.type_system_ref.borrow();
+        let operand_type = type_system.get_type(operand_type_id)
             .ok_or_else(|| create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", operand_type_id))),
                 "Type not found".to_string(),
                 Position { index: 0 }
-            ))?;
+            ))?.clone();
+        drop(type_system);
 
         match operator {
             UnaryOperator::Negate | UnaryOperator::Negative => {
@@ -286,7 +313,7 @@ impl TypeChecker {
 
             UnaryOperator::Not | UnaryOperator::LogicalNot => {
                 match &operand_type.kind {
-                    TypeKind::Bool => Ok(self.type_system.type_registry.type_bool),
+                    TypeKind::Bool => Ok(self.type_system_ref.borrow().type_bool),
                     _ => Err(create_semantic_error(
                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
                             format!("Cannot apply logical not to type {}", operand_type)
@@ -299,7 +326,7 @@ impl TypeChecker {
 
             UnaryOperator::Reference => {
                 // Créer une référence immutable
-                let ref_type_id = self.type_system.type_registry.create_reference_type(
+                let ref_type_id = self.type_system_ref.borrow_mut().create_reference_type(
                     operand_type_id,
                     Mutability::Immutable,
                     None
@@ -309,7 +336,7 @@ impl TypeChecker {
 
             UnaryOperator::ReferenceMutable => {
                 // Créer une référence mutable
-                let ref_type_id = self.type_system.type_registry.create_reference_type(
+                let ref_type_id = self.type_system_ref.borrow_mut().create_reference_type(
                     operand_type_id,
                     Mutability::Mutable,
                     None
@@ -383,7 +410,8 @@ impl TypeChecker {
         // Clone le type de fonction pour éviter les problèmes d'emprunt
         let func_type_clone;
         {
-            let function_type = self.type_system.type_registry.get_type(function_type_id)
+            let type_system = self.type_system_ref.borrow();
+            let function_type = type_system.get_type(function_type_id)
                 .ok_or_else(|| create_semantic_error(
                     SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", function_type_id))),
                     "Type not found".to_string(),
@@ -424,12 +452,14 @@ impl TypeChecker {
         // Vérifier les types des arguments
         for (i, (arg, param_type)) in arguments.iter().zip(func_type_clone.params.iter()).enumerate() {
             let arg_type_id = self.check_expression(arg)?;
-            let arg_type = self.type_system.type_registry.get_type(arg_type_id)
+            let type_system = self.type_system_ref.borrow();
+            let arg_type = type_system.get_type(arg_type_id)
                 .ok_or_else(|| create_semantic_error(
                     SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", arg_type_id))),
                     "Type not found".to_string(),
                     Position { index: 0 }
-                ))?;
+                ))?.clone();
+            drop(type_system);
 
             if !arg_type.is_compatible_with(param_type) {
                 return Err(create_semantic_error(
@@ -451,29 +481,26 @@ impl TypeChecker {
     fn check_array_literal(&mut self, elements: &Vec<Expression>) -> Result<TypeId, SemanticError> {
         if elements.is_empty() {
             // Array vide - créer un array de type inféré
-            let infer_type_var = self.type_system.create_type_variable(Some("ArrayElement".to_string()));
-            let infer_type_id = self.type_system.type_registry.register_type(TypeKind::Infer(infer_type_var));
-            return Ok(self.type_system.type_registry.create_array_type(infer_type_id, Some(0)));
+            let infer_type_var = self.type_system_ref.borrow_mut().create_type_variable(Some("ArrayElement".to_string()));
+            let infer_type_id = self.type_system_ref.borrow_mut().register_type(TypeKind::Infer(infer_type_var));
+            return Ok(self.type_system_ref.borrow_mut().create_array_type(infer_type_id, Some(0)));
         }
 
         // Vérifier le type du premier élément
         let first_element_type_id = self.check_expression(&elements[0])?;
-        let first_element_type = self.type_system.type_registry.get_type(first_element_type_id)
+        let type_system = self.type_system_ref.borrow();
+        let first_element_type = type_system.get_type(first_element_type_id)
             .ok_or_else(|| create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", first_element_type_id))),
                 "Type not found".to_string(),
                 Position { index: 0 }
             ))?.clone();
+        drop(type_system);
 
         // Vérifier que tous les éléments ont le même type
         for (i, element) in elements.iter().skip(1).enumerate() {
             let element_type_id = self.check_expression(element)?;
-            let element_type = self.type_system.type_registry.get_type(element_type_id)
-                .ok_or_else(|| create_semantic_error(
-                    SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", element_type_id))),
-                    "Type not found".to_string(),
-                    Position { index: 0 }
-                ))?;
+            let element_type = self.get_type(element_type_id)?;
 
             if !element_type.is_compatible_with(&first_element_type) {
                 return Err(create_semantic_error(
@@ -488,7 +515,7 @@ impl TypeChecker {
         }
 
         // Créer le type array avec la taille
-        Ok(self.type_system.type_registry.create_array_type(first_element_type_id, Some(elements.len())))
+        Ok(self.type_system_ref.borrow_mut().create_array_type(first_element_type_id, Some(elements.len())))
     }
 
     /// Vérifie un accès à un array
@@ -500,19 +527,9 @@ impl TypeChecker {
         let array_type_id = self.check_expression(array)?;
         let index_type_id = self.check_expression(index)?;
 
-        let array_type = self.type_system.type_registry.get_type(array_type_id)
-            .ok_or_else(|| create_semantic_error(
-                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", array_type_id))),
-                "Type not found".to_string(),
-                Position { index: 0 }
-            ))?;
+        let array_type = self.get_type(array_type_id)?;
 
-        let index_type = self.type_system.type_registry.get_type(index_type_id)
-            .ok_or_else(|| create_semantic_error(
-                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", index_type_id))),
-                "Type not found".to_string(),
-                Position { index: 0 }
-            ))?;
+        let index_type = self.get_type(index_type_id)?;
 
         // Vérifier que l'index est un entier
         if index_type.kind != TypeKind::Int {
@@ -545,20 +562,15 @@ impl TypeChecker {
         member: &str
     ) -> Result<TypeId, SemanticError> {
         let object_type_id = self.check_expression(object)?;
-        let object_type = self.type_system.type_registry.get_type(object_type_id)
-            .ok_or_else(|| create_semantic_error(
-                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", object_type_id))),
-                "Type not found".to_string(),
-                Position { index: 0 }
-            ))?;
+        let object_type = self.get_type(object_type_id)?;
 
         // Pour l'instant, une implémentation simplifiée
         // Dans une vraie implémentation, il faudrait chercher le membre dans la structure
         match &object_type.kind {
             TypeKind::Struct(_) | TypeKind::Named(_, _) => {
                 // Supposer que le membre existe et retourner un type inféré
-                let member_type_var = self.type_system.create_type_variable(Some(format!("{}Member", member)));
-                Ok(self.type_system.type_registry.register_type(TypeKind::Infer(member_type_var)))
+                let member_type_var = self.type_system_ref.borrow_mut().create_type_variable(Some(format!("{}Member", member)));
+                Ok(self.type_system_ref.borrow_mut().register_type(TypeKind::Infer(member_type_var)))
             },
             _ => Err(create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeMismatch(
@@ -579,22 +591,12 @@ impl TypeChecker {
         let target_type_id = self.check_expression(target)?;
         let value_type_id = self.check_expression(value)?;
 
-        let target_type = self.type_system.type_registry.get_type(target_type_id)
-            .ok_or_else(|| create_semantic_error(
-                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", target_type_id))),
-                "Type not found".to_string(),
-                Position { index: 0 }
-            ))?;
+        let target_type = self.get_type(target_type_id)?;
 
-        let value_type = self.type_system.type_registry.get_type(value_type_id)
-            .ok_or_else(|| create_semantic_error(
-                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", value_type_id))),
-                "Type not found".to_string(),
-                Position { index: 0 }
-            ))?;
+        let value_type = self.get_type(value_type_id)?;
 
         // Vérifier la compatibilité des types
-        if !value_type.is_compatible_with(target_type) {
+        if !value_type.is_compatible_with(&target_type) {
             return Err(create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeMismatch(
                     format!("Cannot assign value of type {} to variable of type {}",
@@ -627,8 +629,8 @@ impl TypeChecker {
         }
 
         // Retourner un type inféré pour la méthode
-        let method_return_var = self.type_system.create_type_variable(Some(format!("{}Return", method)));
-        Ok(self.type_system.type_registry.register_type(TypeKind::Infer(method_return_var)))
+        let method_return_var = self.type_system_ref.borrow_mut().create_type_variable(Some(format!("{}Return", method)));
+        Ok(self.type_system_ref.borrow_mut().register_type(TypeKind::Infer(method_return_var)))
     }
 
     /// Vérifie un cast de type
@@ -638,21 +640,11 @@ impl TypeChecker {
         target_type: &crate::parser::ast::Type
     ) -> Result<TypeId, SemanticError> {
         let expr_type_id = self.check_expression(expression)?;
-        let target_type_id = self.type_system.type_registry.convert_ast_type(target_type);
+        let target_type_id = self.type_system_ref.borrow_mut().convert_ast_type(target_type);
 
-        let expr_type = self.type_system.type_registry.get_type(expr_type_id)
-            .ok_or_else(|| create_semantic_error(
-                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", expr_type_id))),
-                "Type not found".to_string(),
-                Position { index: 0 }
-            ))?;
+        let expr_type = self.get_type(expr_type_id)?;
 
-        let target_type_obj = self.type_system.type_registry.get_type(target_type_id)
-            .ok_or_else(|| create_semantic_error(
-                SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", target_type_id))),
-                "Type not found".to_string(),
-                Position { index: 0 }
-            ))?;
+        let target_type_obj = self.get_type(target_type_id)?;
 
         // Vérifier que le cast est valide
         match (&expr_type.kind, &target_type_obj.kind) {
@@ -663,7 +655,7 @@ impl TypeChecker {
             (TypeKind::Char, TypeKind::Int) => Ok(target_type_id),
 
             // Cast vers le même type
-            (a, b) if a == b => Ok(target_type_id),
+            (a, b) if *a == *b => Ok(target_type_id),
 
             _ => Err(create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeMismatch(
@@ -683,25 +675,15 @@ impl TypeChecker {
         let inferred_type = match (&var_decl.variable_type, &var_decl.value) {
             (Some(ast_type), Some(expr)) => {
                 // A la fois un type explicite et un initializer
-                let declared_type_id = self.type_system.type_registry.convert_ast_type(ast_type);
+                let declared_type_id = self.type_system_ref.borrow_mut().convert_ast_type(ast_type);
                 let expr_type_id = self.check_expression(expr)?;
 
                 // Vérifier la compatibilité des types
-                let expr_type = self.type_system.type_registry.get_type(expr_type_id)
-                    .ok_or_else(|| create_semantic_error(
-                        SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", expr_type_id))),
-                        "Type not found".to_string(),
-                        Position { index: 0 }
-                    ))?;
+                let expr_type = self.get_type(expr_type_id)?;
 
-                let declared_type = self.type_system.type_registry.get_type(declared_type_id)
-                    .ok_or_else(|| create_semantic_error(
-                        SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", declared_type_id))),
-                        "Type not found".to_string(),
-                        Position { index: 0 }
-                    ))?;
+                let declared_type = self.get_type(declared_type_id)?;
 
-                if !expr_type.is_compatible_with(declared_type) {
+                if !expr_type.is_compatible_with(&declared_type) {
                     return Err(create_semantic_error(
                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
                             format!("Cannot assign type {} to variable of type {}",
@@ -717,7 +699,7 @@ impl TypeChecker {
 
             (Some(ast_type), None) => {
                 // Type explicite sans initializer
-                self.type_system.type_registry.convert_ast_type(ast_type)
+                self.type_system_ref.borrow_mut().convert_ast_type(ast_type)
             },
 
             (None, Some(expr)) => {
@@ -746,18 +728,18 @@ impl TypeChecker {
         // Collecter les types des paramètres
         let mut param_type_ids = Vec::new();
         for param in &func_decl.parameters {
-            let param_type_id = self.type_system.type_registry.convert_ast_type(&param.parameter_type);
+            let param_type_id = self.type_system_ref.borrow_mut().convert_ast_type(&param.parameter_type);
             param_type_ids.push(param_type_id);
         }
 
         // Déterminer le type de retour
         let return_type_id = match &func_decl.return_type {
-            Some(ast_type) => self.type_system.type_registry.convert_ast_type(ast_type),
-            None => self.type_system.type_registry.type_unit, // () par défaut
+            Some(ast_type) => self.type_system_ref.borrow_mut().convert_ast_type(ast_type),
+            None => self.type_system_ref.borrow().type_unit, // () par défaut
         };
 
         // Créer le type de la fonction
-        let function_type_id = self.type_system.type_registry.create_function_type(
+        let function_type_id = self.type_system_ref.borrow_mut().create_function_type(
             param_type_ids,
             return_type_id
         );
@@ -819,334 +801,3 @@ fn create_semantic_error(error_type: SemanticErrorType, message: String, positio
 }
 
 
-
-
-
-
-
-//////////////////////YMC////////////////////////////////
-
-
-
-
-// // use crate::parser::ast::{Expression, Type};
-//
-// // src/semantic/type_checker.rs
-//
-// use crate::parser::ast::{Expression, Statement, Operator, UnaryOperator};
-// use crate::semantic::symbols::{SymbolId, SourceLocation};
-//
-// use crate::semantic::types::{Type, TypeId, TypeKind, TypeRegistry};
-// use crate::semantic::types::type_system::{TypeSystem};
-// use crate::semantic::semantic_error::{SemanticError, TypeError, SemanticErrorType, Position};
-// use crate::semantic::symbol_table::SymbolTable;
-// use crate::semantic::types::type_system::{TypeId, TypeKind};
-//
-// pub struct TypeChecker {
-//     pub symbol_table: SymbolTable,
-// }
-//
-// impl TypeChecker {
-//     pub fn new(symbol_table: SymbolTable) -> Self {
-//         TypeChecker { symbol_table }
-//     }
-//
-//     /// Vérifie et infère le type d'une expression
-//     pub fn check_expression(&mut self, expr: &Expression) -> Result<TypeId, SemanticError> {
-//         match expr {
-//             Expression::IntLiteral(value) => {
-//                 // Les litéraux entiers ont toujours le type int
-//                 Ok(self.symbol_table.type_registry.type_int)
-//             },
-//
-//             Expression::FloatLiteral(value) => {
-//                 // Les litéraux flottants ont toujours le type float
-//                 Ok(self.symbol_table.type_registry.type_float)
-//             },
-//
-//             Expression::BoolLiteral(value) => {
-//                 // Les litéraux booléens ont toujours le type bool
-//                 Ok(self.symbol_table.type_registry.type_bool)
-//             },
-//
-//             Expression::StringLiteral(value) => {
-//                 // Les litéraux string ont toujours le type string
-//                 Ok(self.symbol_table.type_registry.type_string)
-//             },
-//
-//             Expression::CharLiteral(value) => {
-//                 // Les litéraux caractères ont toujours le type char
-//                 Ok(self.symbol_table.type_registry.type_char)
-//             },
-//
-//             Expression::Identifier(name) => {
-//                 // Rechercher l'identifiant dans la table des symboles
-//                 let symbol_id = self.symbol_table.lookup_symbol(name)?;
-//
-//                 // Récupérer le type associé au symbole
-//                 if let Some(type_obj) = self.symbol_table.get_symbol_type(symbol_id)? {
-//                     Ok(type_obj.id)
-//                 } else {
-//                     Err(create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::UndefinedType(name.clone())),
-//                         "Variable used before its type is defined".to_string(),
-//                         Position { index: 0 }
-//                     ))
-//                 }
-//             },
-//
-//             Expression::Binary { left, operator, right } => {
-//                 self.check_binary_expression(left, operator, right)
-//             },
-//
-//             Expression::Unary { operator, operand } => {
-//                 self.check_unary_expression(operator, operand)
-//             },
-//
-//             Expression::Call { function, arguments } => {
-//                 self.check_function_call(function, arguments)
-//             },
-//
-//             Expression::ArrayLiteral(elements) => {
-//                 self.check_array_literal(elements)
-//             },
-//
-//             Expression::ArrayAccess { array, index } => {
-//                 self.check_array_access(array, index)
-//             },
-//
-//             Expression::MemberAccess { object, member } => {
-//                 self.check_member_access(object, member)
-//             },
-//
-//             // Plus de cas selon votre AST...
-//
-//             _ => {
-//                 // Cas par défaut pour les expressions non gérées
-//                 Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(TypeError::InvalidType("Unsupported expression type".to_string())),
-//                     "Expression type not supported yet".to_string(),
-//                     Position { index: 0 }
-//                 ))
-//             }
-//         }
-//     }
-//
-//     /// Vérifie les types d'une expression binaire
-//     fn check_binary_expression(
-//         &mut self,
-//         left: &Box<Expression>,
-//         operator: &Operator,
-//         right: &Box<Expression>
-//     ) -> Result<TypeId, SemanticError> {
-//         let left_type_id = self.check_expression(left)?;
-//         let right_type_id = self.check_expression(right)?;
-//
-//         // Récupérer les objets Type
-//         let left_type = self.symbol_table.type_registry.get_type(left_type_id)
-//             .ok_or_else(|| create_semantic_error(
-//                 SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", left_type_id))),
-//                 "Type not found".to_string(),
-//                 Position { index: 0 }
-//             ))?;
-//
-//         let right_type = self.symbol_table.type_registry.get_type(right_type_id)
-//             .ok_or_else(|| create_semantic_error(
-//                 SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", right_type_id))),
-//                 "Type not found".to_string(),
-//                 Position { index: 0 }
-//             ))?;
-//
-//         // Vérifier la compatibilité des opérandes selon l'opérateur
-//         match operator {
-//             Operator::Addition | Operator::Substraction |
-//             Operator::Multiplication | Operator::Division |
-//             Operator::Modulo => {
-//                 // Opérations arithmétiques
-//                 match (&left_type.kind, &right_type.kind) {
-//                     (TypeKind::Int, TypeKind::Int) => Ok(left_type_id), // int op int -> int
-//                     (TypeKind::Float, TypeKind::Float) => Ok(left_type_id), // float op float -> float
-//                     (TypeKind::Int, TypeKind::Float) => Ok(right_type_id), // int op float -> float
-//                     (TypeKind::Float, TypeKind::Int) => Ok(left_type_id), // float op int -> float
-//                     (TypeKind::String, TypeKind::String) if *operator == BinaryOperator::Add => {
-//                         // Concaténation de chaînes
-//                         Ok(left_type_id) // string + string -> string
-//                     },
-//                     _ => Err(create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
-//                             format!("Cannot apply operator {:?} to types {} and {}",
-//                                     operator, left_type, right_type)
-//                         )),
-//                         "Incompatible types for binary operation".to_string(),
-//                         Position { index: 0 }
-//                     ))
-//                 }
-//             },
-//
-//             Operator::Equal | Operator::NotEqual => {
-//                 // Opérations d'égalité (==, !=) peuvent être appliquées à tous les types comparables
-//                 if left_type.is_compatible_with(right_type) || right_type.is_compatible_with(left_type) {
-//                     Ok(self.symbol_table.type_registry.type_bool) // Résultat est toujours bool
-//                 } else {
-//                     Err(create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
-//                             format!("Cannot compare types {} and {}", left_type, right_type)
-//                         )),
-//                         "Incompatible types for comparison".to_string(),
-//                         Position { index: 0 }
-//                     ))
-//                 }
-//             },
-//
-//             Operator::LessThan | Operator::LesshanOrEqual |
-//             Operator::GreaterThan | Operator::GreaterThanOrEqual => {
-//                 // Opérations de comparaison (<, <=, >, >=)
-//                 match (&left_type.kind, &right_type.kind) {
-//                     (TypeKind::Int, TypeKind::Int) |
-//                     (TypeKind::Float, TypeKind::Float) |
-//                     (TypeKind::Int, TypeKind::Float) |
-//                     (TypeKind::Float, TypeKind::Int) |
-//                     (TypeKind::Char, TypeKind::Char) => {
-//                         Ok(self.symbol_table.type_registry.type_bool) // Résultat est toujours bool
-//                     },
-//                     _ => Err(create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
-//                             format!("Cannot compare types {} and {} with operator {:?}",
-//                                     left_type, right_type, operator)
-//                         )),
-//                         "Incompatible types for comparison".to_string(),
-//                         Position { index: 0 }
-//                     ))
-//                 }
-//             },
-//
-//             Operator::And | Operator::Or => {
-//                 // Opérations logiques (&&, ||)
-//                 if left_type.kind == TypeKind::Bool && right_type.kind == TypeKind::Bool {
-//                     Ok(self.symbol_table.type_registry.type_bool) // bool op bool -> bool
-//                 } else {
-//                     Err(create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
-//                             format!("Logical operators require boolean operands, got {} and {}",
-//                                     left_type, right_type)
-//                         )),
-//                         "Logical operation requires boolean operands".to_string(),
-//                         Position { index: 0 }
-//                     ))
-//                 }
-//             },
-//
-//             // Plus d'opérateurs selon votre langage...
-//         }
-//     }
-//
-//     // Implémentez les autres méthodes check_* de façon similaire
-//
-//     /// Vérifie une déclaration de variable
-//     pub fn check_variable_declaration(
-//         &mut self,
-//         name: &str,
-//         initializer: Option<&Expression>,
-//         explicit_type: Option<TypeId>
-//     ) -> Result<TypeId, SemanticError> {
-//         // Récupérer le symbole
-//         let symbol_id = self.symbol_table.lookup_symbol(name)?;
-//
-//         let inferred_type = match (explicit_type, initializer) {
-//             (Some(type_id), Some(expr)) => {
-//                 // A la fois un type explicite et un initializer
-//                 let expr_type_id = self.check_expression(expr)?;
-//
-//                 // Vérifier la compatibilité des types
-//                 let expr_type = self.symbol_table.type_registry.get_type(expr_type_id)
-//                     .ok_or_else(|| create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", expr_type_id))),
-//                         "Type not found".to_string(),
-//                         Position { index: 0 }
-//                     ))?;
-//
-//                 let declared_type = self.symbol_table.type_registry.get_type(type_id)
-//                     .ok_or_else(|| create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", type_id))),
-//                         "Type not found".to_string(),
-//                         Position { index: 0 }
-//                     ))?;
-//
-//                 if !expr_type.is_compatible_with(declared_type) {
-//                     return Err(create_semantic_error(
-//                         SemanticErrorType::TypeError(TypeError::TypeMismatch(
-//                             format!("Cannot assign type {} to variable of type {}",
-//                                     expr_type, declared_type)
-//                         )),
-//                         "Type mismatch in variable initialization".to_string(),
-//                         Position { index: 0 }
-//                     ));
-//                 }
-//
-//                 type_id
-//             },
-//
-//             (Some(type_id), None) => {
-//                 // Type explicite sans initializer
-//                 type_id
-//             },
-//
-//             (None, Some(expr)) => {
-//                 // Initializer sans type explicite (inférence)
-//                 self.check_expression(expr)?
-//             },
-//
-//             (None, None) => {
-//                 // Ni type explicite ni initializer - erreur ou type par défaut?
-//                 return Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(TypeError::UndefinedType(name.to_string())),
-//                     "Variable declaration without type or initializer".to_string(),
-//                     Position { index: 0 }
-//                 ));
-//             }
-//         };
-//
-//         // Mettre à jour le type du symbole
-//         self.symbol_table.set_symbol_type(symbol_id, inferred_type)?;
-//
-//         Ok(inferred_type)
-//     }
-// }
-//
-// // Fonction utilitaire pour créer une erreur sémantique
-// fn create_semantic_error(error_type: SemanticErrorType, message: String, position: Position) -> SemanticError {
-//     SemanticError::new(
-//         error_type,
-//         message,
-//         position
-//     )
-// }
-//
-//
-//
-//
-//
-// //
-// // pub struct TypeChecker {
-// //     //Environnement de typage
-// //     type_env: TypeEnv,
-// //     // context de trait
-// //     trait_context: TraitContext,
-// //
-// //
-// //     // // Le contexte de typage
-// //     // type_context: TypeContext,
-// //     // // Le contexte de portée
-// //     // scope_context: ScopeContext,
-// //     // // Le contexte des emprunts
-// //     // borrow_checker: BorrowChecker,
-// // }
-// //
-// //
-// //
-// //
-// //
-// // impl TypeChecker {
-// //     fn check_assignment(&mut self, target: &Expression, value: &Expression) -> Result<Type, TypeError>;
-// //     fn check_method_call(&mut self, object: &Expr, method: &str) -> Result<Type, TypeError>;
-// // }
