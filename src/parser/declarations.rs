@@ -169,7 +169,7 @@ impl Parser{
         let fields = self.parse_struct_fields()?;
         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
 
-        // self.consume_seperator();
+        self.consume_seperator();
 
         Ok(ASTNode::Declaration(Declaration::Structure(StructDeclaration{
             name,
@@ -478,7 +478,6 @@ impl Parser{
         Ok((attributes, methods, constructor))
     }
 
-
     fn parse_constructor_declaration(&mut self) -> Result<Constructor,ParserError>{
         println!("Debut du parsing du constructeur");
         self.consume(TokenType::KEYWORD(Keywords::DEF))?;
@@ -525,7 +524,6 @@ impl Parser{
             visibility,
             mutability
         })
-
     }
 
     fn parse_trait_methods(&mut self) -> Result<TraitMethod, ParserError> {
@@ -794,91 +792,6 @@ impl Parser{
         Ok(Expression::Array(ArrayExpression { elements }))
     }
 
-
-
-    // pub fn parse_array_slice(&mut self, array: Expression) -> Result<Expression, ParserError>{
-    //
-    //     let start = if !self.check(&[
-    //         TokenType::OPERATOR(Operators::DOTDOT),
-    //         TokenType::OPERATOR(Operators::DOTDOTEQUAL)
-    //     ]) {
-    //         Some(Box::new(self.parse_expression(0)?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     let inclusive = if self.check(&[TokenType::OPERATOR(Operators::DOTDOTEQUAL)]) {
-    //         self.consume(TokenType::OPERATOR(Operators::DOTDOTEQUAL))?;
-    //         true
-    //     } else {
-    //         self.consume(TokenType::OPERATOR(Operators::DOTDOT))?;
-    //         false
-    //     };
-    //
-    //     let end = if !self.check(&[
-    //         TokenType::DELIMITER(Delimiters::RSBRACKET),
-    //         TokenType::DELIMITER(Delimiters::COLON)
-    //     ]) {
-    //         Some(Box::new(self.parse_expression(0)?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-    //         self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-    //         Some(Box::new(self.parse_expression(0)?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-    //
-    //     println!("Fin du parsing d'une tranche de tableau OK!!!!!!!!!!!!!!!!!!!!!!!");
-    //
-    //     Ok(Expression::ArraySlice(ArraySlice{
-    //         array: Box::new(array),
-    //         start,
-    //         end,
-    //         step,
-    //         inclusive,
-    //     }))
-    //
-    // }
-    // pub fn parse_slice(&mut self) -> Result<Expression, ParserError> {
-    //     let index = self.parse_expression(0)?;
-    //     self.consume(TokenType::DELIMITER(Delimiters::COLON))?;
-    //
-    //     let end = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) ||
-    //         self.check(&[TokenType::DELIMITER(Delimiters::RSBRACKET)]) {
-    //         None
-    //     } else {
-    //         Some(Box::new(self.parse_expression(0)?))
-    //     };
-    //
-    //     let step = if self.check(&[TokenType::DELIMITER(Delimiters::COLON)]) {
-    //         self.advance();
-    //         Some(Box::new(self.parse_expression(0)?))
-    //     } else {
-    //         None
-    //     };
-    //
-    //     self.consume(TokenType::DELIMITER(Delimiters::RSBRACKET))?;
-    //
-    //     Ok(Expression::Slice(Slice {
-    //         start: Some(Box::new(index)),
-    //         end,
-    //         step
-    //     }))
-    // }
-
-
-
-
-
-
-
-
-
     pub fn parse_list_comprehension(&mut self) -> Result<Expression, ParserError> {
         println!("Début du parsing de list comprehension");
 
@@ -1108,12 +1021,6 @@ impl Parser{
             conditions,
         }))
     }
-
-
-
-
-
-
 
 }
 
