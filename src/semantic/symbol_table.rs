@@ -15,12 +15,22 @@ pub struct SymbolTable {
      pub current_scope: ScopeId,
      pub next_symbols_id: u32,
      pub next_scope_id: u32,
+     pub lookup_cache: HashMap<String, SymbolId>,
+     cache_generation: u32,
+
 
      /// Système de types intégré
      pub type_system: TypeSystem,
 
      /// Borrow checker
      pub borrow_checker: BorrowChecker,
+}
+
+pub struct SymbolTableStats {
+     pub total_scopes: usize,
+     pub total_symbols: usize,
+     pub max_scope_depth: usize,
+     pub unused_symbols: usize,
 }
 
 impl SymbolTable {
@@ -32,6 +42,8 @@ impl SymbolTable {
                current_scope: ScopeId(0),
                next_symbols_id: 1,
                next_scope_id: 1,
+               lookup_cache: HashMap::new(),
+               cache_generation: 0,
                type_system: TypeSystem::new(),
                borrow_checker: BorrowChecker::new(),
           };
@@ -42,6 +54,26 @@ impl SymbolTable {
           table.scopes.insert(global_scope_id, global_scope);
 
           table
+     }
+     
+     /// Réinitialise la table des symboles
+     pub fn clear(&mut self) {
+          self.symbols.clear();
+          self.scopes.clear();
+          self.current_scope = ScopeId(0);
+          self.next_symbols_id = 1;
+          self.next_scope_id = 1;
+          self.type_system = TypeSystem::new();
+          // self.all_errors.clear(); // Campo que no existe
+          self.borrow_checker = BorrowChecker::new();
+          
+          // Recréer le scope global
+          self.scopes.insert(self.current_scope, Scope::new(
+               self.current_scope,
+               ScopeKind::Global,
+               None,
+               0
+          ));
      }
 
      /// Récupère un symbole par son ID
@@ -145,7 +177,7 @@ impl SymbolTable {
                if scope.lookup_symbol(&name).is_some() {
                     return Err(create_symbol_error(
                          SymbolError::SymbolAlreadyDeclared(name),
-                         Position { index: 0 }
+                         Position { index: location.line * 1000 + location.column }
                     ));
                }
           }
@@ -196,7 +228,7 @@ impl SymbolTable {
      pub fn set_symbol_type(&mut self, symbol_id: SymbolId, type_id: TypeId) -> Result<(), SemanticError> {
           if let Some(symbol) = self.symbols.get_mut(&symbol_id) {
                // Récupérer le type depuis le système de types
-               let type_obj = self.type_system.type_registry.get_type(type_id)
+               let type_obj = self.type_system.get_type(type_id)
                    .ok_or_else(|| create_semantic_error(
                         SemanticErrorType::TypeError(TypeError::TypeNotFound(format!("{:?}", type_id))),
                         "Type not found".to_string(),
@@ -362,8 +394,8 @@ impl SymbolTable {
      /// Vérifie si un type peut être assigné à un autre
      pub fn can_assign(&self, from_type_id: TypeId, to_type_id: TypeId) -> bool {
           if let (Some(from_type), Some(to_type)) = (
-               self.type_system.type_registry.get_type(from_type_id),
-               self.type_system.type_registry.get_type(to_type_id)
+               self.type_system.get_type(from_type_id),
+               self.type_system.get_type(to_type_id)
           ) {
                from_type.is_compatible_with(to_type)
           } else {
@@ -378,8 +410,8 @@ impl SymbolTable {
           }
 
           if let (Some(type1), Some(type2)) = (
-               self.type_system.type_registry.get_type(type1_id),
-               self.type_system.type_registry.get_type(type2_id)
+               self.type_system.get_type(type1_id),
+               self.type_system.get_type(type2_id)
           ) {
                // Règles de promotion de types
                match (&type1.kind, &type2.kind) {
@@ -403,7 +435,7 @@ impl SymbolTable {
           for (symbol_id, symbol) in &self.symbols {
                if let Some(type_obj) = &symbol.attributes.inferred_type {
                     // Vérifier que le type existe dans le registre
-                    if self.type_system.type_registry.get_type(type_obj.id).is_none() {
+                    if self.type_system.get_type(type_obj.id).is_none() {
                          errors.push(create_semantic_error(
                               SemanticErrorType::TypeError(TypeError::TypeNotFound(
                                    format!("Type {:?} for symbol {:?}", type_obj.id, symbol_id)
@@ -443,14 +475,14 @@ impl SymbolTable {
           }
      }
 
-     /// Accès direct au système de types
-     pub fn type_registry(&self) -> &crate::semantic::types::type_system::TypeRegistry {
-          &self.type_system.type_registry
+     /// Accès direct au système de types (compatibilité - retourne TypeSystem maintenant)
+     pub fn type_registry(&self) -> &TypeSystem {
+          &self.type_system
      }
 
-     /// Accès mutable au système de types
-     pub fn type_registry_mut(&mut self) -> &mut crate::semantic::types::type_system::TypeRegistry {
-          &mut self.type_system.type_registry
+     /// Accès mutable au système de types (compatibilité - retourne TypeSystem maintenant)
+     pub fn type_registry_mut(&mut self) -> &mut TypeSystem {
+          &mut self.type_system
      }
 
      /// Accès au système de types complet
@@ -461,6 +493,16 @@ impl SymbolTable {
      /// Accès mutable au système de types complet
      pub fn type_system_mut(&mut self) -> &mut TypeSystem {
           &mut self.type_system
+     }
+
+     /// Statistiques de la table
+     pub fn stats(&self) -> SymbolTableStats {
+          SymbolTableStats {
+               total_scopes: self.scopes.len(),
+               total_symbols: self.symbols.len(),
+               max_scope_depth: self.calculate_max_depth(),
+               unused_symbols: self.check_unused_symbols().len(),
+          }
      }
 }
 
@@ -747,612 +789,43 @@ fn create_semantic_error(error_type: SemanticErrorType, message: String, positio
           message,
           position
      )
+
+
 }
 
+impl SymbolTable {
+     /// Calcule la profondeur maximale des scopes
+     fn calculate_max_depth(&self) -> usize {
+          self.scopes.values()
+               .map(|scope| scope.level)
+               .max()
+               .unwrap_or(0)
+     }
+     /// Vérifie les symboles non utilisés
+     fn check_unsed_symbols(&self) -> Vec<SymbolId> {
+          self.symbols.iter()
+               .filter(|(_, symbol)| !symbol.attributes.used)
+               .map(|(symbol_id, _)| *symbol_id)
+               .collect()
+     }
+     
+     /// Retourne toutes les erreurs collectées
+     pub fn get_all_errors(&self) -> Vec<SemanticError> {
+          // TODO: Implémenter la collecte d'erreurs
+          Vec::new()
+     }
+     
+     /// Compte le nombre de symboles
+     pub fn symbol_count(&self) -> usize {
+          self.symbols.len()
+     }
+     
+     /// Compte le nombre de scopes
+     pub fn scope_count(&self) -> usize {
+          self.scopes.len()
+     }
+}
 
-
-////////////////////////////////Esssai //////////////////////////////////////////////////////////////
-
-
-
-// // src/semantic/symbol_table.rs
-//
-// use std::collections::HashMap;
-// use crate::semantic::semantic_error::{SemanticError, SemanticErrorType, SymbolError, Position};
-// use crate::semantic::symbols::{Scope, ScopeId, ScopeKind, SourceLocation, Symbol, SymbolId, SymbolKind};
-// use crate::semantic::borrow_checker::{BorrowChecker,BorrowKind,MutabilityManager};
-// use crate::semantic::semantic_error::TypeError::{InvalidType, TypeMismatch};
-// // use crate::semantic::types::type_system::{TypeId, TypeKind, TypeRegistry};
-//
-// // use crate::semantic::semantic_error::{SemanticError, SemanticErrorType, Position};
-// // use crate::semantic::symbols::SymbolError;
-//
-// /// Structure Principale de la table des symboles
-// #[allow(dead_code)]
-// pub struct SymbolTable {
-//      /// Scope Indexés par leur ID
-//      pub scopes: HashMap<ScopeId, Scope>,
-//      pub symbols: HashMap<SymbolId, Symbol>,
-//      // pub type_registry: TypeRegistry,
-//      pub current_scope: ScopeId,
-//      pub next_symbols_id: u32,
-//      pub next_scope_id: u32,
-//
-//      pub borrow_checker: BorrowChecker,
-// }
-//
-// impl SymbolTable {
-//      /// Crée une nouvelle table des symboles
-//      pub fn new() -> Self {
-//           let mut table = SymbolTable {
-//                scopes: HashMap::new(),
-//                symbols: HashMap::new(),
-//                current_scope: ScopeId(0),
-//                 // type_registry: TypeRegistry::new(),
-//                next_symbols_id: 1,          // Commence à 1 pour éviter l'ID 0 nuls
-//                next_scope_id: 1,           // Commence à 1 pour éviter l'ID 0 nuls
-//                borrow_checker: BorrowChecker::new(),
-//           };
-//
-//           // Crée le scope global
-//           let global_scope_id = ScopeId(0);
-//           let global_scope = Scope::new(global_scope_id, ScopeKind::Global, None, 0);
-//           table.scopes.insert(global_scope_id, global_scope);
-//
-//           table
-//      }
-//
-//      ///Fonction Utilitaire pour ajouter un symbole
-//
-//      /// Recupere un symbole par son ID
-//      // pub fn get_symbol(&self, id: SymbolId) -> Result<&Symbol, SemanticError> {
-//      //      self.symbols.get(&id)
-//      //          .ok_or_else(|| create_symbol_error(
-//      //               SymbolError::SymbolNotFound("Unknown symbol ID".to_string()),
-//      //               Position { index: 0 } // Position par défaut
-//      //          ))
-//      // }
-//      /// Recupere un symbole par son ID
-//      pub fn get_symbol(&self, id: SymbolId) -> Result<&Symbol, SemanticError> {
-//           self.symbols.get(&id)
-//               .ok_or_else(|| create_symbol_error(
-//                    SymbolError::SymbolNotFound(format!("{:?}", id)),
-//                    Position { index: 0 } // Position par défaut
-//               ))
-//      }
-//
-//      /// Récupère un symbole mutable par son ID
-//      pub fn get_symbol_mut(&mut self, id: SymbolId) -> Option<&mut Symbol> {
-//           self.symbols.get_mut(&id)
-//      }
-//
-//      /// genere un nouvelle ID de symbole unique
-//      fn next_symbol_id(&mut self) -> SymbolId {
-//           let id = self.next_symbols_id;
-//           self.next_symbols_id += 1;
-//           SymbolId(id)
-//      }
-//
-//      ///genere un noubel ID de scope unique
-//      fn next_scope_id(&mut self) -> ScopeId {
-//           let id = self.next_scope_id;
-//           self.next_scope_id += 1;
-//           ScopeId(id)
-//      }
-//
-//      /// Entre dans un nouveau scope
-//      pub fn enter_scope(&mut self, kind: ScopeKind) -> ScopeId {
-//           let parent_id = self.current_scope;
-//           let parent_level = self.scopes.get(&parent_id).unwrap().level;
-//
-//           let scope_id = self.next_scope_id();
-//           let scope = Scope::new(scope_id, kind, Some(parent_id), parent_level + 1);
-//
-//           // Ajoute le nouveau scope comme enfant du scope parent
-//           if let Some(parent) = self.scopes.get_mut(&parent_id) {
-//                parent.add_child(scope_id);
-//           }
-//
-//           self.scopes.insert(scope_id, scope);
-//           self.current_scope = scope_id;
-//
-//           scope_id
-//      }
-//
-//      /// Sort du scope actuel et revient au scope parent
-//      pub fn exit_scope(&mut self) -> Result<ScopeId, SemanticError> {
-//           let current = self.current_scope;
-//           let parent_id = match self.scopes.get(&current) {
-//                Some(scope) => scope.parent,
-//                None => return Err(create_symbol_error(
-//                     SymbolError::InvalidScope,
-//                     Position { index: 0 }
-//                )),
-//           };
-//
-//           match parent_id {
-//                Some(id) => {
-//                     self.borrow_checker.release_borrows_for_scope(current);
-//                     self.current_scope = id;
-//                     Ok(id)
-//                },
-//                None => Err(create_symbol_error(
-//                     SymbolError::InvalidScope,
-//                     Position { index: 0 }
-//                )), // Ne peut pas sortir du scope global
-//           }
-//      }
-//
-//      /// Récupère le scope actuel
-//      pub fn get_current_scope(&self) -> Result<&Scope, SemanticError> {
-//           self.scopes.get(&self.current_scope)
-//               .ok_or_else(|| create_symbol_error(
-//                    SymbolError::InvalidScope,
-//                    Position { index: 0 }
-//               ))
-//      }
-//
-//      /// Recupere un scope par son ID
-//      pub fn get_scope(&self, id: ScopeId) -> Result<&Scope, SemanticError> {
-//           self.scopes.get(&id)
-//               .ok_or_else(|| create_symbol_error(
-//                    SymbolError::InvalidScope,
-//                    Position { index: 0 }
-//               ))
-//      }
-//
-//      /// Déclare un nouveau symbole dans le scope actuel
-//      pub fn declare_symbol(
-//           &mut self,
-//           name: String,
-//           kind: SymbolKind,
-//           location: SourceLocation
-//      ) -> Result<SymbolId, SemanticError> {
-//           // Vérifier si le symbole existe déjà dans le scope actuel
-//           if let Ok(scope) = self.get_current_scope() {
-//                if scope.lookup_symbol(&name).is_some() {
-//                     return Err(create_symbol_error(
-//                          SymbolError::SymbolAlreadyDeclared(name),
-//                          Position { index: 0 }
-//                     ));
-//                }
-//           }
-//
-//           let symbol_id = self.next_symbol_id();
-//           let symbol = Symbol::new(
-//                symbol_id,
-//                name.clone(),
-//                kind,
-//                self.current_scope,
-//                location,
-//           );
-//
-//           self.symbols.insert(symbol_id, symbol);
-//
-//           // Ajouter le symbole au scope actuel
-//           if let Some(scope) = self.scopes.get_mut(&self.current_scope) {
-//                scope.add_symbol(name, symbol_id)
-//                    .map_err(|err| create_symbol_error(err, Position { index: 0 }))?;
-//           }
-//
-//           Ok(symbol_id)
-//      }
-//
-//      /// Recherche un symbole dans le scope actuel et ses parents
-//      pub fn lookup_symbol(&self, name: &str) -> Result<SymbolId, SemanticError> {
-//           let mut current_scope_id = self.current_scope;
-//
-//           loop {
-//                // Vérifier dans le scope actuel
-//                if let Some(scope) = self.scopes.get(&current_scope_id) {
-//                     if let Some(symbol_id) = scope.lookup_symbol(name) {
-//                          return Ok(symbol_id);
-//                     }
-//
-//                     // Remonter au scope parent
-//                     match scope.parent {
-//                          Some(parent_id) => {
-//                               current_scope_id = parent_id;
-//                          },
-//                          None => break, // Nous avons atteint le scope global
-//                     }
-//                } else {
-//                     break; // Scope invalide
-//                }
-//           }
-//
-//           // Vérifier les imports (à implémenter)
-//
-//           Err(create_symbol_error(
-//                SymbolError::SymbolNotFound(name.to_string()),
-//                Position { index: 0 }
-//           ))
-//      }
-//
-//      /// Recherche un symbole dans un scope spécifique uniquement
-//      pub fn lookup_symbol_in_scope(&self, name: &str, scope_id: ScopeId) -> Result<SymbolId, SemanticError> {
-//           if let Some(scope) = self.scopes.get(&scope_id) {
-//                if let Some(symbol_id) = scope.lookup_symbol(name) {
-//                     return Ok(symbol_id);
-//                }
-//           }
-//           Err(create_symbol_error(
-//                SymbolError::SymbolNotFound(name.to_string()),
-//                Position { index: 0 }
-//           ))
-//      }
-//
-//      /// Résout un chemin qualifié (par exemple, module::sous_module::nom)
-//      pub fn resolve_qualified_name(&self, path: &[String]) -> Result<SymbolId, SemanticError> {
-//           if path.is_empty() {
-//                return Err(create_symbol_error(
-//                     SymbolError::InvalidScope,
-//                     Position { index: 0 }
-//                ));
-//           }
-//
-//           // Si le chemin a une seule partie, c'est un lookup simple
-//           if path.len() == 1 {
-//                return self.lookup_symbol(&path[0]);
-//           }
-//
-//           // Sinon, on parcourt le chemin
-//           let mut current_scope_id = self.current_scope;
-//           let mut current_symbol_id = None;
-//
-//           for (i, part) in path.iter().enumerate() {
-//                if i == 0 {
-//                     // Première partie du chemin
-//                     match self.lookup_symbol(part) {
-//                          Ok(symbol_id) => {
-//                               let symbol = self.get_symbol(symbol_id)?;
-//
-//                               // Vérifier que c'est un module ou un type
-//                               match symbol.kind {
-//                                    SymbolKind::Module | SymbolKind::Class | SymbolKind::Trait | SymbolKind::Enum => {
-//                                         current_symbol_id = Some(symbol_id);
-//
-//                                         // Pour un module, changer le scope courant
-//                                         if let SymbolKind::Module = symbol.kind {
-//                                              // Trouver le scope associé au module
-//                                              for (scope_id, scope) in &self.scopes {
-//                                                   if scope.symbols.get(part) == Some(&symbol_id) {
-//                                                        current_scope_id = *scope_id;
-//                                                        break;
-//                                                   }
-//                                              }
-//                                         }
-//                                    },
-//                                    _ => return Err(create_symbol_error(
-//                                         SymbolError::InvalidScope,
-//                                         Position { index: 0 }
-//                                    )),
-//                               }
-//                          },
-//                          Err(e) => return Err(e),
-//                     }
-//                } else {
-//                     // Parties suivantes du chemin
-//                     if let Some(scope) = self.scopes.get(&current_scope_id) {
-//                          match scope.lookup_symbol(part) {
-//                               Some(symbol_id) => {
-//                                    current_symbol_id = Some(symbol_id);
-//
-//                                    // Mettre à jour le scope si nécessaire
-//                                    let symbol = self.get_symbol(symbol_id)?;
-//                                    if let SymbolKind::Module = symbol.kind {
-//                                         // Trouver le scope du module
-//                                         for (scope_id, scope) in &self.scopes {
-//                                              if scope.symbols.get(part) == Some(&symbol_id) {
-//                                                   current_scope_id = *scope_id;
-//                                                   break;
-//                                              }
-//                                         }
-//                                    }
-//                               },
-//                               None => return Err(create_symbol_error(
-//                                    SymbolError::SymbolNotFound(part.clone()),
-//                                    Position { index: 0 }
-//                               )),
-//                          }
-//                     } else {
-//                          return Err(create_symbol_error(
-//                               SymbolError::InvalidScope,
-//                               Position { index: 0 }
-//                          ));
-//                     }
-//                }
-//           }
-//
-//           match current_symbol_id {
-//                Some(id) => Ok(id),
-//                None => Err(create_symbol_error(
-//                     SymbolError::SymbolNotFound("Path resolution failed".to_string()),
-//                     Position { index: 0 }
-//                )),
-//           }
-//      }
-//
-//      pub fn validate_references(&self) -> Result<(), Vec<SemanticError>> {
-//           // TODO: Implémenter la validation des références
-//           Ok(())
-//      }
-//
-//      pub fn check_unused_symbols(&self) -> Vec<SymbolId> {
-//           // TODO: Implémenter la vérification des symboles non inutilisés
-//           Vec::new()
-//      }
-// }
-//
-//
-// // Implémentation de MutabilityManager pour SymbolTable
-// impl MutabilityManager for SymbolTable {
-//      fn is_mutable(&self, symbol_id: SymbolId) -> Result<bool, SemanticError> {
-//           match self.get_symbol(symbol_id) {
-//                Ok(symbol) => Ok(symbol.attributes.is_mutable),
-//                Err(e) => Err(e),
-//           }
-//      }
-//
-//      fn mark_initialized(&mut self, symbol_id: SymbolId) -> Result<(), SemanticError> {
-//           if let Some(symbol) = self.symbols.get_mut(&symbol_id) {
-//                symbol.attributes.is_initialized = true;
-//                // Également marquer dans le borrow checker
-//                self.borrow_checker.mark_initialized(symbol_id);
-//                Ok(())
-//           } else {
-//                Err(create_symbol_error(
-//                     SymbolError::SymbolNotFound(format!("{:?}", symbol_id)),
-//                     Position { index: 0 }
-//                ))
-//           }
-//      }
-//
-//      fn is_initialized(&self, symbol_id: SymbolId) -> Result<bool, SemanticError> {
-//           // Vérifier d'abord dans le borrow checker
-//           if self.borrow_checker.is_initialized(symbol_id) {
-//                return Ok(true);
-//           }
-//
-//           // Sinon vérifier dans le symbole
-//           match self.get_symbol(symbol_id) {
-//                Ok(symbol) => Ok(symbol.attributes.is_initialized),
-//                Err(e) => Err(e),
-//           }
-//      }
-//
-//      fn register_read(&mut self, symbol_id: SymbolId, location: SourceLocation) -> Result<(), SemanticError> {
-//           // Vérifier si la variable existe
-//           self.get_symbol(symbol_id)?;
-//
-//           // Vérifier si la variable est initialisée
-//           if !self.is_initialized(symbol_id)? {
-//                return Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(InvalidType(
-//                               format!("Variable {:?} is not initialized", symbol_id)
-//                          )
-//                     ),
-//                     "Use of uninitialized variable".to_string(),
-//                     Position { index: 0 }
-//                ));
-//           }
-//
-//           // Enregistrer l'emprunt de lecture
-//           match self.borrow_checker.register_borrow(
-//                symbol_id,
-//                BorrowKind::Read,
-//                location,
-//                self.current_scope,
-//                None,
-//           ) {
-//                Ok(()) => Ok(()),
-//                Err(e) => {
-//                     // Convertir l'erreur de borrow en erreur sémantique
-//                     Err(create_semantic_error(
-//                          SemanticErrorType::TypeError(TypeMismatch(
-//                                    format!("Borrow checker error: {:?}", e)
-//                               )
-//                          ),
-//                          "Borrow checker error".to_string(),
-//                          Position { index: 0 }
-//                     ))
-//                }
-//           }
-//      }
-//
-//      fn register_write(&mut self, symbol_id: SymbolId, location: SourceLocation) -> Result<(), SemanticError> {
-//           // Vérifier si la variable existe
-//           let symbol = self.get_symbol(symbol_id)?;
-//
-//           // Vérifier si la variable est mutable
-//           if !symbol.attributes.is_mutable {
-//                return Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(InvalidType(
-//                               format!("Cannot modify immutable variable {:?}", symbol_id)
-//                          )
-//                     ),
-//                     "Attempt to modify immutable value".to_string(),
-//                     Position { index: 0 }
-//                ));
-//           }
-//
-//           // Enregistrer l'emprunt d'écriture
-//           match self.borrow_checker.register_borrow(
-//                symbol_id,
-//                BorrowKind::Write,
-//                location,
-//                self.current_scope,
-//                None,
-//           ) {
-//                Ok(()) => {
-//                     // Marquer comme initialisé
-//                     if let Some(symbol) = self.symbols.get_mut(&symbol_id) {
-//                          symbol.attributes.is_initialized = true;
-//                     }
-//                     Ok(())
-//                },
-//                Err(e) => {
-//                     // Convertir l'erreur de borrow en erreur sémantique
-//                     Err(create_semantic_error(
-//                          SemanticErrorType::TypeError(
-//                               crate::semantic::semantic_error::TypeError::TypeMismatch(
-//                                    format!("Borrow checker error: {:?}", e)
-//                               )
-//                          ),
-//                          "Borrow checker error".to_string(),
-//                          Position { index: 0 }
-//                     ))
-//                }
-//           }
-//      }
-//
-//      fn register_immutable_borrow(&mut self, symbol_id: SymbolId, location: SourceLocation) -> Result<(), SemanticError> {
-//           // Vérifier si la variable existe
-//           self.get_symbol(symbol_id)?;
-//
-//           // Vérifier si la variable est initialisée
-//           if !self.is_initialized(symbol_id)? {
-//                return Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(InvalidType(
-//                               format!("Cannot borrow uninitialized variable {:?}", symbol_id)
-//                          )
-//                     ),
-//                     "Borrow of uninitialized variable".to_string(),
-//                     Position { index: 0 }
-//                ));
-//           }
-//
-//           // Enregistrer l'emprunt immutable
-//           match self.borrow_checker.register_borrow(
-//                symbol_id,
-//                BorrowKind::Immutable,
-//                location,
-//                self.current_scope,
-//                None,
-//           ) {
-//                Ok(()) => Ok(()),
-//                Err(e) => {
-//                     // Convertir l'erreur de borrow en erreur sémantique
-//                     Err(create_semantic_error(
-//                          SemanticErrorType::TypeError(TypeMismatch(
-//                                    format!("Borrow checker error: {:?}", e)
-//                               )
-//                          ),
-//                          "Borrow checker error".to_string(),
-//                          Position { index: 0 }
-//                     ))
-//                }
-//           }
-//      }
-//
-//      fn register_mutable_borrow(&mut self, symbol_id: SymbolId, location: SourceLocation) -> Result<(), SemanticError> {
-//           // Vérifier si la variable existe
-//           let symbol = self.get_symbol(symbol_id)?;
-//
-//           // Vérifier si la variable est mutable
-//           if !symbol.attributes.is_mutable {
-//                return Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(InvalidType(
-//                               format!("Cannot mutably borrow immutable variable {:?}", symbol_id)
-//                          )
-//                     ),
-//                     "Mutable borrow of immutable value".to_string(),
-//                     Position { index: 0 }
-//                ));
-//           }
-//
-//           // Vérifier si la variable est initialisée
-//           if !self.is_initialized(symbol_id)? {
-//                return Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(InvalidType(
-//                               format!("Cannot borrow uninitialized variable {:?}", symbol_id)
-//                          )
-//                     ),
-//                     "Borrow of uninitialized variable".to_string(),
-//                     Position { index: 0 }
-//                ));
-//           }
-//
-//           // Enregistrer l'emprunt mutable
-//           match self.borrow_checker.register_borrow(
-//                symbol_id,
-//                BorrowKind::Mutable,
-//                location,
-//                self.current_scope,
-//                None,
-//           ) {
-//                Ok(()) => Ok(()),
-//                Err(e) => {
-//                     // Convertir l'erreur de borrow en erreur sémantique
-//                     Err(create_semantic_error(
-//                          SemanticErrorType::TypeError(TypeMismatch(
-//                                    format!("Borrow checker error: {:?}", e)
-//                               )
-//                          ),
-//                          "Borrow checker error".to_string(),
-//                          Position { index: 0 }
-//                     ))
-//                }
-//           }
-//      }
-//
-//      fn register_move(&mut self, symbol_id: SymbolId, location: SourceLocation) -> Result<(), SemanticError> {
-//           // Vérifier si la variable existe
-//           self.get_symbol(symbol_id)?;
-//
-//           // Vérifier si la variable est initialisée
-//           if !self.is_initialized(symbol_id)? {
-//                return Err(create_semantic_error(
-//                     SemanticErrorType::TypeError(InvalidType(
-//                               format!("Cannot move uninitialized variable {:?}", symbol_id)
-//                          )
-//                     ),
-//                     "Move of uninitialized variable".to_string(),
-//                     Position { index: 0 }
-//                ));
-//           }
-//
-//           // Enregistrer le move
-//           match self.borrow_checker.register_borrow(
-//                symbol_id,
-//                BorrowKind::Move,
-//                location,
-//                self.current_scope,
-//                None,
-//           ) {
-//                Ok(()) => Ok(()),
-//                Err(e) => {
-//                     // Convertir l'erreur de borrow en erreur sémantique
-//                     Err(create_semantic_error(
-//                          SemanticErrorType::TypeError(TypeMismatch(
-//                                    format!("Borrow checker error: {:?}", e)
-//                               )
-//                          ),
-//                          "Borrow checker error".to_string(),
-//                          Position { index: 0 }
-//                     ))
-//                }
-//           }
-//      }
-// }
-//
-// // Fonction utilitaire pour créer une erreur sémantique à partir d'une erreur de symbole
-// fn create_symbol_error(error: SymbolError, position: Position) -> SemanticError {
-//      SemanticError::new(
-//           SemanticErrorType::SymbolError(error),
-//           "Symbol error".to_string(),
-//           position
-//      )
-// }
-//
-// // Fonction utilitaire pour créer une erreur sémantique générale
-// fn create_semantic_error(error_type: SemanticErrorType, message: String, position: Position) -> SemanticError {
-//      SemanticError::new(
-//           error_type,
-//           message,
-//           position
-//      )
-// }
 
 
 #[cfg(test)]
