@@ -14,46 +14,7 @@ pub enum ASTNode {
     Expression(Expression),
     Statement(Statement),
     Error(ParserError),
-    // Body(Body),
 }
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct Body {
-//     pub statements: Vec<ASTNode>,
-// }
-
-//pour le moment on utilise vec<ASTNode> pour le corps des fonctions
-// l'idee plus tard c'est d'utilise Body pour les fonctions et les blocs
-
-
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct Block {
-//     pub statements: Vec<ASTNode>,
-//     pub syntax_mode: BlockSyntax,
-//     // pub indent_level: Option<usize>, // Pour le mode Indentation
-//     // pub braces: Option<(Token, Token)>, // Pour le mode Braces (ouverture, fermeture)
-// }
-//////
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub enum BlockSyntax {
-//     Indentation,
-//     Braces ,
-// }
-
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct Indentation{
-//     pub indent_level: usize,
-// }
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct Braces{
-//     pub opening_brace: Token,
-//     pub closing_brace: Token,
-// }
-
 
 #[allow(dead_code)]
 #[derive(Debug,Clone,PartialEq)]
@@ -69,7 +30,6 @@ pub enum Mutability {
     Mutable,   // keyword MUT
 }
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Access {
@@ -77,7 +37,6 @@ pub enum Access {
     Write,
     ReadWrite,
 }
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -182,14 +141,12 @@ pub enum Type {
     Custom(String),
     Generic(GenericType),
     Infer, // Type inféré déduire par le compilateur (Type Inference)
-
     //Trait(String), // pour Type Bounds
     Named(String),
     SelfType,
     //BorrowedType(Box<Type>),
     Reference(Box<Type>),
     ReferenceMutable(Box<Type>),
-
 }
 
 #[allow(dead_code)]
@@ -226,7 +183,6 @@ pub struct FunctionDeclaration {
     pub return_type: Option<Type>,
     pub body: Vec<ASTNode>,
     pub visibility: Visibility
-    //pub annotations: Vec<Annotation>,
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -277,8 +233,6 @@ pub struct MethodeDeclaration {
     pub visibility: Visibility,
 }
 
-
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Parameter{
@@ -311,7 +265,6 @@ pub struct EnumDeclaration {
     pub variantes: Vec<EnumVariant>,
     pub visibility: Visibility,
 }
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
@@ -367,9 +320,6 @@ pub enum SelfKind{
     Reference,              // &self
     MutableReference,       // &mut self
 }
-
-
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Field{
@@ -411,7 +361,6 @@ pub struct WhereClause {
     pub bounds: Vec<TypeBound>,
 }
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ImplMethod{
@@ -423,15 +372,6 @@ pub struct ImplMethod{
     pub body: Vec<ASTNode>,
 
 }
-
-
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct Annotation{
-//     pub name: String,
-//     pub value: Option<Expression>,
-// }
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -440,13 +380,10 @@ pub enum Expression {
     BinaryOperation(BinaryOperation),
     UnaryOperation(UnaryOperation),
     FunctionCall(FunctionCall),
-
-    ArrayAccess(ArrayAccess),   // transfere dans IndexAccess
-    ArraySlice(ArraySlice),     // pas encore completement implementé
-    Slice(Slice),               // pas encore completement implementé
-    RangeSlice(RangeSlice),     // pas encore completement implementé
-
-
+    ArrayAccess(ArrayAccess),
+    ArraySlice(ArraySlice),
+    Slice(Slice),
+    RangeSlice(RangeSlice),
     MemberAccess(MemberAccess),
     LambdaExpression(LambdaExpression),
     MatchExpression(MatchExpression),
@@ -460,20 +397,16 @@ pub enum Expression {
     IndexAccess(IndexAccess), // Aka ArrayAccess
     CompoundAssignment(CompoundAssignment),
     DestructuringAssignment(DestructuringAssignment),
-
     RangeExpression(RangeExpression),
     Array(ArrayExpression),
     ArrayRepeat(ArrayRepeatExpression),
     ListComprehension(ListComprehension),
-
     DictLiteral(DictLiteral),
     DictAccess(DictAccess),
     DictComprehension(DictComprehension),
-
     CollectionAccess(CollectionAccess),
 
 }
-//*********************************
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum CollectionAccess {
@@ -481,8 +414,6 @@ pub enum CollectionAccess {
     Array(Box<Expression>, Box<Expression>),  // (array, index)
     Unknown(Box<Expression>, Box<Expression>) // à résoudre pendant le type checking
 }
-
-//**********************************
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -502,10 +433,6 @@ pub struct DictAccess{
     pub dict: Box<Expression>,
     pub key: Box<Expression>,
 }
-
-
-
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -533,14 +460,12 @@ pub struct CompFor {
 
 }
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ComprehensionFor{
     pub pattern: Pattern,
     pub iterator: Expression,
 }
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -554,8 +479,6 @@ pub struct ArrayRepeatExpression{
     pub value: Box<Expression>,
     pub size: Box<Expression>,
 }
-
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -605,12 +528,9 @@ pub struct Borrow {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Assignment{
-    // pub left: Box<Expression>,
-    // pub right: Box<Expression>,
     pub target: Box<Expression>,
     pub value: Box<Expression>,
 }
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -622,14 +542,6 @@ pub enum Literal {
     Array(Vec<Expression>),
     Char(char),
 }
-
-//fonction parametre
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct Parameters {
-//     pub name: String,
-//     pub parameter_type: Option<Type>,
-// }
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
@@ -645,7 +557,6 @@ pub struct BinaryOperation {
     pub operator: Operator,
     pub right: Box<Expression>,
 }
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -667,7 +578,6 @@ pub struct ArraySlice{
     pub start: Option<Box<Expression>>,
     pub end: Option<Box<Expression>>,
     pub step: Option<Box<Expression>>,
-    // pub inclusive: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -708,20 +618,15 @@ pub struct Conditional {
     pub else_block: Box<Expression>,
 }
 
-
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum Statement {
     Expression(Expression),
     ReturnStatement(ReturnStatement),
-
     UseStatement(UseStatement),
     ImportStatement(ImportStatement),
-
     ModuleImportStatement(ModuleImportStatement),
     SpecificImportStatement(SpecificImportStatement),
-
-
     RaiseStatement(RaiseStatement),
     DelStatement(DelStatement),
     IfStatement(IfStatement),
@@ -731,14 +636,11 @@ pub enum Statement {
     LoopStatement(LoopStatement),
     BreakStatement(BreakStatement),
     ContinueStatement(ContinueStatement),
-
     Break,
     Continue,
-
     TryStatement(TryStatement),
     WithStatement(WithStatement),
     YieldStatement(YieldStatement),
-
     DeclarationStatement(Declaration),
     Assignment(Expression, Expression),
     MatchStatement(MatchStatement),
@@ -749,11 +651,8 @@ pub enum Statement {
 #[derive(Clone, Debug)]
 pub struct ModuleImportStatement{
     pub keyword: ImportKeyword,
-    //pub module_path: ModulePath,
     pub module_path: Vec<String>,
     pub alias: Option<String>,
-    // pub items: Option<Vec<ImportItem>>,
-    // pub relative_level: usize,
 }
 
 #[allow(dead_code)]
@@ -799,7 +698,6 @@ pub struct MatchStatement{
 #[derive(Clone, Debug)]
 pub struct ReturnStatement {
     pub value: Option<Expression>,
-    // pub value: Expression
 }
 
 #[allow(dead_code)]
@@ -809,9 +707,7 @@ pub struct IfStatement {
     pub then_block: Vec<ASTNode>,
     pub elif_block: Vec<ElifStatement>,
     pub else_block: Option<Vec<ASTNode>>,
-
 }
-
 
 #[derive(Clone, Debug, )]
 pub struct ElifStatement {
@@ -824,7 +720,6 @@ pub struct ElifStatement {
 pub struct WhileStatement {
     pub condition: Expression,
     pub body: Vec<ASTNode>,
-    //pub body: Body,
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -832,7 +727,7 @@ pub struct ForStatement {
     pub iterator: String,
     pub iterable: Expression,
     pub body: Vec<ASTNode>,
-    //pub body: Body,
+
 }
 
 #[allow(dead_code)]
@@ -847,13 +742,11 @@ pub struct ContinueStatement {
     pub label: Option<String>,
 }
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct LoopStatement {
     pub label: Option<String>,
     pub body: Vec<ASTNode>,
-    //pub body: Body,
 }
 
 #[allow(dead_code)]
@@ -881,7 +774,6 @@ pub struct DelStatement {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TryStatement {
-    // pub body: Body,
     pub body: Vec<ASTNode>,
     pub handlers: Vec<ExceptHandler>,
     pub finally_body: Option<Vec<ASTNode>>,
@@ -915,13 +807,6 @@ pub struct AssignmentStatement {
     pub value: Expression,
 }
 
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct Function {
-//     pub declaration: FunctionDeclaration,
-//     pub body: Body,
-// }
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Identifier {
@@ -945,15 +830,6 @@ pub struct MatchExpression {
     pub arms: Vec<MatchArm>,
 }
 
-// #[allow(dead_code)]
-// #[derive(Debug, Clone)]
-// pub struct RangeExpression {
-//     pub start: Box<Expression>,
-//     pub end: Box<Expression>,
-//     pub inclusive: bool,
-// }
-//
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct RangeExpression {
@@ -961,9 +837,6 @@ pub struct RangeExpression {
     pub operator: Operator,
     pub right: Option<Box<Expression>>,
 }
-
-
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -1005,10 +878,5 @@ pub struct  ArrayRest {
     pub before: Vec<Pattern>,
     pub after: Vec<Pattern>,
 }
-
-
-
-
-
 
 ///////////////////////////////// by YmC////////////////////////////////////////////////////////////
