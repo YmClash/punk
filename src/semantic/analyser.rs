@@ -1,13 +1,21 @@
 //src/semantic/analyzer.rs
 
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::parser::ast::{ASTNode, Statement, Declaration, Expression, VariableDeclaration,
                          FunctionDeclaration, Mutability as ASTMutability};
 use crate::semantic::borrow_checker::MutabilityManager;
 use crate::semantic::symbols::{SymbolKind, SourceLocation};
 use crate::semantic::symbol_table::SymbolTable;
 use crate::semantic::type_checker::TypeChecker;
-use crate::semantic::types::type_system::Mutability;
+// use crate::semantic::types::type_system::Mutability;
 use crate::semantic::semantic_error::{SemanticError, SemanticErrorType, Position};
+use crate::semantic::error_recovery::{ErrorRecovery, RecoveryStrategy};
+use crate::semantic::context::CompilationContext;
+use crate::semantic::optimizations::constant_folding::ConstantFolder;
+use crate::semantic::optimizations::dead_code_elimination::DeadCodeEliminator;
+use crate::semantic::optimizations::alias_analysis::AliasAnalyzer;
+use crate::semantic::diagnostics::diagnostic_engine::{DiagnosticEngine, DiagnosticConfig};
 
 /// Analyseur sémantique principal qui coordonne tous les composants
 pub struct SemanticAnalyzer {
@@ -15,20 +23,44 @@ pub struct SemanticAnalyzer {
     pub type_checker: TypeChecker,
     pub errors: Vec<SemanticError>,
     pub warnings: Vec<SemanticError>, // Pour les avertissements non-fatals
+    pub error_recovery: Option<ErrorRecovery>,
+    pub diagnostic_engine: Option<DiagnosticEngine>,
+    current_line: usize,
+    current_column: usize,
 }
 
 impl SemanticAnalyzer {
     /// Crée un nouvel analyseur sémantique
     pub fn new() -> Self {
         let symbol_table = SymbolTable::new();
-        let type_checker = TypeChecker::new(symbol_table.clone());
+        let type_system = crate::semantic::types::type_system::TypeSystem::new();
+        let type_checker = TypeChecker::from_components(symbol_table.clone(), type_system);
 
         SemanticAnalyzer {
             symbol_table,
             type_checker,
             errors: Vec::new(),
             warnings: Vec::new(),
+            error_recovery: None,
+            diagnostic_engine: None,
+            current_line: 1,
+            current_column: 1,
         }
+    }
+    
+    /// Active le mode de récupération d'erreurs
+    pub fn enable_error_recovery(&mut self, context: Rc<RefCell<CompilationContext>>) {
+        self.error_recovery = Some(ErrorRecovery::new(context.clone()));
+        
+        // Activer aussi le moteur de diagnostics amélioré
+        self.enable_diagnostic_engine(context);
+    }
+    
+    /// Active le moteur de diagnostics amélioré
+    pub fn enable_diagnostic_engine(&mut self, context: Rc<RefCell<CompilationContext>>) {
+        let config = DiagnosticConfig::default();
+        let engine = DiagnosticEngine::new(context).with_config(config);
+        self.diagnostic_engine = Some(engine);
     }
 
     /// Analyse un AST complet
@@ -57,12 +89,43 @@ impl SemanticAnalyzer {
             Ok(())
         }
     }
+    
+    /// Optimise un AST avec le constant folding, dead code elimination et alias analysis
+    pub fn optimize_ast(&mut self, ast: &mut Vec<ASTNode>, context: Rc<RefCell<CompilationContext>>) {
+        println!("Quatrième passe: optimisations");
+        
+        // Phase 1 : Constant folding
+        let mut folder = ConstantFolder::new(context.clone());
+        folder.optimize_ast(ast);
+        folder.display_stats();
+        
+        // Phase 2 : Dead code elimination
+        let mut eliminator = DeadCodeEliminator::new(context.clone());
+        eliminator.optimize_ast(ast);
+        eliminator.display_stats();
+        
+        // Phase 3 : Alias analysis
+        let mut alias_analyzer = AliasAnalyzer::new(context.clone());
+        alias_analyzer.analyze_ast(ast);
+        alias_analyzer.display_stats();
+        alias_analyzer.display_alias_relations();
+    }
 
     /// Première passe: déclare tous les symboles de haut niveau
     fn declare_top_level_symbols(&mut self, ast: &[ASTNode]) {
         for node in ast {
             if let Err(error) = self.declare_node_symbols(node) {
-                self.errors.push(error);
+                // Si le système de récupération est actif, essayer de récupérer
+                if let Some(ref mut recovery) = self.error_recovery {
+                    if let Err(unrecoverable) = recovery.record_and_recover(
+                        error.clone(),
+                        RecoveryStrategy::Skip,
+                    ) {
+                        self.errors.push(unrecoverable);
+                    }
+                } else {
+                    self.errors.push(error);
+                }
             }
         }
     }
@@ -81,7 +144,7 @@ impl SemanticAnalyzer {
             ASTNode::Declaration(Declaration::Structure(struct_decl)) => {
                 // Créer un nouveau type pour la structure
                 let struct_type_id = self.symbol_table.type_system_mut()
-                    .type_registry.register_type(
+                    .register_type(
                     crate::semantic::types::type_system::TypeKind::Named(
                         struct_decl.name.clone(),
                         Vec::new()
@@ -109,7 +172,7 @@ impl SemanticAnalyzer {
             ASTNode::Declaration(Declaration::Enum(enum_decl)) => {
                 // Créer un nouveau type pour l'énumération
                 let enum_type_id = self.symbol_table.type_system_mut()
-                    .type_registry.register_type(
+                    .register_type(
                     crate::semantic::types::type_system::TypeKind::Named(
                         enum_decl.name.clone(),
                         Vec::new()
@@ -192,17 +255,24 @@ impl SemanticAnalyzer {
 
     /// Déclare un symbole de variable
     fn declare_variable_symbol(&mut self, var_decl: &VariableDeclaration) -> Result<(), SemanticError> {
+        // Incrémenter la position pour chaque nouvelle déclaration
+        self.current_column += 10;
+        if self.current_column > 80 {
+            self.current_line += 1;
+            self.current_column = 1;
+        }
+        
         let location = SourceLocation {
             file: "current_file.rs".to_string(),
-            line: 1,
-            column: 1,
+            line: self.current_line,
+            column: self.current_column,
         };
 
         let is_mutable = matches!(var_decl.mutability, ASTMutability::Mutable);
 
         // Si un type est spécifié, le convertir
         let type_id = if let Some(ast_type) = &var_decl.variable_type {
-            Some(self.symbol_table.type_system_mut().type_registry.convert_ast_type(ast_type))
+            Some(self.symbol_table.type_system_mut().convert_ast_type(ast_type))
         } else {
             None
         };
@@ -237,28 +307,35 @@ impl SemanticAnalyzer {
 
     /// Déclare un symbole de fonction
     fn declare_function_symbol(&mut self, func_decl: &FunctionDeclaration) -> Result<(), SemanticError> {
+        // Incrémenter la position pour chaque nouvelle déclaration
+        self.current_column += 10;
+        if self.current_column > 80 {
+            self.current_line += 1;
+            self.current_column = 1;
+        }
+        
         let location = SourceLocation {
             file: "current_file.rs".to_string(),
-            line: 1,
-            column: 1,
+            line: self.current_line,
+            column: self.current_column,
         };
 
         // Créer le type de la fonction
         let mut param_type_ids = Vec::new();
         for param in &func_decl.parameters {
             let param_type_id = self.symbol_table.type_system_mut()
-                .type_registry.convert_ast_type(&param.parameter_type);
+                .convert_ast_type(&param.parameter_type);
             param_type_ids.push(param_type_id);
         }
 
         let return_type_id = match &func_decl.return_type {
             Some(ast_type) => self.symbol_table.type_system_mut()
-                .type_registry.convert_ast_type(ast_type),
-            None => self.symbol_table.type_system().type_registry.type_unit,
+                .convert_ast_type(ast_type),
+            None => self.symbol_table.type_system().type_unit,
         };
 
         let function_type_id = self.symbol_table.type_system_mut()
-            .type_registry.create_function_type(param_type_ids, return_type_id);
+            .create_function_type(param_type_ids, return_type_id);
 
         // Déclarer le symbole de la fonction
         self.symbol_table.declare_symbol_with_type(
@@ -332,9 +409,9 @@ impl SemanticAnalyzer {
                 for field in &struct_decl.fields {
                     // Vérifier que le type du champ existe
                     let field_type_id = self.symbol_table.type_system_mut()
-                        .type_registry.convert_ast_type(&field.field_type);
+                        .convert_ast_type(&field.field_type);
 
-                    if self.symbol_table.type_system().type_registry.get_type(field_type_id).is_none() {
+                    if self.symbol_table.type_system().get_type(field_type_id).is_none() {
                         return Err(SemanticError::new(
                             SemanticErrorType::TypeError(
                                 crate::semantic::semantic_error::TypeError::TypeNotFound(
@@ -354,9 +431,9 @@ impl SemanticAnalyzer {
                 for variant in &enum_decl.variantes {
                     // Vérifier que le type de la variante existe
                     let variant_type_id = self.symbol_table.type_system_mut()
-                        .type_registry.convert_ast_type(&variant.variante_type);
+                        .convert_ast_type(&variant.variante_type);
 
-                    if self.symbol_table.type_system().type_registry.get_type(variant_type_id).is_none() {
+                    if self.symbol_table.type_system().get_type(variant_type_id).is_none() {
                         return Err(SemanticError::new(
                             SemanticErrorType::TypeError(
                                 crate::semantic::semantic_error::TypeError::TypeNotFound(
@@ -414,7 +491,7 @@ impl SemanticAnalyzer {
         // Déclarer les paramètres dans le scope de la fonction
         for param in &func_decl.parameters {
             let param_type_id = self.symbol_table.type_system_mut()
-                .type_registry.convert_ast_type(&param.parameter_type);
+                .convert_ast_type(&param.parameter_type);
 
             let location = SourceLocation {
                 file: "current_file.rs".to_string(),
@@ -463,10 +540,9 @@ impl SemanticAnalyzer {
 
     /// Synchronise le type checker avec la table des symboles actuelle
     fn sync_type_checker(&mut self) {
-        // Copier la table des symboles vers le type checker
-        // Note: Dans une vraie implémentation, on utiliserait des références partagées
-        self.type_checker.symbol_table = self.symbol_table.clone();
-        self.type_checker.type_system = self.symbol_table.type_system().clone();
+        // Recréer le type checker avec les composants mis à jour
+        let type_system = self.symbol_table.type_system().clone();
+        self.type_checker = TypeChecker::from_components(self.symbol_table.clone(), type_system);
     }
 
     /// Troisième passe: validations finales
@@ -481,14 +557,17 @@ impl SemanticAnalyzer {
         for symbol_id in unused_symbols {
             if let Ok(symbol) = self.symbol_table.get_symbol(symbol_id) {
                 // Créer un avertissement pour les symboles non utilisés
+                let position = Position { 
+                    index: symbol.location.line * 1000 + symbol.location.column 
+                };
                 let warning = SemanticError::new(
                     SemanticErrorType::SymbolError(
-                        crate::semantic::semantic_error::SymbolError::SymbolNotFound(
-                            format!("Unused symbol: {}", symbol.name)
+                        crate::semantic::semantic_error::SymbolError::UnusedSymbol(
+                            symbol.name.clone()
                         )
                     ),
                     format!("Symbol '{}' is declared but never used", symbol.name),
-                    Position { index: 0 }
+                    position
                 );
                 self.warnings.push(warning);
             }
@@ -521,7 +600,7 @@ impl SemanticAnalyzer {
         AnalysisStats {
             total_symbols: self.symbol_table.symbols.len(),
             total_scopes: self.symbol_table.scopes.len(),
-            total_types: self.symbol_table.type_system().type_registry.types.len(),
+            total_types: self.symbol_table.type_system().types.len(),
             error_count: self.errors.len(),
             warning_count: self.warnings.len(),
         }
@@ -537,6 +616,36 @@ impl SemanticAnalyzer {
     pub fn analyze_statement(&mut self, stmt: &Statement) -> Result<(), SemanticError> {
         self.sync_type_checker();
         self.type_checker.check_statement(stmt)
+    }
+    
+    /// Obtient le rapport de récupération d'erreurs
+    pub fn get_error_recovery_report(&self) -> Option<crate::semantic::error_recovery::ErrorRecoveryReport> {
+        self.error_recovery.as_ref().map(|recovery| recovery.generate_report())
+    }
+    
+    /// Affiche le rapport de récupération d'erreurs
+    pub fn display_error_recovery_report(&self) {
+        if let Some(report) = self.get_error_recovery_report() {
+            report.display();
+        }
+    }
+    
+    /// Affiche les diagnostics améliorés
+    pub fn display_diagnostics(&mut self) {
+        if let Some(ref mut engine) = self.diagnostic_engine {
+            // Ajouter les erreurs au moteur de diagnostics
+            for error in &self.errors {
+                engine.add_from_error(error);
+            }
+            
+            // Ajouter les avertissements
+            for warning in &self.warnings {
+                engine.add_warning(warning.message.clone(), warning.position.clone());
+            }
+            
+            // Afficher tous les diagnostics
+            engine.display_all();
+        }
     }
 }
 
