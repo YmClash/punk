@@ -244,7 +244,7 @@ impl Parser{
     }
 
     fn parse_parameter(&mut self) -> Result<Parameter, ParserError> {
-        println!("Début du parsing d'un paramètre");
+        log::debug!("Début du parsing d'un paramètre");
 
         // 1. Parser le nom du paramètre
         let param_name = self.consume_identifier()?;
