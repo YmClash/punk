@@ -64,7 +64,7 @@ impl TypeInferenceEngine {
                 let right_type = self.infer_expression(&binop.right)?;
                 
                 match binop.operator {
-                    Operator::Addition | Operator::Substraction | 
+                    Operator::Addition | Operator::Subtraction | 
                     Operator::Multiplication | Operator::Division | Operator::Modulo => {
                         // Les opérandes doivent être numériques et du même type
                         self.constraints.push(TypeConstraint::Numeric(left_type));
@@ -82,7 +82,7 @@ impl TypeInferenceEngine {
                     }
                     
                     Operator::LessThan | Operator::GreaterThan | 
-                    Operator::LesshanOrEqual | Operator::GreaterThanOrEqual => {
+                    Operator::LessThanOrEqual | Operator::GreaterThanOrEqual => {
                         // Les opérandes doivent être comparables et du même type
                         self.constraints.push(TypeConstraint::Comparable(left_type));
                         self.constraints.push(TypeConstraint::Comparable(right_type));
