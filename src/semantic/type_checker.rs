@@ -163,7 +163,7 @@ impl TypeChecker {
 
         // Vérifier la compatibilité des opérandes selon l'opérateur
         match operator {
-            Operator::Addition | Operator::Substraction |
+            Operator::Addition | Operator::Subtraction |
             Operator::Multiplication | Operator::Division |
             Operator::Modulo => {
                 // Opérations arithmétiques
@@ -203,7 +203,7 @@ impl TypeChecker {
                 }
             },
 
-            Operator::LessThan | Operator::LesshanOrEqual |
+            Operator::LessThan | Operator::LessThanOrEqual |
             Operator::GreaterThan | Operator::GreaterThanOrEqual => {
                 // Opérations de comparaison (<, <=, >, >=)
                 match (&left_type.kind, &right_type.kind) {
