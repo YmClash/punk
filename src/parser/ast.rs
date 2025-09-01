@@ -57,7 +57,7 @@ pub struct Position {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Addition,       // +
-    Substraction,   // -        ortho a corrige
+    Subtraction,   // -
     Multiplication, // *
     Division,       // /
     Modulo,     // %
@@ -68,7 +68,7 @@ pub enum Operator {
     GreaterThan,   // >
     And, // &&
     Or, // ||
-    LesshanOrEqual, // <=         ortho a corrige
+    LessThanOrEqual, // <=
     GreaterThanOrEqual, // >=
     Range, // ..
     RangeInclusive, // ..=
@@ -818,9 +818,8 @@ pub struct Identifier {
 pub struct LambdaExpression {
     pub parameters: Vec<Parameter>,
     pub return_type: Option<Type>,
-    //pub body: Box<Expression>,
     pub body: Vec<ASTNode>,
-    //pub body: Body,
+
 }
 
 #[allow(dead_code)]
