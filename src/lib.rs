@@ -4,6 +4,7 @@ mod codegen;
 pub mod parser;
 pub mod semantic;
 pub mod compiler;
+pub mod interpreter;
 mod utils;
 
 //mod ast;
