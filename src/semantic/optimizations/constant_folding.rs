@@ -251,7 +251,7 @@ impl ConstantFolder {
                     self.stats.arithmetic_operations += 1;
                     self.fold_arithmetic_op(left_lit, right_lit, |a, b| a + b, |a, b| a + b)
                 }
-                Operator::Substraction => {
+                Operator::Subtraction => {
                     self.stats.arithmetic_operations += 1;
                     self.fold_arithmetic_op(left_lit, right_lit, |a, b| a - b, |a, b| a - b)
                 }
@@ -285,7 +285,7 @@ impl ConstantFolder {
                     self.stats.comparisons_folded += 1;
                     self.fold_greater_than_comparison(left_lit, right_lit)
                 }
-                Operator::LesshanOrEqual => {
+                Operator::LessThanOrEqual => {
                     self.stats.comparisons_folded += 1;
                     self.fold_less_equal_comparison(left_lit, right_lit)
                 }
@@ -379,22 +379,22 @@ impl ConstantFolder {
         match (left, right) {
             (Literal::Integer { value: a }, Literal::Integer { value: b }) => {
                 if let (Some(a_val), Some(b_val)) = (a.to_i64(), b.to_i64()) {
-                    Some(Expression::Literal(Literal::Integer { 
-                        value: BigInt::from(int_op(a_val, b_val)) 
+                    Some(Expression::Literal(Literal::Integer {
+                        value: BigInt::from(int_op(a_val, b_val))
                     }))
                 } else {
                     None
                 }
             }
             (Literal::Float { value: a }, Literal::Float { value: b }) => {
-                Some(Expression::Literal(Literal::Float { 
-                    value: float_op(*a, *b) 
+                Some(Expression::Literal(Literal::Float {
+                    value: float_op(*a, *b)
                 }))
             }
             (Literal::Integer { value: a }, Literal::Float { value: b }) => {
                 if let Some(a_val) = a.to_f64() {
-                    Some(Expression::Literal(Literal::Float { 
-                        value: float_op(a_val, *b) 
+                    Some(Expression::Literal(Literal::Float {
+                        value: float_op(a_val, *b)
                     }))
                 } else {
                     None
@@ -402,8 +402,8 @@ impl ConstantFolder {
             }
             (Literal::Float { value: a }, Literal::Integer { value: b }) => {
                 if let Some(b_val) = b.to_f64() {
-                    Some(Expression::Literal(Literal::Float { 
-                        value: float_op(*a, b_val) 
+                    Some(Expression::Literal(Literal::Float {
+                        value: float_op(*a, b_val)
                     }))
                 } else {
                     None
@@ -438,8 +438,8 @@ impl ConstantFolder {
         self.stats.expressions_folded += 1;
         match (left, right) {
             (Literal::Integer { value: a }, Literal::Integer { value: b }) if !b.is_zero() => {
-                Some(Expression::Literal(Literal::Integer { 
-                    value: a % b 
+                Some(Expression::Literal(Literal::Integer {
+                    value: a % b
                 }))
             }
             _ => None,
