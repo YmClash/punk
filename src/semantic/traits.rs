@@ -205,13 +205,14 @@ pub trait Serializable {
 
 #[cfg(test)]
 mod tests {
+    use num_bigint::BigInt;
     use super::*;
     use crate::parser::ast::{Literal, Expression};
     
     #[test]
     fn test_node_count_visitor() {
         let mut visitor = NodeCountVisitor::new();
-        let expr = Expression::Literal(Literal::Integer { value: 42 });
+        let expr = Expression::Literal(Literal::Integer { value: BigInt::from(42) });
         
         expr.accept(&mut visitor).unwrap();
         assert_eq!(visitor.expression_count, 1);
