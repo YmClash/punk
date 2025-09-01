@@ -462,8 +462,6 @@ impl CFGBuilder {
             Statement::ForStatement(for_stmt) => self.visit_for_statement(for_stmt),
             Statement::MatchStatement(match_stmt) => self.visit_match_statement(match_stmt),
             Statement::ReturnStatement(ret_stmt) => self.visit_return_statement(ret_stmt),
-            Statement::Break => self.visit_break_statement(None),
-            Statement::Continue => self.visit_continue_statement(None),
             Statement::BreakStatement(break_stmt) => self.visit_break_statement(break_stmt.label.as_deref()),
             Statement::ContinueStatement(cont_stmt) => self.visit_continue_statement(cont_stmt.label.as_deref()),
             Statement::Expression(expr) => self.visit_expression(expr),
@@ -926,6 +924,7 @@ impl Default for CFGBuilder {
 
 #[cfg(test)]
 mod tests {
+    use num_bigint::BigInt;
     use super::*;
     use crate::parser::ast::*;
     
@@ -935,13 +934,13 @@ mod tests {
             ASTNode::Declaration(Declaration::Variable(VariableDeclaration {
                 name: "x".to_string(),
                 variable_type: Some(Type::Int),
-                value: Some(Expression::Literal(Literal::Integer { value: 5 })),
+                value: Some(Expression::Literal(Literal::Integer { value: BigInt::from(5) })),
                 mutability: Mutability::Immutable,
             })),
             ASTNode::Declaration(Declaration::Variable(VariableDeclaration {
                 name: "y".to_string(),
                 variable_type: Some(Type::Int),
-                value: Some(Expression::Literal(Literal::Integer { value: 10 })),
+                value: Some(Expression::Literal(Literal::Integer { value: BigInt::from(10) })),
                 mutability: Mutability::Immutable,
             })),
         ]);
@@ -961,14 +960,15 @@ mod tests {
     fn test_cfg_if_statement() {
         let ast = ASTNode::Statement(Statement::IfStatement(IfStatement {
             condition: Expression::Literal(Literal::Boolean(true)),
-            then_branch: vec![
+            then_block: vec![
                 ASTNode::Statement(Statement::Expression(
-                    Expression::Literal(Literal::Integer { value: 1 })
+                    Expression::Literal(Literal::Integer { value: BigInt::from(1) })
                 ))
             ],
-            else_branch: Some(vec![
+            elif_block: vec![],
+            else_block: Some(vec![
                 ASTNode::Statement(Statement::Expression(
-                    Expression::Literal(Literal::Integer { value: 2 })
+                    Expression::Literal(Literal::Integer { value: BigInt::from(2) })
                 ))
             ]),
         }));
@@ -993,7 +993,7 @@ mod tests {
             condition: Expression::Literal(Literal::Boolean(true)),
             body: vec![
                 ASTNode::Statement(Statement::Expression(
-                    Expression::Literal(Literal::Integer { value: 1 })
+                    Expression::Literal(Literal::Integer { value: BigInt::from(1) })
                 ))
             ],
         }));
@@ -1014,7 +1014,7 @@ mod tests {
     #[test]
     fn test_cfg_return_statement() {
         let ast = ASTNode::Statement(Statement::ReturnStatement(ReturnStatement {
-            value: Some(Expression::Literal(Literal::Integer { value: 42 })),
+            value: Some(Expression::Literal(Literal::Integer { value: BigInt::from(42) })),
         }));
         
         let builder = CFGBuilder::new();
@@ -1037,11 +1037,12 @@ mod tests {
             body: vec![
                 ASTNode::Statement(Statement::IfStatement(IfStatement {
                     condition: Expression::Literal(Literal::Boolean(true)),
-                    then_branch: vec![
-                        ASTNode::Statement(Statement::Break)
+                    then_block: vec![
+                        ASTNode::Statement(Statement::BreakStatement(BreakStatement { label: None }))
                     ],
-                    else_branch: Some(vec![
-                        ASTNode::Statement(Statement::Continue)
+                    elif_block: vec![],
+                    else_block: Some(vec![
+                        ASTNode::Statement(Statement::ContinueStatement(ContinueStatement { label: None }))
                     ]),
                 }))
             ],
