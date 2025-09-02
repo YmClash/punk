@@ -156,7 +156,7 @@ pub struct FlowAnalysisResult {
 mod tests {
     use num_bigint::BigInt;
     use super::*;
-    
+
     #[test]
     fn test_dead_code_detection() {
         // Test basique de détection de code mort
@@ -165,20 +165,21 @@ mod tests {
         let dead_blocks = detector.detect_dead_code();
         assert!(dead_blocks.is_empty()); // Avec un CFG vide, pas de code mort
     }
-    
+
     #[test]
     fn test_side_effect_detection() {
         use crate::parser::ast::{FunctionCall, Literal};
-        
+
         let detector = DeadCodeDetector::new(ControlFlowGraph::new());
-        
+
         // Un appel de fonction a des effets de bord
         let func_call = Expression::FunctionCall(FunctionCall {
-            name: "print".to_string(),
+            // name: "print".to_string(),
+            name: Box::new(Expression::Literal(Literal::String { 0: "print".to_string() })),
             arguments: vec![],
         });
         assert!(detector.has_side_effect(&func_call));
-        
+
         // Un littéral n'a pas d'effet de bord
         let literal = Expression::Literal(Literal::Integer { value: BigInt::from(42) });
         assert!(!detector.has_side_effect(&literal));

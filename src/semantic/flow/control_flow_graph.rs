@@ -927,7 +927,7 @@ mod tests {
     use num_bigint::BigInt;
     use super::*;
     use crate::parser::ast::*;
-    
+
     #[test]
     fn test_cfg_simple_sequence() {
         let ast = ASTNode::Program(vec![
@@ -944,18 +944,18 @@ mod tests {
                 mutability: Mutability::Immutable,
             })),
         ]);
-        
+
         let builder = CFGBuilder::new();
         let cfg = builder.build(&ast).unwrap();
-        
+
         // Vérifier qu'on a au moins le bloc d'entrée
         assert!(cfg.blocks.contains_key(&cfg.entry));
-        
+
         // Vérifier qu'on a des instructions
         let entry_block = cfg.blocks.get(&cfg.entry).unwrap();
         assert_eq!(entry_block.instructions.len(), 2);
     }
-    
+
     #[test]
     fn test_cfg_if_statement() {
         let ast = ASTNode::Statement(Statement::IfStatement(IfStatement {
@@ -972,13 +972,13 @@ mod tests {
                 ))
             ]),
         }));
-        
+
         let builder = CFGBuilder::new();
         let cfg = builder.build(&ast).unwrap();
-        
+
         // Vérifier qu'on a créé les blocs nécessaires
         assert!(cfg.blocks.len() >= 4); // entry, then, else, merge
-        
+
         // Vérifier le terminateur du bloc d'entrée
         let entry_block = cfg.blocks.get(&cfg.entry).unwrap();
         match &entry_block.terminator {
@@ -986,7 +986,7 @@ mod tests {
             _ => panic!("Expected conditional jump"),
         }
     }
-    
+
     #[test]
     fn test_cfg_while_loop() {
         let ast = ASTNode::Statement(Statement::WhileStatement(WhileStatement {
@@ -997,39 +997,39 @@ mod tests {
                 ))
             ],
         }));
-        
+
         let builder = CFGBuilder::new();
         let cfg = builder.build(&ast).unwrap();
-        
+
         // Vérifier qu'on a créé les blocs nécessaires
         assert!(cfg.blocks.len() >= 3); // entry, condition, body, exit
-        
+
         // Vérifier qu'il y a une boucle (un bloc avec un prédécesseur qui est aussi son successeur)
         let has_loop = cfg.blocks.values().any(|block| {
             block.predecessors.iter().any(|pred| block.successors.contains(pred))
         });
         assert!(has_loop || cfg.blocks.len() >= 3); // Simplification du test
     }
-    
+
     #[test]
     fn test_cfg_return_statement() {
         let ast = ASTNode::Statement(Statement::ReturnStatement(ReturnStatement {
             value: Some(Expression::Literal(Literal::Integer { value: BigInt::from(42) })),
         }));
-        
+
         let builder = CFGBuilder::new();
         let cfg = builder.build(&ast).unwrap();
-        
+
         // Vérifier qu'on a un bloc avec un terminateur Return
         let has_return = cfg.blocks.values().any(|block| {
             matches!(block.terminator, Terminator::Return(_))
         });
         assert!(has_return);
-        
+
         // Vérifier qu'on a au moins une sortie
         assert!(!cfg.exits.is_empty());
     }
-    
+
     #[test]
     fn test_cfg_break_continue() {
         let ast = ASTNode::Statement(Statement::WhileStatement(WhileStatement {
@@ -1047,15 +1047,15 @@ mod tests {
                 }))
             ],
         }));
-        
+
         let builder = CFGBuilder::new();
         let result = builder.build(&ast);
-        
+
         // Le test devrait réussir sans erreur
         assert!(result.is_ok());
-        
+
         let cfg = result.unwrap();
-        
+
         // Vérifier qu'on a des terminateurs Break et Continue
         let has_break = cfg.blocks.values().any(|block| {
             matches!(block.terminator, Terminator::Break(_))
@@ -1063,7 +1063,7 @@ mod tests {
         let has_continue = cfg.blocks.values().any(|block| {
             matches!(block.terminator, Terminator::Continue(_))
         });
-        
+
         assert!(has_break);
         assert!(has_continue);
     }

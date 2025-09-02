@@ -575,13 +575,13 @@ impl ConstantFolder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_fold_integer_addition() {
         use num_bigint::BigInt;
         let context = Rc::new(RefCell::new(CompilationContext::new()));
         let mut folder = ConstantFolder::new(context);
-        
+
         let expr = Expression::BinaryOperation(BinaryOperation {
             left: Box::new(Expression::Literal(Literal::Integer { value: BigInt::from(5) })),
             operator: Operator::Addition,
@@ -595,12 +595,12 @@ mod tests {
             panic!("Expected folded integer literal");
         }
     }
-    
+
     #[test]
     fn test_fold_boolean_and() {
         let context = Rc::new(RefCell::new(CompilationContext::new()));
         let mut folder = ConstantFolder::new(context);
-        
+
         let expr = Expression::BinaryOperation(BinaryOperation {
             left: Box::new(Expression::Literal(Literal::Boolean(true))),
             operator: Operator::And,

@@ -142,7 +142,7 @@ impl Default for ContextBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_context_creation() {
         let context = CompilationContext::new();
@@ -151,22 +151,22 @@ mod tests {
         assert_eq!(stats.symbol_count, 0);
         assert_eq!(stats.scope_count, 1); // Scope global
     }
-    
+
     #[test]
     fn test_context_builder() {
         let context = ContextBuilder::new()
             .with_types(TypeSystem::new())
             .with_symbols(SymbolTable::new())
             .build();
-        
+
         assert!(context.validate().is_ok());
     }
-    
+
     #[test]
     fn test_context_sharing() {
         let context = CompilationContext::new();
         let context_clone = context.clone();
-        
+
         // Les deux contextes partagent les mêmes données
         context.symbols.borrow_mut().symbol_count();
         assert_eq!(

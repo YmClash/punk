@@ -478,12 +478,12 @@ impl AliasAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_must_alias() {
         let context = Rc::new(RefCell::new(CompilationContext::new()));
         let mut analyzer = AliasAnalyzer::new(context);
-        
+
         // Simuler: let x = &y; let z = &y;
         analyzer.points_to_sets.insert(
             "x".to_string(),
@@ -492,7 +492,7 @@ mod tests {
                 is_complete: true,
             }
         );
-        
+
         analyzer.points_to_sets.insert(
             "z".to_string(),
             PointsToSet {
@@ -500,22 +500,22 @@ mod tests {
                 is_complete: true,
             }
         );
-        
+
         analyzer.detect_aliases();
         analyzer.build_alias_graph();
-        
+
         // x et z doivent être des must-alias car ils pointent tous deux vers y
         assert!(analyzer.must_alias(
             &MemoryLocation::Variable("x".to_string()),
             &MemoryLocation::Variable("z".to_string())
         ));
     }
-    
+
     #[test]
     fn test_may_alias() {
         let context = Rc::new(RefCell::new(CompilationContext::new()));
         let mut analyzer = AliasAnalyzer::new(context);
-        
+
         // Simuler des may-alias avec des points-to sets partiels
         analyzer.points_to_sets.insert(
             "p1".to_string(),
@@ -527,7 +527,7 @@ mod tests {
                 is_complete: false,
             }
         );
-        
+
         analyzer.points_to_sets.insert(
             "p2".to_string(),
             PointsToSet {
@@ -538,10 +538,10 @@ mod tests {
                 is_complete: false,
             }
         );
-        
+
         analyzer.detect_aliases();
         analyzer.build_alias_graph();
-        
+
         // p1 et p2 peuvent être des alias (intersection non vide sur b)
         assert!(analyzer.may_alias(
             &MemoryLocation::Variable("p1".to_string()),
