@@ -62,7 +62,7 @@ impl SuggestionEngine {
         match &error.error {
             TypeError(type_error) => self.get_type_error_suggestions(type_error),
             SymbolError(symbol_error) => self.get_symbol_error_suggestions(symbol_error),
-            _ => Vec::new(),
+            // _ => Vec::new(),
         }
     }
     

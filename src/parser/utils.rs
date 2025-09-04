@@ -38,20 +38,12 @@ impl Parser {
     }
 
     /// Vérifie si le token actuel correspond à l'un des types donnés
-    pub fn check(&self, token_types: &[TokenType]) -> bool {
-        if self.is_at_end() {
-            return false;
+    pub fn check(&self, expected: &[TokenType]) -> bool {
+        if let Some(token) = self.current_token() {
+            expected.contains(&token.token_type)
+        } else {
+            false
         }
-
-        if let Some(current) = self.current_token() {
-            for token_type in token_types {
-                if std::mem::discriminant(&current.token_type) == std::mem::discriminant(token_type) {
-                    return true;
-                }
-            }
-        }
-
-        false
     }
 
     /// Vérifie et consomme si le token actuel correspond à l'un des types donnés

@@ -163,11 +163,14 @@ mod tests {
     fn test_simple_trait() {
         let code = r#"
 trait Display {
-    fn fmt(self) -> str;
+    fn fmt(s: Self) -> str
 }"#;
         let mut parser = create_parser(code, SyntaxMode::Braces);
         let result = parser.parse_trait_declaration(Visibility::Public);
         
+        if let Err(ref e) = result {
+            eprintln!("Parse error in test_simple_trait: {:?}", e);
+        }
         assert!(result.is_ok());
         
         if let Ok(ASTNode::Declaration(Declaration::Trait(trait_decl))) = result {

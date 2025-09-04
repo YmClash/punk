@@ -1055,7 +1055,7 @@ mod tests {
           // Maintenant la variable est initialisée
           assert!(table.is_initialized(var_id).unwrap());
 
-          // La lecture devrait fonctionner
+          // La lecture devrait fonctionner (pas d'emprunt persistant pour Write)
           assert!(table.register_read(var_id, location.clone()).is_ok());
      }
 
@@ -1074,7 +1074,7 @@ mod tests {
           assert!(table.register_write(var_id, location.clone()).is_ok(),
                   "L'initialisation devrait réussir");
 
-          // Un emprunt immutable devrait fonctionner
+          // Un emprunt immutable devrait fonctionner (Write ne crée pas d'emprunt persistant)
           assert!(table.register_immutable_borrow(var_id, location.clone()).is_ok(),
                   "Le premier emprunt immutable devrait réussir");
 
@@ -1098,7 +1098,7 @@ mod tests {
                   "Un deuxième emprunt mutable devrait échouer");
 
           // Libérer manuellement les emprunts du scope actuel à nouveau
-          // table.borrow_checker.release_borrows_for_scope(table.current_scope);
+          table.borrow_checker.release_borrows_for_scope(table.current_scope);
 
           // Maintenant un emprunt immutable devrait fonctionner
           assert!(table.register_immutable_borrow(var_id, location.clone()).is_ok(),

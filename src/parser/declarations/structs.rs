@@ -78,15 +78,14 @@ impl Parser {
             });
             
             // Gérer la virgule optionnelle
-            if !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
-                if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
-                    self.advance();
-                } else if !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
-                    return Err(ParserError::new(
-                        ParserErrorType::ExpectedCommaOrCloseBrace,
-                        self.current_position()
-                    ));
-                }
+            if self.check(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
+                self.advance();
+            } else if !self.check(&[TokenType::DELIMITER(Delimiters::RCURBRACE)]) {
+                // Si on n'a ni virgule ni accolade fermante, c'est une erreur
+                return Err(ParserError::new(
+                    ParserErrorType::ExpectedCommaOrCloseBrace,
+                    self.current_position()
+                ));
             }
         }
         
