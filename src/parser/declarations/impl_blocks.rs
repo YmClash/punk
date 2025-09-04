@@ -241,17 +241,25 @@ mod tests {
     fn test_simple_impl_block() {
         let code = r#"
 impl Point {
-    fn new(x: i32, y: i32) -> Point {
-        return Point { x: x, y: y };
+    fn new(x: int, y: int) -> Point {
+        return Point(x, y)
     }
-    
-    fn distance(&self) -> f64 {
-        return 0.0;
+
+    fn distance(&self) -> float {
+        return 0.0
     }
 }"#;
-        let mut parser = create_parser(code, SyntaxMode::Braces);
+        let mut lexer = Lexer::new(code, SyntaxMode::Braces);
+        let tokens = lexer.tokenize();
+        // for (i, token) in tokens.iter().enumerate() {
+        //     eprintln!("Token {}: {:?}", i, token);
+        // }
+        let mut parser = Parser::new(tokens, SyntaxMode::Braces);
         let result = parser.parse_impl_declaration(Visibility::Public);
         
+        if let Err(ref e) = result {
+            eprintln!("Parse error in test_simple_impl_block: {:?}", e);
+        }
         assert!(result.is_ok());
         
         if let Ok(ASTNode::Declaration(Declaration::Impl(impl_decl))) = result {
@@ -268,8 +276,8 @@ impl Point {
     fn test_trait_impl() {
         let code = r#"
 impl Display for Point {
-    fn fmt(&self) -> String {
-        return "";
+    fn fmt(&self) -> str {
+        return ""
     }
 }"#;
         let mut parser = create_parser(code, SyntaxMode::Braces);

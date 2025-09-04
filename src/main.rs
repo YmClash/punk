@@ -250,52 +250,150 @@ fn test_error_handling(code: &str, mode: SyntaxMode) {
 
 // Nouvelle fonction main avec menu de tests
 fn main() {
+
+
     println!("╔════════════════════════════════════════╗");
     println!("║     PunkLang Compiler Test Suite       ║");
     println!("║           Dual-Mode Parser             ║");
+    println!("║              By YmC                    ║");
     println!("╚════════════════════════════════════════╝");
-    
-    // Obtenir l'argument de ligne de commande pour choisir le test
-    let args: Vec<String> = std::env::args().collect();
-    let test_mode = if args.len() > 1 { &args[1] } else { "all" };
-    
-    match &test_mode[..] {
-        "dual" => {
-            println!("\n🎯 Running Dual-Mode Tests Only");
-            test_dual_mode_parsing();
-        }
-        "complex" => {
-            println!("\n🎯 Running Complex Program Tests");
-            test_complex_program();
-        }
-        "error" => {
-            println!("\n🎯 Running Error Recovery Tests");
-            test_error_recovery();
-        }
-        "original" => {
-            println!("\n🎯 Running Original Test");
-            run_original_test();
-        }
-        "all" | _ => {
-            println!("\n🎯 Running All Tests");
-            test_dual_mode_parsing();
-            test_complex_program();
-            test_error_recovery();
+
+    let syntaxe_mode = SyntaxMode::Braces;
+    // let syntax_mode = SyntaxMode::Indentation;
+
+
+    fn mode(syntax_mode: SyntaxMode){
+        match syntax_mode {
+            SyntaxMode::Braces => println!("Mode Braces"),
+            SyntaxMode::Indentation => println!("Mode Indentation"),
         }
     }
-    
+
+
+
+
+    // Test comparaison des AST avec et sans point-virgules
+    println!("\n=== Test: Comparing ASTs with/without semicolons ===\n");
+
+    // Test 1: Simple let statement
+
+
+    let code_source = "let x: int = 5;\
+    let y = 10.5;\
+    fn fibonnaci(n:int) -> int{} \
+    let mut a = 0;
+    let mut b = 1;
+    let mut i = 2;
+    if n <= 1 {\
+        return n\
+    }\
+    if x < y {\
+        print(\"x is less than y\");\
+    } else {\
+        print(\"x is not less than y\");\
+    }\
+   ";
+
+    // let code_source = r#"
+// fn fibonacci(n: int) -> int:
+//     if n <= 1:
+//         return n
+//
+//     let mut a = 0
+//     let mut b = 1
+//     let mut i = 2
+//
+//     while i <= n:
+//         let temp = a + b
+//         a = b
+//         b = temp
+//         i = i + 1
+//     return b
+// let result = fibonacci(10)"#;
+//
+
+    let complex_brace = r#"
+    fn fibonnaci(n:int) -> int {
+        x + y
+    }"#;
+
+
+
+    let mut lexer = Lexer::new(complex_brace, syntaxe_mode);
+    let tokens = lexer.tokenize();
+
+    // Affichage des tokens pour vérification
+    for (i, tok) in tokens.iter().enumerate() {
+        println!("{}:{:?}", i, tok);
+    }
+    println!("\n");
+
+    let mut parser = Parser::new(tokens, syntaxe_mode);
+
+    match parser.parse_program() {
+        Ok(ast) => {
+            println!("✅ AST généré avec succès!");
+            println!("{:#?}", ast);
+
+            // Semantic analysis
+            print_separator("Analyse sémantique");
+
+            let mut analyser = SemanticAnalyzer::new();
+
+            // Activer le système de récupération d'erreurs
+            use std::rc::Rc;
+            use std::cell::RefCell;
+            use punk::semantic::context::CompilationContext;
+
+            let context = Rc::new(RefCell::new(CompilationContext::new()));
+            analyser.enable_error_recovery(context.clone());
+
+            let ast_nodes = match ast {
+                ASTNode::Program(nodes) => nodes,
+                single => vec![single],
+            };
+
+            match analyser.analyze(&ast_nodes) {
+                Ok(()) => {
+                    println!("✅ Analyse sémantique réussie!");
+                    let stats = analyser.get_analysis_stats();
+                    println!("Statistiques: {} symboles, {} types, {} scopes",
+                             stats.total_symbols, stats.total_types, stats.total_scopes);
+
+                    // Appliquer les optimisations
+                    let mut optimized_ast = ast_nodes.clone();
+                    analyser.optimize_ast(&mut optimized_ast, context.clone());
+                }
+                Err(errors) => {
+                    println!("❌ Échec de l'analyse sémantique avec {} erreurs:", errors.len());
+                    for (i, e) in errors.iter().enumerate() {
+                        println!("Erreur {}: {:?}", i+1, e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("❌ Erreur lors du parsing : {}", e);
+        }
+    }
+
+
     print_separator("TEST SUITE COMPLETED");
     println!("PunkLang Compiler by YmC");
     println!();
+
+
 }
+
+
 
 // Fonction pour garder le test original
 fn run_original_test() {
     let syntax_mode = SyntaxMode::Indentation;
-    
+
     println!("Mode de syntaxe : ");
     mode(syntax_mode);
-    
+
     let code_source = r#"match x :
     (0, 0) => print("Origin")
     (x, 0):

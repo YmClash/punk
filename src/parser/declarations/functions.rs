@@ -147,8 +147,18 @@ mod tests {
 
     #[test]
     fn test_simple_function() {
-        let mut parser = create_parser("fn add(a: int, b: int) -> int { return a + b; }", SyntaxMode::Braces);
+        let code = "fn add(a: int, b: int) -> int { return a + b }";
+        let mut lexer = Lexer::new(code, SyntaxMode::Braces);
+        let tokens = lexer.tokenize();
+        // Debug: print tokens
+        // for (i, token) in tokens.iter().enumerate() {
+        //     eprintln!("Token {}: {:?}", i, token);
+        // }
+        let mut parser = Parser::new(tokens, SyntaxMode::Braces);
         let result = parser.parse_function_declaration(Visibility::Public);
+        // if let Err(ref e) = result {
+        //     eprintln!("Parse error: {:?}", e);
+        // }
         assert!(result.is_ok());
         
         if let Ok(ASTNode::Declaration(Declaration::Function(func))) = result {

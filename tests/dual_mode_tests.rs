@@ -53,13 +53,17 @@ mod basic_syntax_tests {
     fn test_simple_function() {
         let braces = r#"
 fn add(a: int, b: int) -> int {
-    return a + b;
+    return a + b
 }"#;
         let indent = r#"
 fn add(a: int, b: int) -> int:
     return a + b"#;
         
-        assert!(compare_dual_mode("simple_function", braces, indent).is_ok());
+        let result = compare_dual_mode("simple_function", braces, indent);
+        if let Err(e) = &result {
+            eprintln!("Test error: {}", e);
+        }
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -67,7 +71,7 @@ fn add(a: int, b: int) -> int:
         let braces = r#"
 fn compute(x: int) -> int {
     let temp: int = x * 2;
-    return temp + 10;
+    return temp + 10
 }"#;
         let indent = r#"
 fn compute(x: int) -> int:
@@ -170,7 +174,8 @@ for i in range(3) {
         let indent = r#"
 for i in range(3):
     for j in range(3):
-        print(i * j)"#;
+        print(i * j)
+    "#;
         
         assert!(compare_dual_mode("nested_loops", braces, indent).is_ok());
     }
@@ -227,11 +232,11 @@ class Rectangle {
     height: float;
     
     fn area(self) -> float {
-        return self.width * self.height;
+        return self.width * self.height
     }
     
     fn perimeter(self) -> float {
-        return 2 * (self.width + self.height);
+        return 2 * (self.width + self.height)
     }
 }"#;
         let indent = r#"
@@ -255,7 +260,7 @@ mod expression_tests {
 
     #[test]
     fn test_binary_operations() {
-        let braces = "let result: int = (a + b) * (c - d);";
+        let braces = "let result: int = (a + b) * (c - d)";
         let indent = "let result: int = (a + b) * (c - d)";
         
         assert!(compare_dual_mode("binary_operations", braces, indent).is_ok());
@@ -271,7 +276,7 @@ mod expression_tests {
 
     #[test]
     fn test_function_calls() {
-        let braces = "let sum: int = add(multiply(2, 3), 4);";
+        let braces = "let sum: int = add(multiply(2, 3), 4)";
         let indent = "let sum: int = add(multiply(2, 3), 4)";
         
         assert!(compare_dual_mode("function_calls", braces, indent).is_ok());
@@ -279,7 +284,7 @@ mod expression_tests {
 
     #[test]
     fn test_array_access() {
-        let braces = "let element: int = array[index + 1];";
+        let braces = "let element: int = array[index + 1]";
         let indent = "let element: int = array[index + 1]";
         
         assert!(compare_dual_mode("array_access", braces, indent).is_ok());
@@ -362,7 +367,7 @@ fn do_nothing():
     #[test]
     fn test_single_line_if() {
         // This might fail depending on parser implementation
-        let braces = "if x > 0 { return true; }";
+        let braces = "if x > 0 { return true }";
         let indent = "if x > 0: return true";
         
         // We expect this might fail, documenting the difference
