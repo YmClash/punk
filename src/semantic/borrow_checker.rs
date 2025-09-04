@@ -275,7 +275,35 @@ impl BorrowChecker {
             // Supprimer les emprunts actifs car la valeur est moved
             self.active_borrows.remove(&symbol_id);
         }
-        // Gérer les autres types d'emprunt
+        // Les opérations Read et Write ne créent pas d'emprunts persistants
+        else if matches!(kind, BorrowKind::Read | BorrowKind::Write) {
+            // Vérifier qu'il n'y a pas d'emprunts actifs qui bloquent
+            if let Some(borrows) = self.active_borrows.get(&symbol_id) {
+                for borrow in borrows {
+                    match (&kind, &borrow.kind) {
+                        (BorrowKind::Write, _) | (_, BorrowKind::Mutable) => {
+                            // L'écriture est bloquée par n'importe quel emprunt
+                            // Un emprunt mutable bloque tout
+                            return Err(BorrowErrorKind::MutableBorrowWithImmutableBorrows {
+                                symbol_id,
+                                immutable_locations: vec![borrow.location.clone()],
+                                mutable_location: location.clone(),
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            
+            // Si c'est une écriture, marquer comme initialisée
+            if matches!(kind, BorrowKind::Write) {
+                self.mark_initialized(symbol_id);
+            }
+            
+            // Pas d'emprunt persistant pour Read/Write
+            return Ok(());
+        }
+        // Gérer les emprunts persistants (Immutable et Mutable)
         else {
             let borrow_info = BorrowInfo {
                 symbol_id,
@@ -315,7 +343,23 @@ impl BorrowChecker {
                         }
                     }
                 },
-                _ => {} // Les emprunts immutables peuvent coexister
+                BorrowKind::Immutable | BorrowKind::Read => {
+                    // Vérifier s'il y a des emprunts mutables actifs
+                    if let Some(borrows) = self.active_borrows.get(&symbol_id) {
+                        let mutable_borrows: Vec<_> = borrows.iter()
+                            .filter(|b| matches!(b.kind, BorrowKind::Mutable | BorrowKind::Write))
+                            .collect();
+
+                        if !mutable_borrows.is_empty() {
+                            return Err(BorrowErrorKind::MutableBorrowWithImmutableBorrows {
+                                symbol_id,
+                                immutable_locations: vec![location.clone()],
+                                mutable_location: mutable_borrows[0].location.clone(),
+                            });
+                        }
+                    }
+                },
+                _ => {} // Les autres types peuvent coexister
             }
 
             // Ajouter l'emprunt aux emprunts actifs
@@ -325,11 +369,6 @@ impl BorrowChecker {
 
             // Enregistrer dans l'historique
             self.borrow_history.push(borrow_info);
-
-            // Si c'est une écriture, marquer comme initialisée
-            if matches!(kind, BorrowKind::Write) {
-                self.mark_initialized(symbol_id);
-            }
         }
 
         Ok(())
@@ -755,7 +794,7 @@ mod tests {
         // La variable est maintenant initialisée
         assert!(table.is_initialized(var_id).unwrap());
 
-        // Lecture devrait fonctionner
+        // Lecture devrait fonctionner (pas d'emprunt persistant pour Write)
         assert!(table.register_read(var_id, create_location(3)).is_ok());
     }
 

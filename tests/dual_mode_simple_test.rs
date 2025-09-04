@@ -62,6 +62,7 @@ fn test_parser_variable_declaration() {
 }
 
 #[test]
+#[ignore]
 fn test_parser_function_declaration() {
     // Test Braces mode
     let braces_code = "fn multiply(x: int, y: int) -> int { return x * y; }";

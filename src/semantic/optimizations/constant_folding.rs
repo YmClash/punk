@@ -325,7 +325,7 @@ impl ConstantFolder {
         
         if let Expression::Literal(lit) = &operand {
             match unop.operator {
-                UnaryOperator::Negative => {
+                UnaryOperator::Negate| UnaryOperator::Negative => {
                     use num_bigint::BigInt;
                     self.stats.arithmetic_operations += 1;
                     match lit {
@@ -338,7 +338,7 @@ impl ConstantFolder {
                         _ => None,
                     }
                 }
-                UnaryOperator::Not => {
+                UnaryOperator::Not | UnaryOperator::LogicalNot => {
                     self.stats.boolean_operations += 1;
                     match lit {
                         Literal::Boolean(value) => {
