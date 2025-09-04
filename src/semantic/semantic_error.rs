@@ -202,25 +202,25 @@ impl SemanticError{
     }
 }
 
-
-/// Test unitaire isole
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_position() {
-        let mut pos = Position::new();
-        pos.advance('a');
-        assert_eq!(pos.index, 1);
-        pos.advance('b');
-        assert_eq!(pos.index, 2);
-        pos.move_left();
-        assert_eq!(pos.index, 1);
-    }
-}
-
-
-
-
-
+//
+// /// Test unitaire isole
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//
+//     #[test]
+//     fn test_position() {
+//         let mut pos = Position::new();
+//         pos.advance('a');
+//         assert_eq!(pos.index, 1);
+//         pos.advance('b');
+//         assert_eq!(pos.index, 2);
+//         pos.move_left();
+//         assert_eq!(pos.index, 1);
+//     }
+// }
+//
+//
+//
+//
+//

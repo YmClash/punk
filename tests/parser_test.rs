@@ -12,14 +12,9 @@ mod tests {
         Parser::new(tokens, mode)
     }
 
-    // fn assert_ast_eq(actual: Expression, expected: Expression) {
-    //     assert_eq!(format!("{:#?}", actual), format!("{:#?}", expected));
-    // }
-
     mod expression_tests {
 
         use super::*;
-
 
         #[test]
         fn test_literal_expressions_braces() {

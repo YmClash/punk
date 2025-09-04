@@ -282,6 +282,7 @@ impl Parser {
             .current_token()
             .ok_or_else(|| ParserError::new(ExpectedTypeAnnotation, self.current_position()))?;
 
+        // eprintln!("parse_type: current token = {:?}", token);
         log::debug!("Parsing type: {:?}", token);
 
         match &token.token_type {
