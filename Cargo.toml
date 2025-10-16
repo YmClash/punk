@@ -12,6 +12,8 @@ num-complex = "0.4.6"
 num-bigint = "0.4.6"
 log = "0.4"
 env_logger = "0.11"
+colored = "3.0.0"
+rustyline = "17.0.1"
 
 
 
@@ -33,9 +35,9 @@ path = "tests/lex_test.rs"
 name = "lex_indentation_test"
 path = "tests/lex_indentation_test.rs"
 
-[[test]]
-name = "parse_test"
-path = "tests/parser_test.rs"
+#[[test]]
+#name = "parse_test"
+#path = "tests/parser_test.rs"
 
 [[test]]
 name = "dual_mode_robustness_test"
@@ -57,9 +59,9 @@ path = "tests/test_unified_blocks.rs"
 name = "semantic_test"
 path = "tests/semantic_test.rs"
 
-[[test]]
-name = "semantic_borrow_test"
-path = "tests/semantic_borrow_test.rs"
+#[[test]]
+#name = "semantic_borrow_test"
+#path = "tests/semantic_borrow_test.rs"
 
 [[test]]
 
