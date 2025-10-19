@@ -251,6 +251,7 @@ fn test_error_handling(code: &str, mode: SyntaxMode) {
 // Nouvelle fonction main avec menu de tests
 fn main() {
 
+    env_logger::init();
 
     println!("╔════════════════════════════════════════╗");
     println!("║     PunkLang Compiler Test Suite       ║");
@@ -278,43 +279,52 @@ fn main() {
     // Test 1: Simple let statement
 
 
-    let code_source = "let x: int = 5;\
-    let y = 10.5;\
-    fn fibonnaci(n:int) -> int{} \
-    let mut a = 0;
-    let mut b = 1;
-    let mut i = 2;
-    if n <= 1 {\
-        return n\
-    }\
-    if x < y {\
-        print(\"x is less than y\");\
-    } else {\
-        print(\"x is not less than y\");\
-    }\
-   ";
+    // let code_source = "let x: int = 5;\
+    // let y = 10.5;\
+    // fn fibonnaci(n:int) -> int{} \
+    // let mut a = 0;
+    // let mut b = 1;
+    // let mut i = 2;
+    // if n <= 1 {\
+    //     return n\
+    // }\
+    // if x < y {\
+    //     print(\"x is less than y\");\
+    // } else {\
+    //     print(\"x is not less than y\");\
+    // }\
+   // ";
 
-    // let code_source = r#"
-// fn fibonacci(n: int) -> int:
-//     if n <= 1:
-//         return n
-//
-//     let mut a = 0
-//     let mut b = 1
-//     let mut i = 2
-//
-//     while i <= n:
-//         let temp = a + b
-//         a = b
-//         b = temp
-//         i = i + 1
-//     return b
-// let result = fibonacci(10)"#;
-//
+
+    let code_source = r#"fn fibonacci(n: int) -> int:
+    if n <= 1:
+        return n
+    let mut a = 0
+    let mut b = 1
+    let mut i = 2
+    while i <= n:
+        let temp = a + b
+        a = b
+        b = temp
+        i = i + 1
+        return b
+    let result = fibonacci(10)"#;
 
     let complex_brace = r#"
+    //Exemple
+    # Fibonacci en mode Braces
+    let x: int = 5;
+    let y = 10.5;
+    if x < y {
+        print("x is less than y");
+    } else {
+        print("x is not less than y");
+    }
     fn fibonnaci(n:int) -> int {
-        x + y
+        while n > 0 {
+            n = n - 1;
+        }
+        return fibonnaci(n - 1) + fibonnaci(n - 2)
     }"#;
 
 
@@ -332,7 +342,7 @@ fn main() {
 
     match parser.parse_program() {
         Ok(ast) => {
-            println!("✅ AST généré avec succès!");
+            println!("\n ✅ AST généré avec succès!");
             println!("{:#?}", ast);
 
             // Semantic analysis
@@ -357,8 +367,15 @@ fn main() {
                 Ok(()) => {
                     println!("✅ Analyse sémantique réussie!");
                     let stats = analyser.get_analysis_stats();
-                    println!("Statistiques: {} symboles, {} types, {} scopes",
-                             stats.total_symbols, stats.total_types, stats.total_scopes);
+                    println!("Statistiques: {} symboles, {} types, {} scopes, {} warnings",
+                             stats.total_symbols, stats.total_types, stats.total_scopes,stats.warning_count);
+
+                    if stats.warning_count > 0 {
+                        println!("⚠️  {} warnings détectés durant l'analyse.", stats.warning_count);
+                        for warning in analyser.get_warnings(){
+                            println!("  - Warning: {:?}", warning.message);
+                        }
+                    }
 
                     // Appliquer les optimisations
                     let mut optimized_ast = ast_nodes.clone();
