@@ -9,7 +9,7 @@ use crate::tok::{Delimiters, Keywords, TokenType};
 impl Parser{
 
     pub fn synchronize(&mut self) -> Result<(), ParserError> {
-        println!("Début de la synchronisation après erreur");
+        log::debug!("Début de la synchronisation après erreur");
 
         let mut nesting_level: i32 = 0;
 
@@ -129,7 +129,7 @@ impl Parser{
         match self.parse_impl_method() {
             Ok(method) => Ok(method),
             Err(e) => {
-                println!("Erreur lors du parsing de la méthode : {:?}", e);
+                log::debug!("Erreur lors du parsing de la méthode : {:?}", e);
                 self.synchronize()?;
 
                 // Retourne une méthode "placeholder" pour continuer le parsing

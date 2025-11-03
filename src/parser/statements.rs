@@ -8,7 +8,7 @@ impl Parser{
 
     /// fonction pour le gestion de structure de controle
     pub fn parse_if_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction if");
+        log::debug!("Début du parsing de l'instruction if");
         self.consume(TokenType::KEYWORD(Keywords::IF))?;
         let condition = self.parse_expression(0)?;
         let then_block = self.parse_block()?;
@@ -40,13 +40,13 @@ impl Parser{
     }
 
     pub fn parse_while_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction while");
+        log::debug!("Début du parsing de l'instruction while");
 
         self.consume(TokenType::KEYWORD(Keywords::WHILE))?;
 
         let condition = self.parse_expression(0)?;
-        let body = self.parse_body_block()?;
-        println!("Fin du parsing de l'instruction while OK!!!!!!!!!!!!!!");
+        let body = self.parse_unified_block()?;
+        log::debug!("Fin du parsing de l'instruction while OK!!!!!!!!!!!!!!");
         Ok(ASTNode::Statement(Statement::WhileStatement(WhileStatement{
             condition,
             body,
@@ -55,14 +55,14 @@ impl Parser{
     }
 
     pub fn parse_loop_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction loop");
+        log::debug!("Début du parsing de l'instruction loop");
 
         // ajoute de label optional pour la boucle pour
         let label = self.check_for_label()?;
 
         self.consume(TokenType::KEYWORD(Keywords::LOOP))?;
         let body = self.parse_block()?;
-        println!("Fin du parsing de l'instruction loop OK!!!!!!!!!!!!!!");
+        log::debug!("Fin du parsing de l'instruction loop OK!!!!!!!!!!!!!!");
         Ok(ASTNode::Statement(Statement::LoopStatement(LoopStatement{
             label,
             body,
@@ -70,15 +70,15 @@ impl Parser{
     }
 
     pub fn parse_for_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction for");
+        log::debug!("Début du parsing de l'instruction for");
 
         self.consume(TokenType::KEYWORD(Keywords::FOR))?;
 
         let iterator = self.consume_identifier()?;
         self.consume(TokenType::KEYWORD(Keywords::IN))?;
         let iterable = self.parse_expression(0)?;
-        let body = self.parse_body_block()?;
-        println!("Fin du parsing de l'instruction for OK!!!!!!!!!!!!!!!");
+        let body = self.parse_unified_block()?;
+        log::debug!("Fin du parsing de l'instruction for OK!!!!!!!!!!!!!!!");
         Ok(ASTNode::Statement(Statement::ForStatement(ForStatement{
             iterator,
             iterable,
@@ -88,22 +88,22 @@ impl Parser{
     }
 
     pub fn parse_break_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction break");
+        log::debug!("Début du parsing de l'instruction break");
         self.consume(TokenType::KEYWORD(Keywords::BREAK))?;
         let label = self.check_for_label()?;
         self.consume_seperator();
-        println!("Fin du parsing de l'instruction break OK!!!!!!!!!!!!!!!");
+        log::debug!("Fin du parsing de l'instruction break OK!!!!!!!!!!!!!!!");
         Ok(ASTNode::Statement(Statement::BreakStatement(BreakStatement{
             label
         })))
     }
 
     pub fn parse_continue_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction continue");
+        log::debug!("Début du parsing de l'instruction continue");
         self.consume(TokenType::KEYWORD(Keywords::CONTINUE))?;
         let label = self.check_for_label()?;
         self.consume_seperator();
-        println!("Fin du parsing de l'instruction continue OK!!!!!!!!!!!!!!!");
+        log::debug!("Fin du parsing de l'instruction continue OK!!!!!!!!!!!!!!!");
         Ok(ASTNode::Statement(Statement::ContinueStatement(ContinueStatement{
             label
         })))
@@ -113,7 +113,7 @@ impl Parser{
 
     ///fonction pour le parsing des blocs de code Try/Except/Finally
     pub fn parse_try_statement(&mut self) -> Result<ASTNode, ParserError> {
-        println!("Début du parsing de l'instruction try");
+        log::debug!("Début du parsing de l'instruction try");
 
         // Consommer le 'try'
         self.consume(TokenType::KEYWORD(Keywords::TRY))?;
@@ -151,7 +151,7 @@ impl Parser{
 
 
     pub fn parse_except_handler(&mut self) -> Result<ExceptHandler,ParserError>{
-        println!("Début du parsing de l'except handler");
+        log::debug!("Début du parsing de l'except handler");
 
         self.consume(TokenType::KEYWORD(Keywords::EXCEPT))?;
 
@@ -169,7 +169,7 @@ impl Parser{
 
         let body = self.parse_block()?;
 
-        println!("Fin du parsing de l'exception handler");
+        log::debug!("Fin du parsing de l'exception handler");
 
         Ok(ExceptHandler {
             exception_type,

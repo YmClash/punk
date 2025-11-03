@@ -1,11 +1,10 @@
 //src/semantic/symbols.rs
 
-use std::any::TypeId;
 use std::collections::HashMap;
 
 
 use crate::semantic::semantic_error::{Position, SymbolError};
-use crate::semantic::types::type_system::Type;
+use crate::semantic::types::type_system::{Type, TypeId};
 
 /// Type pour les identifiants uniques des symboles
 #[allow(dead_code)]
@@ -19,7 +18,7 @@ pub struct ScopeId(pub u32);
 
 /// Position dans le code source
 #[allow(dead_code)]
-#[derive(Debug, Clone )]
+#[derive(Debug, Clone, Default)]
 pub struct SourceLocation{
     pub file: String,
     pub line: usize,
@@ -131,6 +130,7 @@ pub enum ScopeKind {
     Global,
     Module,
     Function,
+    Class,
     Block,
     Loop,
     Trait,

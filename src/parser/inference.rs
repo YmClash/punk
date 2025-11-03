@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::parser::ast::{Assignment, BinaryOperation, Expression, Literal, Operator, Type, UnaryOperation, UnaryOperator, VariableDeclaration};
+use crate::parser::ast::{Expression, FunctionDeclaration, Literal, Operator, Type, VariableDeclaration, BinaryOperation, UnaryOperation, UnaryOperator, Assignment};
 
 
 
@@ -67,7 +67,7 @@ impl TypeContext {
         let right_type = self.infer_expression(&binop.right)?;
 
         match binop.operator {
-            Operator::Addition | Operator::Substraction |
+            Operator::Addition | Operator::Subtraction |
             Operator::Multiplication | Operator::Division => {
                 if left_type == Type::Int && right_type == Type::Int {
                     Ok(Type::Int)
@@ -81,7 +81,7 @@ impl TypeContext {
             },
             Operator::Equal | Operator::NotEqual |
             Operator::LessThan | Operator::GreaterThan |
-            Operator::LesshanOrEqual | Operator::GreaterThanOrEqual => {
+            Operator::LessThanOrEqual | Operator::GreaterThanOrEqual => {
                 self.add_constraint(TypeConstraint::Equal(left_type, right_type));
                 Ok(Type::Bool)
             },
@@ -110,7 +110,7 @@ impl TypeContext {
         };
 
         if let Some(ref explicit_type) = decl.variable_type {
-            if explicit_type != &Type::Infer && explicit_type != &inferred_type {
+            if *explicit_type != *&Type::Infer && *explicit_type != *&inferred_type {
                 return Err(format!(
                     "Type mismatch: expected {:?}, found {:?}",
                     explicit_type, inferred_type
@@ -143,8 +143,8 @@ impl TypeContext {
 
         // Vérification avec le type de retour explicite s'il existe
         if let Some(explicit_return_type) = return_type {
-            if explicit_return_type != &Type::Infer &&
-                explicit_return_type != &inferred_return_type {
+            if *explicit_return_type != *&Type::Infer &&
+                *explicit_return_type != *&inferred_return_type {
                 return Err(format!(
                     "Return type mismatch: expected {:?}, found {:?}",
                     explicit_return_type, inferred_return_type

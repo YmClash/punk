@@ -26,7 +26,7 @@
         "files.watcherExclude": {
           "**/target/**": true
         },
-        "rust-analyzer.checkOnSave.command": "clippy"
+        //"rust-analyzer.checkOnSave.command": "clippy"
       },
       // Add the IDs of extensions you want installed when the container is created.
       "extensions": [
@@ -37,11 +37,10 @@
     }
   },
 
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/YmClash/pyrust"
-
-  },
+//  "repository": {
+//    "type": "git",
+//    "url": "https://github.com/YmClash/pyrust"
+//  },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   // "forwardPorts": [],

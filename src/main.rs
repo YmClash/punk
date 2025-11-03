@@ -1,267 +1,417 @@
 //src/main.rs
 #![allow(dead_code)]
 #![allow(unused)]
-//use pyrust::parser::parser::Parser;
 
-//use ymcrust::lexxer;
 use punk::lexer::lex::{Lexer, Token};
 use punk::lexer::lex::SyntaxMode;
 use punk::parser::parser::Parser;
 use punk::parser::ast::{ASTNode, Declaration, VariableDeclaration, FunctionDeclaration, ConstDeclaration,Expression,Literal};
 use punk::semantic::analyser::SemanticAnalyzer;
 
-
 fn mode(syntax_mode: SyntaxMode){
     match syntax_mode {
-        SyntaxMode::Braces => println!("Braces"),
-        SyntaxMode::Indentation => println!("Indentation"),
+        SyntaxMode::Braces => println!("Mode Braces"),
+        SyntaxMode::Indentation => println!("Mode Indentation"),
     }
 }
 
+fn print_separator(title: &str) {
+    println!("\n{:-^60}", format!(" {} ", title));
+}
 
+// Nouvelle fonction pour tester les deux modes avec le même code
+fn test_dual_mode_parsing() {
+    print_separator("TEST DUAL-MODE PARSING");
+    
+    // Définir le code pour les deux modes
+    let code_samples = vec![
+        // Test 1: Variable Declaration
+        ("Variable Declaration", 
+         "let x: int = 5;",
+         "let x: int = 5"),
+        
+        // Test 2: Function Declaration
+        ("Function Declaration",
+         r#"fn add(a: int, b: int) -> int {
+    return a + b;
+}"#,
+         r#"fn add(a: int, b: int) -> int:
+    return a + b"#),
+        
+        // Test 3: If-Else Statement
+        ("If-Else Statement",
+         r#"if x > 0 {
+    print("positive");
+} else {
+    print("negative");
+}"#,
+         r#"if x > 0:
+    print("positive")
+else:
+    print("negative")"#),
+        
+        // Test 4: Match Expression
+        ("Match Expression",
+         r#"match x {
+    1 => print("one"),
+    2 => print("two"),
+    _ => print("other")
+}"#,
+         r#"match x:
+    1 => print("one")
+    2 => print("two")
+    _ => print("other")"#),
+    ];
+    
+    for (name, brace_code, indent_code) in code_samples {
+        println!("\n🔍 Testing: {}", name);
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        // Test Brace Mode
+        println!("▶ Brace Mode:");
+        test_single_mode(brace_code, SyntaxMode::Braces);
+        
+        // Test Indentation Mode
+        println!("\n▶ Indentation Mode:");
+        test_single_mode(indent_code, SyntaxMode::Indentation);
+        
+        println!();
+    }
+}
 
-fn main() {
-    println!("=========================");
-    println!("PunkLang  Compiler Test");
-    println!("=========================\n");
-    // println!("Mode de syntaxe :\n");
-
-
-    // let code_source = r#"let x:int = 5;"#;
-    let code_source = r#"
-        // Un exemple plus complet pour tester l'analyse sémantique
-        let x:int = 5;
-        let y:int = 10;
-        let z:int = x + y;
-
-        fn add(a: int, b: int) -> int {
-            return a + b
+fn test_single_mode(code: &str, mode: SyntaxMode) {
+    // Tokenization
+    let mut lexer = Lexer::new(code, mode);
+    let tokens = lexer.tokenize();
+    println!("  ✅ Tokenization successful: {} tokens", tokens.len());
+    
+    // Parsing
+    let mut parser = Parser::new(tokens, mode);
+    match parser.parse_program() {
+        Ok(ast) => {
+            println!("  ✅ Parsing successful");
+            // Afficher un résumé de l'AST
+            match ast {
+                ASTNode::Program(nodes) => {
+                    println!("  📊 AST contains {} top-level nodes", nodes.len());
+                }
+                _ => {
+                    println!("  📊 Single AST node generated");
+                }
+            }
         }
-    "#;
+        Err(e) => {
+            println!("  ❌ Parsing failed: {:?}", e);
+        }
+    }
+}
+
+// Nouvelle fonction pour tester des cas complexes
+fn test_complex_program() {
+    print_separator("TEST COMPLEX PROGRAM");
+    
+    let complex_brace = r#"
+// Fibonacci en mode Braces
+fn fibonacci(n: int) -> int {
+    if n <= 1 {
+        return n;
+    }
+    
+    let mut a = 0;
+    let mut b = 1;
+    let mut i = 2;
+    
+    while i <= n {
+        let temp = a + b;
+        a = b;
+        b = temp;
+        i = i + 1;
+    }
+    
+    return b;
+}
+
+let result = fibonacci(10);"#;
+
+    let complex_indent = r#"
+# Fibonacci en mode Indentation
+fn fibonacci(n: int) -> int:
+    if n <= 1:
+        return n
+    
+    let mut a = 0
+    let mut b = 1
+    let mut i = 2
+    
+    while i <= n:
+        let temp = a + b
+        a = b
+        b = temp
+        i = i + 1
+    
+    return b
+
+let result = fibonacci(10)"#;
+
+    println!("\n🔬 Testing Complex Program: Fibonacci");
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
+    println!("\n▶ Brace Mode:");
+    test_with_semantic_analysis(complex_brace, SyntaxMode::Braces);
+    
+    println!("\n▶ Indentation Mode:");
+    test_with_semantic_analysis(complex_indent, SyntaxMode::Indentation);
+}
+
+fn test_with_semantic_analysis(code: &str, mode: SyntaxMode) {
+    // Tokenization
+    let mut lexer = Lexer::new(code, mode);
+    let tokens = lexer.tokenize();
+    println!("  ✅ Tokenization: {} tokens", tokens.len());
+    
+    // Parsing
+    let mut parser = Parser::new(tokens, mode);
+    match parser.parse_program() {
+        Ok(ast) => {
+            println!("  ✅ Parsing successful");
+            
+            // Semantic Analysis
+            let mut analyzer = SemanticAnalyzer::new();
+            let ast_nodes = match ast {
+                ASTNode::Program(nodes) => nodes,
+                single => vec![single],
+            };
+            
+            match analyzer.analyze(&ast_nodes) {
+                Ok(()) => {
+                    println!("  ✅ Semantic analysis passed");
+                    let stats = analyzer.get_analysis_stats();
+                    println!("  📊 Stats: {} symbols, {} types, {} scopes",
+                            stats.total_symbols, stats.total_types, stats.total_scopes);
+                }
+                Err(errors) => {
+                    println!("  ⚠️ Semantic analysis: {} errors", errors.len());
+                    for (i, e) in errors.iter().take(3).enumerate() {
+                        println!("     Error {}: {}", i+1, e.message);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("  ❌ Parsing failed: {:?}", e);
+        }
+    }
+}
+
+// Fonction pour tester la robustesse avec des erreurs
+fn test_error_recovery() {
+    print_separator("TEST ERROR RECOVERY");
+    
+    let error_cases = vec![
+        ("Missing Value", 
+         "let x = ;",
+         "let x ="),
+        
+        ("Unclosed Block",
+         "fn test() { let x = 5",
+         "fn test():\n    let x = 5"),
+        
+        ("Invalid Type",
+         "let x: unknowntype = 5;",
+         "let x: unknowntype = 5"),
+    ];
+    
+    for (name, brace_code, indent_code) in error_cases {
+        println!("\n⚠️ Testing Error Case: {}", name);
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        println!("▶ Brace Mode:");
+        test_error_handling(brace_code, SyntaxMode::Braces);
+        
+        println!("\n▶ Indentation Mode:");
+        test_error_handling(indent_code, SyntaxMode::Indentation);
+    }
+}
+
+fn test_error_handling(code: &str, mode: SyntaxMode) {
+    let mut lexer = Lexer::new(code, mode);
+    let tokens = lexer.tokenize();
+    
+    let mut parser = Parser::new(tokens, mode);
+    match parser.parse_program() {
+        Ok(_) => {
+            println!("  ⚠️ Unexpectedly succeeded (should have failed)");
+        }
+        Err(e) => {
+            println!("  ✅ Error correctly detected: {:?}", e.error);
+        }
+    }
+}
+
+// Nouvelle fonction main avec menu de tests
+fn main() {
+
+    env_logger::init();
+
+    println!("╔════════════════════════════════════════╗");
+    println!("║     PunkLang Compiler Test Suite       ║");
+    println!("║           Dual-Mode Parser             ║");
+    println!("║              By YmC                    ║");
+    println!("╚════════════════════════════════════════╝");
+
+    let syntaxe_mode = SyntaxMode::Braces;
+    // let syntax_mode = SyntaxMode::Indentation;
+
+
+    fn mode(syntax_mode: SyntaxMode){
+        match syntax_mode {
+            SyntaxMode::Braces => println!("Mode Braces"),
+            SyntaxMode::Indentation => println!("Mode Indentation"),
+        }
+    }
 
 
 
-    // let mut lexer = Lexer::new(code_lambda_indent, SyntaxMode::Indentation);
-    let mut lexer = Lexer::new(code_source, SyntaxMode::Braces);
+
+    // Test comparaison des AST avec et sans point-virgules
+    println!("\n=== Test: Comparing ASTs with/without semicolons ===\n");
+
+    // Test 1: Simple let statement
+
+
+    // let code_source = "let x: int = 5;\
+    // let y = 10.5;\
+    // fn fibonnaci(n:int) -> int{} \
+    // let mut a = 0;
+    // let mut b = 1;
+    // let mut i = 2;
+    // if n <= 1 {\
+    //     return n\
+    // }\
+    // if x < y {\
+    //     print(\"x is less than y\");\
+    // } else {\
+    //     print(\"x is not less than y\");\
+    // }\
+   // ";
+
+
+    let code_source = r#"fn fibonacci(n: int) -> int:
+    if n <= 1:
+        return n
+    let mut a = 0
+    let mut b = 1
+    let mut i = 2
+    while i <= n:
+        let temp = a + b
+        a = b
+        b = temp
+        i = i + 1
+        return b
+    let result = fibonacci(10)"#;
+
+    let complex_brace = r#"
+    //Exemple
+    # Fibonacci en mode Braces
+    let x: int = 5;
+    let y = 10.5;
+    if x < y {
+        print("x is less than y");
+    } else {
+        print("x is not less than y");
+    }
+    fn fibonnaci(n:int) -> int {
+        while n > 0 {
+            n = n - 1;
+        }
+        return fibonnaci(n - 1) + fibonnaci(n - 2)
+    }"#;
+
+
+
+    let mut lexer = Lexer::new(complex_brace, syntaxe_mode);
     let tokens = lexer.tokenize();
 
     // Affichage des tokens pour vérification
     for (i, tok) in tokens.iter().enumerate() {
         println!("{}:{:?}", i, tok);
-
     }
     println!("\n");
 
-    // let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
-    let mut parser = Parser::new(tokens, SyntaxMode::Braces);
-    let mut ast_nodes = Vec::new();
+    let mut parser = Parser::new(tokens, syntaxe_mode);
 
+    match parser.parse_program() {
+        Ok(ast) => {
+            println!("\n ✅ AST généré avec succès!");
+            println!("{:#?}", ast);
 
-    //parser  le  programme
-    while !parser.is_at_end() {
-        match parser.parse_program() {
-            Ok(ast) => {
-                println!("AST OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                println!("AST généré pour la déclaration,l'expression ou le statement  :");
-                println!("{:#?}", ast);
-                ast_nodes.push(ast)
-            }
-            Err(e) => {
-                println!("Erreur lors du parsing : {}", e);
-                break;
-            }
-        }
-    }
+            // Semantic analysis
+            print_separator("Analyse sémantique");
 
-    println!("Parsing terminé\n");
+            let mut analyser = SemanticAnalyzer::new();
 
-    println!("Debut de l'analyse sémantique\n");
+            // Activer le système de récupération d'erreurs
+            use std::rc::Rc;
+            use std::cell::RefCell;
+            use punk::semantic::context::CompilationContext;
 
-    let mut analyser = SemanticAnalyzer::new();
-    match analyser.analyze(&ast_nodes) {
-        Ok(()) => {
-            println!("Analyse sémantique réussie! OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            let stats = analyser.get_analysis_stats();
-            println!("Statistiques de l'analyse sémantique:");
-            println!("Symboles: {}, Types: {}, Erreurs: {}, Avertissements: {}",
-                     stats.total_symbols, stats.total_types, stats.error_count, stats.warning_count);
+            let context = Rc::new(RefCell::new(CompilationContext::new()));
+            analyser.enable_error_recovery(context.clone());
 
-            // Afficher les avertissements s'il y en a
-            if stats.warning_count > 0 {
-                println!("\nAvertissements:");
-                for warning in analyser.get_warnings() {
-                    println!("- {:?}", warning);
+            let ast_nodes = match ast {
+                ASTNode::Program(nodes) => nodes,
+                single => vec![single],
+            };
+
+            match analyser.analyze(&ast_nodes) {
+                Ok(()) => {
+                    println!("✅ Analyse sémantique réussie!");
+                    let stats = analyser.get_analysis_stats();
+                    println!("Statistiques: {} symboles, {} types, {} scopes, {} warnings",
+                             stats.total_symbols, stats.total_types, stats.total_scopes,stats.warning_count);
+
+                    if stats.warning_count > 0 {
+                        println!("⚠️  {} warnings détectés durant l'analyse.", stats.warning_count);
+                        for warning in analyser.get_warnings(){
+                            println!("  - Warning: {:?}", warning.message);
+                        }
+                    }
+
+                    // Appliquer les optimisations
+                    let mut optimized_ast = ast_nodes.clone();
+                    analyser.optimize_ast(&mut optimized_ast, context.clone());
+                }
+                Err(errors) => {
+                    println!("❌ Échec de l'analyse sémantique avec {} erreurs:", errors.len());
+                    for (i, e) in errors.iter().enumerate() {
+                        println!("Erreur {}: {:?}", i+1, e);
+                    }
                 }
             }
-        },
-        Err(errors) => {
-            println!("Échec de l'analyse sémantique avec {} erreurs:", errors.len());
-            for (i, e) in errors.iter().enumerate() {
-                println!("Erreur {}: {:?}", i+1, e);
-            }
+        }
+        Err(e) => {
+            println!("❌ Erreur lors du parsing : {}", e);
         }
     }
 
 
-    println!("\n");
-    println!("=========OK==========\n");
-    println!("PUnkLang Compiler By YmC");
-    println!("===================\n");
-    println!("\n");
+    print_separator("TEST SUITE COMPLETED");
+    println!("PunkLang Compiler by YmC");
+    println!();
+
 
 }
 
-fn code_source() {
-    let code_source = r#"let x = 5; const v = 100;"#;
-
-    let code_binary = "array[0][1]";
-
-    let code_number = "a && b || c";
-
-    let code_decl_braces = "let x = 10;let mut y:int = 3;const numb = 5;pub const x:int = 5;pub struct Point {x: int,y: int}pub struct Point {height: int,width: int}enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}pub fn add(x: int, y: int) -> int {return x + y}pub fn add(x: int, y: int) -> int {\
-    let mut result = x + y;}";
-    let code_decl_indentation = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}pub struct Point {height: int,width: int} enum Color {x:int,y:float,z:str}pub enum Color {pub x:int,y:float,z:str}";
-
-    let solo_decl = "let x = 10\nlet mut y:int = 3\nconst numb = 5\npub const x:int = 5\nstruct Point {x: int,y: int}}\n";
-
-    let code_struct = "struct Point {pub x: int,pub y: int};";
-
-    let code_struct_indent = "pub struct Point {x: int,y: int}\nstruct Point {height: int,width: int}";
-
-    //\npub struct Point {height: int,width: int}
 
 
-    let code_enum_brace = "pub enum Color {pub x:int,y:float, z:str};";
-    let code_enum_indent = "enum Color {x:int,y:float,z:str}\n";
-    //
+// Fonction pour garder le test original
+fn run_original_test() {
+    let syntax_mode = SyntaxMode::Indentation;
 
-    let code_func_braces = "pub fn add(x: int, y: int) -> int {\
-    let mut result = x + y;\
-    return result}";
+    println!("Mode de syntaxe : ");
+    mode(syntax_mode);
 
-    let code_func_indent =
-        r#"pub fn add(x: int, y: int) -> int:
-        return x + y"#;
-
-
-    let code_func_indent2 =
-        r#"pub fn add(x: int, y: int) -> int:
-        let mut result = x + y
-        let z = result + 5
-        return z"#;
-
-    let code_func_braces2 = r#"match x {1 => print("one"),2 => print("two"),_ => print("other")} let sum:int = add(5, 10);fn add(x: int, y: int) -> int {return x + y} pub fn add() ->int{return 5} obj.method1().field.method2(1+2);"#;
-
-    let code_func_braces3 = "pub fn add() ->int{return 5};";
-
-
-    let code_func_call_braces = "let sum:int = add(5, 10);";
-    let code_func_call_indent = "let sum:int = add(5, 10)";
-
-    let code_func_call_braces2 = "print(numb);";
-    let code_func_call_indent2 = "print(numb)";
-
-    let code_func_call_methode_braces = "let x = chat.danse(x,y);";
-    let code_func_call_methode_indent = "let x = chat.danse(x,y)";
-
-    let code_func_call_methode_braces2 = "chat.danse(x,y);";
-    let code_func_call_methode_indent2 = "chat.danse(x,y)";
-
-    let code_func_call_methode_braces3 = "obj.method1().field.method2(1+2);";
-    let code_func_call_methode_indent3 = "obj.method1().field.method2(1+2)";
-
-    let code_indice_acces_braces = "let x = tab[5];";
-    let code_indice_acces_indent = "let x = tab[5]";
-
-    let code_indice_acces_braces2 = "array[0];";
-    let code_indice_acces_indent2 = "array[0]";
-
-    let code_indice_acces_braces3 = "tab[i+3];";
-    let code_indice_acces_indent3 = "tab[i+3]";
-
-    let code_indice_acces_braces4 = "vector[calculate_index().index];";
-    let code_indice_acces_indent4 = "vector[calculate_index().index]";
-
-    let code_indice_acces_braces5 = "obj.array[i].method();";
-    let code_indice_acces_indent5 = "obj.array[i].method()";
-
-    let code_indice_acces_braces6 = "obj.array[i].method().field;";
-    let code_indice_acces_indent6 = "obj.array[i].method().field";
-
-    let code_indice_acces_braces7 = "array[i][j];";
-    let code_indice_acces_indent7 = "array[i][j]";
-
-    let code_indice_acces_braces8 = "vector[obj.get_index()];";
-    let code_indice_acces_indent8 = "vector[obj.get_index()]";
-
-    let code_indice_acces_braces9 = "matrix[i][j] = array[get_index()] + offset;";
-    let code_indice_acces_indent9 = "matrix[i][j] = array[get_index()] + offset";
-
-    let code_indice_acces_braces10 = "obj.data[start + offset].process()[index];";
-    let code_indice_acces_indent10 = "obj.data[start + offset].process()[index]";
-
-    let code_indice_acces_braces11 = "obj.method1().method2()[index];";
-    let code_indice_acces_indent11 = "obj.method1().method2()[index]";
-
-    let code_assign_multi_braces = "a = b = c = 0;";
-    let code_assign_multi_indent = "a = b = c = 0";
-
-    let code_assign_compound_braces = "a += 5;";
-    let code_assign_compound_indent = "counter += offset * 5";
-
-
-    let code_assign_desctructuring_braces = "[x,y,z] = point3d;";
-    let code_assign_desctructuring_indent = "[x, y, z] = point3d";
-
-    let code_lambda_braces = "add = lambda (x: int, y: int) -> int {x + y};";
-    let code_lambda_indent = "add = lambda (x: int, y: int) -> int: x + y";
-
-    // let code_test = r#"if x > 0 { print(x);} elif x > 0 {hallo.chante;}elif x==0 {momo.position(x,y);}else{print(hallo.danse);}"#;
-    // let code_test = r#"if x > 0 { print(x);}if x < 0 {print()}else{print("0");}"#;
-    let code_test = r#"if x > 0 { a(); } elif x < 0 { b(); } elif x == 0 { c(); } else { d(); };"#;
-
-
-    let code_test2 = r#"if x > 0 { print("if"); } elif x < 0 {print("elif");}else{print("else");}"#;
-    let code_test3 = r#"while x > 0 { print(x);}"#;
-    let code_test4 = r#"for i in range(10) { print(i);}"#;
-
-    let code_test0 = r#"match x {1 => print("one"),2 => print("two"),_ => print("other")}"#;
-    let code_test1 = r#"match x {1 => print(1),2 => print(2),_ => print("other")}"#;
-    let code_test5 = r#"match x {n if n > 0 => print("positive"),n if n<0 =>{print("negative");print(n);},_ => print("zero")}"#;
-
-
-    let code_test6 = r#"match x:
-    1 => print("One")
-    2 => print("Two")
-    _ => print("Other")
-"#;
-
-    let code_test7 = r#"match x :
-    n if n > 0:
-        print("positive")
-    n if n < 0:
-        print("negative")
-        print(n)
-    _:
-        print("zero")
-"#;
-
-    let code_test8 = r#"match x :
-    n if n > 0 =>print("positive")
-    n if n < 0 =>print("negative")
-    _ =>print("zero")
-"#;
-
-    let code_test9 = r#"match x :
-    n if n > 0 =>print("positive")
-    n if n < 0:
-        print("negative")
-        print(n)
-    _:
-        print("zero")
-"#;
-
-    let code_test10 = r#"match x :
+    let code_source = r#"match x :
     (0, 0) => print("Origin")
     (x, 0):
         print("X-axis")
@@ -270,178 +420,114 @@ fn code_source() {
     (x, y) => print("MOMO")
     _ => print("Other")
 "#;
-    let code_test11 = r#"match x :
-    [0, 0] => print("Origin")
-    [x, 0]:
-        print("X-axis")
-        print(x)
-    [0, y] if y > 0 => print("Positive Y-axis")
-    _ => print("Other")
-"#;
 
-    let code_test12 = r#"match x :1..5 => println!("entre 1 et 4"),10.. => println!("10 ou plus"),..10 => println!("moins de 10")"#;
-
-    let code_test13 = r#"match x :
-    n if n > 0 => print("positive")
-    (x, y) => print("tuple simple")
-    [1, 2] => print("array simple")
-    _ => print("default")
-"#;
-
-    let code_test14 = r#"match x {n if n > 0 => print("positive"),(x, y) => print("tuple simple"),[1, 2] => print("array simple"),_ => print("default")}"#;
-
-
-    let code_test15 = r#"if x > 0 {print("hello");}else{print("Nothing");}"#;
-    let code_test16 = r#"if x > 0 :
-    print("hello")
-elif x < 0:
-    print("world")
-elif x == 0:
-    print("momo")
-else:
-    print("Nothing")
-"#;
-
-
-    // let code_test17 = if
-
-    let code_test17 = r#"counter:loop:
-    print("infini")
-    x += 1
-    if x > 10:
-        break
-"#;
-    let code_test18 = r#"counter: loop {print("infini"),x += 1,if x > 10 {break;}}"#;
-
-    let code_test19 = r#"1..5"#;
-    let code_test20 = r#"use std.io::{Read as R, Write as W};"#;
-
-    let code_test21 = r#"pub class MyClass:
-    let x: int
-    let y: str
-    fn do_something() -> int:
-        return self.x + 1 "#;
-
-
-    let code_test22 = r#"pub class Myclass(classe){let x:int;pub fn do_something() ->int{return self.x + 1}}"#;
-
-    let code_test23 = r#"fn add(x:int)->int{return x+1}"#;
-
-    let code_test24 = r#"pub class Myclass(parent){def init(x: int, y: int) {self.x = x,self.y = y }fn do_something() -> int {return self.x + 1}}"#;
-    let code_test25 = r#"pub class Myclass(parent):
-    def init(x: int, y: int):
-        self.x = x
-        self.y = y
-    fn do_something() -> int:
-        return self.x + 1"#;
-
-    let code_test26 = r#"pub trait Drawable  {fn do_something(x: T) -> int;fn area(a:float)->float;fn do_something_else(x: char) -> int;type Color;}"#;
-    let code_test27 = r#"pub trait Drawable:
-    fn do_something(x: int) -> int
-    fn do_something_else(x: int) -> int
-    fn area() -> float
-    type Color"#;
-    let code_test28 = r#"trait Drawable where T: Copy + Display {fn draw(x: T);fn get_color() -> T;type AssociatedType where Self: Clone;}"#;
-
-    let code_test29 = r#"trait Drawable where T:Copy + Display :
-    fn draw(x: T)
-    fn get_color() -> T
-    type Color"#;
-
-    let code_test30 = r#"where T: Copy"#;
-
-    let code_test31 = r#"impl<T> Drawable for MyType<T>{
-    fn draw(x:int) {
-        return self.x+1}
-    fn get_color() -> int {
-        return color.code()
+    print_separator("Analyse lexicale et tokenization");
+    
+    let mut lexer = Lexer::new(code_source, syntax_mode);
+    let tokens = lexer.tokenize();
+    
+    // Affichage des tokens pour vérification
+    for (i, tok) in tokens.iter().enumerate() {
+        println!("{}:{:?}", i, tok);
+    }
+    println!("\n");
+    
+    print_separator("Analyse syntaxique et génération de l'AST");
+    
+    let mut parser = Parser::new(tokens, syntax_mode);
+    
+    match parser.parse_program() {
+        Ok(ast) => {
+            println!("✅ AST généré avec succès!");
+            println!("{:#?}", ast);
+            
+            // Semantic analysis
+            print_separator("Analyse sémantique");
+            
+            let mut analyser = SemanticAnalyzer::new();
+            
+            // Activer le système de récupération d'erreurs
+            use std::rc::Rc;
+            use std::cell::RefCell;
+            use punk::semantic::context::CompilationContext;
+            
+            let context = Rc::new(RefCell::new(CompilationContext::new()));
+            analyser.enable_error_recovery(context.clone());
+            
+            let ast_nodes = match ast {
+                ASTNode::Program(nodes) => nodes,
+                single => vec![single],
+            };
+            
+            match analyser.analyze(&ast_nodes) {
+                Ok(()) => {
+                    println!("✅ Analyse sémantique réussie!");
+                    let stats = analyser.get_analysis_stats();
+                    println!("Statistiques: {} symboles, {} types, {} scopes",
+                            stats.total_symbols, stats.total_types, stats.total_scopes);
+                    
+                    // Appliquer les optimisations
+                    let mut optimized_ast = ast_nodes.clone();
+                    analyser.optimize_ast(&mut optimized_ast, context.clone());
+                }
+                Err(errors) => {
+                    println!("❌ Échec de l'analyse sémantique avec {} erreurs:", errors.len());
+                    for (i, e) in errors.iter().enumerate() {
+                        println!("Erreur {}: {:?}", i+1, e);
+                    }
+                }
+            }
         }
-    }"#;
+        Err(e) => {
+            println!("❌ Erreur lors du parsing : {}", e);
+        }
+    }
+}
 
-
-    let code_test32 = r#"impl Color {def init(value: T) -> Self {MyType { value }}fn consume(self)-> T {&self.value} fn get_value(&self) -> &T {&self.value}fn set_value(&mut self, value: T) {self.value = value }}"#;
-
-    let code_test33 = r#"impl<T> Drawable for MyType<S>:
-    fn draw(x: float):
-        return self.x+1}
-    fn get_color() -> int:
-        return color.code()"#;
-
-    let code_test34 = r#"impl Color:
-    def init(value: T) -> Self:
-        MyType { value }
-
-    fn consume(self) -> T:
-        self.value
-
-    fn get_value(&self) -> &T:
-        &self.value
-
-    fn set_value(&mut self, value: T):
-        self.value = value"#;
-
-
-    let code_test35 = r#"impl<T> Drawable for MyType<T> where D: Display:
-    fn draw(x: T) -> bool:
-        return self.x + 1"#;
-
-
-    let code_test36 = r#"let x = 10
-let mut y = 10
-let z:int = 1.5
-fn get_color(x:int) -> int:
-    return self.x+1"#;
-
-
-    let code_test37 = r#"let mut c = &mut 10;"#;
-
-    let code_test38 = r#"let x = 10 ;
-    match x {
-        n if n > 0 => print("positive"),
-        n if n < 0 => {
-            print("negative");
-            print(n);
-        },
-        _ => print("zero")}"#;
-
-    let code_test39 = r#"let x = 10
-match x :
-    n if n > 0 => print("positive")
-    (x, y) => print("tuple simple")
-    [1, 2] => print("array simple")
-    _ => print("default")
-"#;
-
-    let code_test40 = r#"try {
-            risky_function();
-        } except Error {
-            handle_error();
-        } finally {
-            cleanup();
-        }"#;
-
-    let code_test41 = r#"let mut array = [1,2.5,"momo",'c'];[1,2.5,"momo",'c'] = array ;[1,2.5,"momo",'c'];"#;
-    let code_test42 = r#"[1,2.5,"momo",'c'];"#;
-    let code_test43 = r#"array[4][1][0];"#;
-    let code_test44 = r#"let a = [[1,10],[10,5]];"#;
-    let code_test45 = r#"let mut listcomprehension =[x + y for x in array1 if x > 0 for y in array2 if y < 10]"#;
-
-    let code_test46 = r#"{k: v for k, v in items if v > 0};"#;
-    let code_test47 = r#"let mut listcomprehension =[x + y for x in array1 if x > 0 for y in array2 if y < 10]"#;
-    let code_test48 = r#"{2 + 2: "four", "array": [1, 2, 3]};"#;
-    let code_test49 = r#"array[1..10..2];"#;
-
-    let code_test50 = r#"array[1:10:2];"#;
-    let code_test51 = r#"dict["key"]  "#;
-    let code_test52 = r#"let x = &10; let mut x:float = 1.1;pub struct Point {x: int,y: int}enum Color {x:int,y:float,z:str}"#;
-    let code_test53 = r#"let x = 42
-    if x > 0:
-        print("positive")
-    match x:
-        n if n > 0 => print("positive")
-        _ => print(hallo)
-"#;
-
-
-    let code_test54 = r#"let x = result +1 ;"#;
+// Fonction pour benchmark (optionnelle)
+#[allow(dead_code)]
+fn benchmark_modes() {
+    use std::time::Instant;
+    
+    let code_brace = r#"
+fn test(n: int) -> int {
+    let mut sum = 0;
+    for i in range(n) {
+        sum = sum + i;
+    }
+    return sum;
+}"#;
+    
+    let code_indent = r#"
+fn test(n: int) -> int:
+    let mut sum = 0
+    for i in range(n):
+        sum = sum + i
+    return sum"#;
+    
+    // Benchmark Brace Mode
+    let start = Instant::now();
+    for _ in 0..1000 {
+        let mut lexer = Lexer::new(code_brace, SyntaxMode::Braces);
+        let _ = lexer.tokenize();
+    }
+    let brace_time = start.elapsed();
+    
+    // Benchmark Indentation Mode
+    let start = Instant::now();
+    for _ in 0..1000 {
+        let mut lexer = Lexer::new(code_indent, SyntaxMode::Indentation);
+        let _ = lexer.tokenize();
+    }
+    let indent_time = start.elapsed();
+    
+    println!("Benchmark Results (1000 iterations):");
+    println!("  Brace Mode:       {:?}", brace_time);
+    println!("  Indentation Mode: {:?}", indent_time);
+    println!("  Difference:       {:?}", 
+             if brace_time > indent_time {
+                 brace_time - indent_time
+             } else {
+                 indent_time - brace_time
+             });
 }

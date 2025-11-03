@@ -4,18 +4,27 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ymcrust = {git = "https://github.com/Ymclash/ymcrust.git"}
+ymcrust = {git = "https://github.com/Ymclash/ymcrust.git"} # Personal library
 nom = "7.0"
 float-derive = "0.1.0"
 num-traits = "0.2.14"
 num-complex = "0.4.6"
 num-bigint = "0.4.6"
+log = "0.4"
+env_logger = "0.11"
+colored = "3.0.0"
+rustyline = "17.0.1"
+
+
 
 
 
 [lib]
 name = "punk"
 path = "src/lib.rs"
+
+
+
 
 
 
@@ -26,6 +35,48 @@ path = "tests/lex_test.rs"
 name = "lex_indentation_test"
 path = "tests/lex_indentation_test.rs"
 
+#[[test]]
+#name = "parse_test"
+#path = "tests/parser_test.rs"
+
 [[test]]
-name = "parse_test"
-path = "tests/parser_test.rs"
+name = "dual_mode_robustness_test"
+path = "tests/dual_mode_robustness_test.rs"
+
+[[test]]
+name = "dual_mode_tests"
+path = "tests/dual_mode_tests.rs"
+
+[[test]]
+name = "dual_mode_simple_test"
+path = "tests/dual_mode_simple_test.rs"
+
+[[test]]
+name = "test_unified_blocks"
+path = "tests/test_unified_blocks.rs"
+
+[[test]]
+name = "semantic_test"
+path = "tests/semantic_test.rs"
+
+#[[test]]
+#name = "semantic_borrow_test"
+#path = "tests/semantic_borrow_test.rs"
+
+[[test]]
+
+name = "semantic_cfg_test"
+path = "tests/semantic_cfg_test.rs"
+
+[[test]]
+name = "semantic_extended_test"
+path = "tests/semantic_extended_test.rs"
+
+[[test]]
+name = "semantic_lifetime_test"
+path = "tests/semantic_lifetime_test.rs"
+
+[[test]]
+name = "semantic_optimization_test"
+path = "tests/semantic_optimization_test.rs"
+

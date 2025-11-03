@@ -1,7 +1,7 @@
 
 use num_bigint::BigInt;
 
-use punk::lexer::lex::Lexer;
+use punk::lexer::lex::{Lexer, SyntaxMode};
 use punk::lexer::tok::{Delimiters, Keywords, Operators, StringKind, TokenType};
 use punk::lexer_error::{LexerError, LexerErrorType, Position};
 
@@ -1587,88 +1587,85 @@ def main():
 
 
 
-// #[test]
-// fn test_indentation_mode() {
-//     let code = r#"
-// def function():
-//     if condition:
-//         print("Indented")
-//     else:
-//         print("Also indented")
-//         if nested:
-//             print("Nested indentation")
-//     print("Back to first level")
-// print("No indentation")
-// "#;
-//     let mut lexer = Lexer::new(code, SyntaxMode::Indentation);
-//     let tokens = lexer.tokenize();
-//
-//     // Vérifions d'abord la présence des tokens INDENT et DEDENT
-//     let indent_count = tokens.iter().filter(|t| matches!(t.token_type, TokenType::INDENT)).count();
-//     let dedent_count = tokens.iter().filter(|t| matches!(t.token_type, TokenType::DEDENT)).count();
-//
-//     assert_eq!(indent_count, 3, "Nombre incorrect de tokens INDENT");
-//     assert_eq!(dedent_count, 3, "Nombre incorrect de tokens DEDENT");
-//
-//     // Vérifions ensuite quelques tokens clés pour s'assurer que la structure générale est correcte
-//     let key_tokens = tokens.iter().filter(|t| matches!(t.token_type,
-//             TokenType::IDENTIFIER { .. } |
-//             TokenType::KEYWORD(..) |
-//             TokenType::INDENT |
-//             TokenType::DEDENT
-//         )).collect::<Vec<_>>();
-//
-//     let expected_key_sequence = vec![
-//         TokenType::IDENTIFIER { name: "def".to_string() },
-//         TokenType::IDENTIFIER { name: "function".to_string() },
-//         TokenType::INDENT,
-//         TokenType::KEYWORD(Keywords::IF),
-//         TokenType::INDENT,
-//         TokenType::IDENTIFIER { name: "print".to_string() },
-//         TokenType::DEDENT,
-//         TokenType::KEYWORD(Keywords::ELSE),
-//         TokenType::INDENT,
-//         TokenType::IDENTIFIER { name: "print".to_string() },
-//         TokenType::KEYWORD(Keywords::IF),
-//         TokenType::INDENT,
-//         TokenType::IDENTIFIER { name: "print".to_string() },
-//         TokenType::DEDENT,
-//         TokenType::DEDENT,
-//         TokenType::IDENTIFIER { name: "print".to_string() },
-//         TokenType::DEDENT,
-//         TokenType::IDENTIFIER { name: "print".to_string() },
-//     ];
-//
-//     for (i, (token, expected)) in key_tokens.iter().zip(expected_key_sequence.iter()).enumerate() {
-//         assert_eq!(&token.token_type, expected, "Mismatch at key token {}", i);
-//     }
-// }
-//
-// #[test]
-// fn test_invalid_indentation() {
-//     let code = r#"
-// def function():
-//     if condition:
-//         print("Correct indentation")
-//        print("Invalid indentation")
-// "#;
-//     let mut lexer = Lexer::new(code, SyntaxMode::Indentation);
-//     let tokens = lexer.tokenize();
-//
-//     // Vérifions que le lexer a généré le bon nombre de tokens
-//     assert!(tokens.len() > 0, "Le lexer n'a généré aucun token");
-//
-//     // Vérifions que le dernier token n'est pas une erreur (car le lexer pourrait ne pas détecter cette erreur)
-//     assert!(!matches!(tokens.last().unwrap().token_type, TokenType::ERROR(_)),
-//             "Le lexer a généré une erreur inattendue");
-//
-//     // Vérifions que l'indentation est correctement gérée
-//     let indent_count = tokens.iter().filter(|t| matches!(t.token_type, TokenType::INDENT)).count();
-//     assert_eq!(indent_count, 2, "Nombre incorrect de tokens INDENT");
-// }
-//
+#[test]
+fn test_indentation_mode() {
+    let code = r#"
+def function():
+    if condition:
+        print("Indented")
+    else:
+        print("Also indented")
+        if nested:
+            print("Nested indentation")
+    print("Back to first level")
+print("No indentation")
+"#;
+    let mut lexer = Lexer::new(code, SyntaxMode::Indentation);
+    let tokens = lexer.tokenize();
 
-// use pyrust::lexer::lex::Lexer;
+    // Vérifions d'abord la présence des tokens INDENT et DEDENT
+    let indent_count = tokens.iter().filter(|t| matches!(t.token_type, TokenType::INDENT)).count();
+    let dedent_count = tokens.iter().filter(|t| matches!(t.token_type, TokenType::DEDENT)).count();
+
+    assert_eq!(indent_count, 3, "Nombre incorrect de tokens INDENT");
+    assert_eq!(dedent_count, 3, "Nombre incorrect de tokens DEDENT");
+
+    // Vérifions ensuite quelques tokens clés pour s'assurer que la structure générale est correcte
+    let key_tokens = tokens.iter().filter(|t| matches!(t.token_type,
+            TokenType::IDENTIFIER { .. } |
+            TokenType::KEYWORD(..) |
+            TokenType::INDENT |
+            TokenType::DEDENT
+        )).collect::<Vec<_>>();
+
+    let expected_key_sequence = vec![
+        TokenType::IDENTIFIER { name: "def".to_string() },
+        TokenType::IDENTIFIER { name: "function".to_string() },
+        TokenType::INDENT,
+        TokenType::KEYWORD(Keywords::IF),
+        TokenType::INDENT,
+        TokenType::IDENTIFIER { name: "print".to_string() },
+        TokenType::DEDENT,
+        TokenType::KEYWORD(Keywords::ELSE),
+        TokenType::INDENT,
+        TokenType::IDENTIFIER { name: "print".to_string() },
+        TokenType::KEYWORD(Keywords::IF),
+        TokenType::INDENT,
+        TokenType::IDENTIFIER { name: "print".to_string() },
+        TokenType::DEDENT,
+        TokenType::DEDENT,
+        TokenType::IDENTIFIER { name: "print".to_string() },
+        TokenType::DEDENT,
+        TokenType::IDENTIFIER { name: "print".to_string() },
+    ];
+
+    for (i, (token, expected)) in key_tokens.iter().zip(expected_key_sequence.iter()).enumerate() {
+        assert_eq!(&token.token_type, expected, "Mismatch at key token {}", i);
+    }
+}
+
+#[test]
+fn test_invalid_indentation() {
+    let code = r#"
+def function():
+    if condition:
+        print("Correct indentation")
+       print("Invalid indentation")
+"#;
+    let mut lexer = Lexer::new(code, SyntaxMode::Indentation);
+    let tokens = lexer.tokenize();
+
+    // Vérifions que le lexer a généré le bon nombre de tokens
+    assert!(tokens.len() > 0, "Le lexer n'a généré aucun token");
+
+    // Vérifions que le dernier token n'est pas une erreur (car le lexer pourrait ne pas détecter cette erreur)
+    assert!(!matches!(tokens.last().unwrap().token_type, TokenType::ERROR(_)),
+            "Le lexer a généré une erreur inattendue");
+
+    // Vérifions que l'indentation est correctement gérée
+    let indent_count = tokens.iter().filter(|t| matches!(t.token_type, TokenType::INDENT)).count();
+    assert_eq!(indent_count, 2, "Nombre incorrect de tokens INDENT");
+}
 // use pyrust::lexer::tok::{TokenType, Keywords, Operators, Delimiters, StringKind};
 // use pyrust::error::{LexerError,Position};
 // use num_bigint::BigInt;

@@ -1,4 +1,4 @@
-pub mod semantic_analyser;
+// pub mod semantic_analyser;
 pub mod semantic_error;
 pub mod ast_semantic;
 pub mod type_checker;
@@ -10,3 +10,9 @@ pub mod types;
 pub mod flow;
 pub mod lifetimes;
 pub mod analyser;
+pub mod context;
+pub mod traits;
+pub mod ssa;
+pub mod error_recovery;
+pub mod optimizations;
+pub mod diagnostics;
