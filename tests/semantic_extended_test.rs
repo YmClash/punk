@@ -75,10 +75,7 @@ mod extended_tests {
         let mut type_system = TypeSystem::new();
         
         // Créer fn(int, int) -> int
-        let func_type_id = type_system.create_function_type(
-            vec![type_system.type_int, type_system.type_int],
-            type_system.type_int,
-        );
+        let func_type_id = type_system.create_function_type(vec![type_system.type_int, type_system.type_int], type_system.type_int, false);
         
         let func_type = type_system.get_type(func_type_id).unwrap();
         
