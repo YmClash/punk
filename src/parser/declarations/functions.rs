@@ -41,6 +41,7 @@ impl Parser {
             return_type: Some(return_type),
             body,
             visibility,
+            is_variadic:false,  // nouveau
         })))
     }
 

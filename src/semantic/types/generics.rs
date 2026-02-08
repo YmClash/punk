@@ -165,9 +165,13 @@ impl GenericManager {
 
                 let concrete_return_type_id = self.instantiate_generic_type(func_type.return_type.id, context)?;
 
+
+
+
                 Ok(self.type_system.create_function_type(
                     concrete_param_type_ids,
-                    concrete_return_type_id
+                    concrete_return_type_id,
+                    func_type.is_variadic
                 ))
             },
 
