@@ -182,7 +182,8 @@ pub struct FunctionDeclaration {
     pub parameters: Vec<Parameter>, // (nom, type)
     pub return_type: Option<Type>,
     pub body: Vec<ASTNode>,
-    pub visibility: Visibility
+    pub visibility: Visibility,
+    pub is_variadic: bool, // nouveau champ pour indiquer si la fonction est variadique
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
