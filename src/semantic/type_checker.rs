@@ -438,7 +438,7 @@ impl TypeChecker {
         // Maintenant nous pouvons utiliser func_type_clone sans conflit d'emprunt
 
         // Vérifier le nombre d'arguments
-        if arguments.len() != func_type_clone.params.len() {
+        if !func_type_clone.is_variadic && arguments.len() != func_type_clone.params.len() {
             return Err(create_semantic_error(
                 SemanticErrorType::TypeError(TypeError::TypeMismatch(
                     format!("Function expects {} arguments, got {}",
@@ -447,6 +447,18 @@ impl TypeChecker {
                 "Incorrect number of arguments".to_string(),
                 Position { index: 0 }
             ));
+        }
+
+        // si la fonction est variadique, vérifier qu'il y a au moins le nombre minimum d'arguments
+        if func_type_clone.is_variadic && arguments.len() < func_type_clone.params.len(){
+            return Err(create_semantic_error(
+                SemanticErrorType::TypeError(TypeError::TypeMismatch(
+                    format!("Variadic function expects at least {} arguments, got {}",
+                            func_type_clone.params.len(), arguments.len())
+                )),
+                "Insufficient number of arguments for variadic function".to_string(),
+                Position { index: 0 }
+            ))
         }
 
         // Vérifier les types des arguments
@@ -470,6 +482,15 @@ impl TypeChecker {
                     "Type mismatch in function call".to_string(),
                     Position { index: 0 }
                 ));
+            }
+        }
+
+        // Pour les arguments variadiques, nous nous contentons de vérifier qu'ils sont valides
+        // sans imposer de contrainte de type stricte pour l'instant
+
+        if func_type_clone.is_variadic {
+            for arg in arguments.iter().skip(func_type_clone.params.len()) {
+                self.check_expression(arg)?; // S'assure que l'expression est valide
             }
         }
 
@@ -738,10 +759,13 @@ impl TypeChecker {
             None => self.type_system_ref.borrow().type_unit, // () par défaut
         };
 
+        let is_variadic = func_decl.is_variadic;
+
         // Créer le type de la fonction
         let function_type_id = self.type_system_ref.borrow_mut().create_function_type(
             param_type_ids,
-            return_type_id
+            return_type_id,
+            is_variadic
         );
 
         Ok(function_type_id)

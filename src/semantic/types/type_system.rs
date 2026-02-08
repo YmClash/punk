@@ -86,6 +86,10 @@ impl Type {
     /// Vérifie si deux types sont compatibles
     pub fn is_compatible_with(&self, other: &Type) -> bool {
         match (&self.kind, &other.kind) {
+
+            // Types à inférer compatibles avec tout
+            (TypeKind::Infer(_), _) | (_, TypeKind::Infer(_)) => true,  // Les types à inférer sont compatibles avec tout
+
             // Mêmes types primitifs
             (TypeKind::Int, TypeKind::Int) |
             (TypeKind::Float, TypeKind::Float) |
@@ -546,7 +550,7 @@ impl TypeSystem {
     }
     
     /// Crée un type fonction
-    pub fn create_function_type(&mut self, param_type_ids: Vec<TypeId>, return_type_id: TypeId) -> TypeId {
+    pub fn create_function_type(&mut self, param_type_ids: Vec<TypeId>, return_type_id: TypeId,is_variadic:bool) -> TypeId {
         let mut param_types = Vec::with_capacity(param_type_ids.len());
         
         for type_id in param_type_ids {
@@ -563,14 +567,15 @@ impl TypeSystem {
                 return_type: Box::new(return_type),
                 lifetime_params: Vec::new(),
                 type_params: Vec::new(),
-                is_variadic: false,
+                is_variadic,
                 lifetimes: Vec::new(),
             }))
         } else {
             self.type_error
         }
     }
-    
+
+
     /// Crée un type référence
     pub fn create_reference_type(&mut self, inner_type_id: TypeId, mutability: Mutability, lifetime: Option<LifetimeId>) -> TypeId {
         if let Some(inner_type) = self.get_type(inner_type_id).cloned() {
