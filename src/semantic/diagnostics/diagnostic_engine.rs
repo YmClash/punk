@@ -254,7 +254,7 @@ impl DiagnosticEngine {
         let code = match &error.error {
             TypeError(_) => "E0001",
             SymbolError(_) => "E0002",
-            _ => "E0000",
+            // _ => "E0000",
         };
         
         code.to_string()
@@ -291,7 +291,7 @@ impl DiagnosticEngine {
                     _ => {}
                 }
             }
-            _ => {}
+            // _ => {}
         }
         
         notes
@@ -315,7 +315,7 @@ impl DiagnosticEngine {
             SymbolError(_) => {
                 tags.insert("symbol-resolution".to_string());
             }
-            _ => {}
+            // _ => {}
         }
         
         tags

@@ -174,7 +174,7 @@ impl ErrorRecovery {
                 // Créer un symbole temporaire
                 Ok(())
             }
-            _ => Ok(())
+            // _ => Ok(())
         }
     }
     
