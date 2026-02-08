@@ -1,3 +1,10 @@
+pub mod value;
+pub mod environment;
+pub mod evaluator;
+pub mod builtins;
+pub mod error;
+pub mod interpreter;
+
 use std::collections::HashMap;
 
 //
