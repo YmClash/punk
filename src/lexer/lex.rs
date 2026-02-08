@@ -170,8 +170,8 @@ impl<'a> Lexer<'a> {
         operators.insert("<=".to_string(), Operators::LESSEQUAL);
         operators.insert(">=".to_string(), Operators::GREATEREQUAL);
         operators.insert("=".to_string(), Operators::EQUAL);
-        operators.insert("++".to_string(), Operators::PLUSEQUAL);
-        operators.insert("--".to_string(), Operators::MINEQUAL);
+        operators.insert("++".to_string(), Operators::INCREMENT);
+        operators.insert("--".to_string(), Operators::DECREMENT);
         operators.insert("**".to_string(), Operators::DOUBLESTAR);
         //operators.insert("//".to_string(), Operators::DOUBLESLASH);
         operators.insert("&&".to_string(), Operators::AND);
@@ -299,26 +299,6 @@ impl<'a> Lexer<'a> {
             // Si l'indentation est la même, on ne fait rien de spécial
         }
 
-        // if self.at_line_start && self.syntax_mode == SyntaxMode::Indentation {
-        //     self.at_line_start = false;
-        //     let current_indent = self.count_indentation();
-        //     let previous_indent = *self.indent_level.last().unwrap_or(&0);
-        //
-        //     if current_indent > previous_indent {
-        //         self.indent_level.push(current_indent);
-        //         return Some(TokenType::INDENT);
-        //     } else if current_indent < previous_indent {
-        //         // Stocker le niveau actuel pour le comparer après le pop
-        //         let current = current_indent;
-        //         if let Some(last_level) = self.indent_level.pop() {
-        //             if current < *self.indent_level.last().unwrap_or(&0) {
-        //                 // Remettre le niveau qu'on vient de retirer pour le prochain appel
-        //                 self.indent_level.push(last_level);
-        //             }
-        //             return Some(TokenType::DEDENT);
-        //         }
-        //     }
-        // }
 
         self.skip_whitespace(); // Sauter les espaces et tabulations
 
@@ -343,7 +323,9 @@ impl<'a> Lexer<'a> {
 
             Some('0'..='9') => Some(self.lex_number()),
             Some('a'..='z') | Some('A'..='Z') | Some('_') => Some(self.lex_identifier_or_keyword()),
-            Some('"') | Some('\'') => Some(self.lex_string()),
+            Some('\'') => Some(self.lex_char()), // nouvelle implemntation pour lex_char
+            Some('"') => Some(self.lex_string()),
+            // Some('"') | Some('\'') => Some(self.lex_string()), //transferer entre lex_string et lex_char
             Some('#') => Some(self.lex_comment()),
             Some('/') => {
                 if let Some(next_char) = self.peek_next_char() {
@@ -505,6 +487,76 @@ impl<'a> Lexer<'a> {
                 name: self.current_token_text.clone(),
             } // sinon c'est un identifiant
         }
+    }
+
+
+
+    fn lex_char(&mut self) -> TokenType {
+        self.current_token_text.clear();
+
+        let quote = self.advance(); // Consomme le guillemet simple
+        let mut value = String::new();
+        let mut is_escaped = false;
+
+        while let Some(&ch) = self.source.peek(){
+            self.advance();
+
+            if is_escaped{
+                match ch {
+                    'n' => value.push('\n'),
+                    't' => value.push('\t'),
+                    'r' => value.push('\r'),
+                    '\\' => value.push('\\'),
+                    '\'' => value.push('\''),
+                    '"' => value.push('"'),
+                    '0' => value.push('\0'),
+                    _ => value.push(ch),
+                }
+                is_escaped = false;
+            } else if ch == '\\' {
+                is_escaped = true;
+            }else if ch == '\'' {
+                // Fin du caractère
+                if value.len() == 1 {
+                    self.current_token_text = value.clone();
+                    return TokenType::CHAR {
+                        value: value.chars().next().unwrap()
+                    };
+                } else if value.is_empty() {
+                    // Caractère vide
+                    // return self.create_error(LexerErrorType::InvalidCharacter("Empty character literal".to_string()));
+                    return self.create_error(LexerErrorType::InvalidCharacter(ch));
+                } else {
+                    // Caractère trop long
+                    // return self.create_error(LexerErrorType::InvalidCharacter(format!("Character literal too long: '{}'", value)));
+                    return self.create_error(LexerErrorType::InvalidCharacter(ch));
+                }
+            } else if ch == '\n' {
+                // Caractère non terminé avant la fin de la ligne
+                return self.create_error(LexerErrorType::UnterminatedString);
+            } else {
+                value.push(ch);
+
+                if value.len() > 1 && !is_escaped {
+                    // Continuer à lire jusqu'à la fermeture ou EOF pour une meilleure gestion d'erreur
+                    while let Some(&next_ch) = self.source.peek() {
+                        if next_ch == '\'' {
+                            self.advance(); // Consomme la quote fermante
+                            break;
+                        } else if next_ch == '\n' {
+                            break;
+                        }
+                        self.advance();
+                        value.push(next_ch);
+                    }
+                    // return self.create_error(LexerErrorType::InvalidCharacter(), value));
+                    return self.create_error(LexerErrorType::InvalidCharacter(ch));
+                    // return self.create_error(LexerErrorType::InvalidCharacter(format!("Character literal too long: '{}'", value)));
+                }
+            }
+        }
+        self.create_error(LexerErrorType::UnterminatedString)
+
     }
 
     fn lex_string(&mut self) -> TokenType {

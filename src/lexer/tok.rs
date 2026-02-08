@@ -36,6 +36,8 @@ pub enum Operators {
     GREATER,         // '>' SUPERIEUR / GREATER-THAN SIGN
     EQUAL,           // '=' EGAL / EQUALS SIGN
     PERCENT,         // '%' POURCENTAGE / PERCENT
+    INCREMENT,       // '++' PLUS PLUS / INCREMENT
+    DECREMENT,       // '--' MOINS MOINS / DECREMENT
     EQEQUAL,         // '==' EGAL EGAL / EQUALS EQUALS
     NOTEQUAL,        // '!=' DIFFERENT / NOT EQUAL
     LESSEQUAL,       // '<=' INFERIEUR EGAL / LESS-THAN EQUAL
