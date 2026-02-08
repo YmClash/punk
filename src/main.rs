@@ -2,11 +2,14 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
+use punk::interpreter;
+use punk::interpreter::interpreter::Interpreter;
 use punk::lexer::lex::{Lexer, Token};
 use punk::lexer::lex::SyntaxMode;
 use punk::parser::parser::Parser;
 use punk::parser::ast::{ASTNode, Declaration, VariableDeclaration, FunctionDeclaration, ConstDeclaration,Expression,Literal};
 use punk::semantic::analyser::SemanticAnalyzer;
+use punk::SyntaxMode::{Braces, Indentation};
 
 fn mode(syntax_mode: SyntaxMode){
     match syntax_mode {
@@ -17,235 +20,6 @@ fn mode(syntax_mode: SyntaxMode){
 
 fn print_separator(title: &str) {
     println!("\n{:-^60}", format!(" {} ", title));
-}
-
-// Nouvelle fonction pour tester les deux modes avec le même code
-fn test_dual_mode_parsing() {
-    print_separator("TEST DUAL-MODE PARSING");
-    
-    // Définir le code pour les deux modes
-    let code_samples = vec![
-        // Test 1: Variable Declaration
-        ("Variable Declaration", 
-         "let x: int = 5;",
-         "let x: int = 5"),
-        
-        // Test 2: Function Declaration
-        ("Function Declaration",
-         r#"fn add(a: int, b: int) -> int {
-    return a + b;
-}"#,
-         r#"fn add(a: int, b: int) -> int:
-    return a + b"#),
-        
-        // Test 3: If-Else Statement
-        ("If-Else Statement",
-         r#"if x > 0 {
-    print("positive");
-} else {
-    print("negative");
-}"#,
-         r#"if x > 0:
-    print("positive")
-else:
-    print("negative")"#),
-        
-        // Test 4: Match Expression
-        ("Match Expression",
-         r#"match x {
-    1 => print("one"),
-    2 => print("two"),
-    _ => print("other")
-}"#,
-         r#"match x:
-    1 => print("one")
-    2 => print("two")
-    _ => print("other")"#),
-    ];
-    
-    for (name, brace_code, indent_code) in code_samples {
-        println!("\n🔍 Testing: {}", name);
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
-        // Test Brace Mode
-        println!("▶ Brace Mode:");
-        test_single_mode(brace_code, SyntaxMode::Braces);
-        
-        // Test Indentation Mode
-        println!("\n▶ Indentation Mode:");
-        test_single_mode(indent_code, SyntaxMode::Indentation);
-        
-        println!();
-    }
-}
-
-fn test_single_mode(code: &str, mode: SyntaxMode) {
-    // Tokenization
-    let mut lexer = Lexer::new(code, mode);
-    let tokens = lexer.tokenize();
-    println!("  ✅ Tokenization successful: {} tokens", tokens.len());
-    
-    // Parsing
-    let mut parser = Parser::new(tokens, mode);
-    match parser.parse_program() {
-        Ok(ast) => {
-            println!("  ✅ Parsing successful");
-            // Afficher un résumé de l'AST
-            match ast {
-                ASTNode::Program(nodes) => {
-                    println!("  📊 AST contains {} top-level nodes", nodes.len());
-                }
-                _ => {
-                    println!("  📊 Single AST node generated");
-                }
-            }
-        }
-        Err(e) => {
-            println!("  ❌ Parsing failed: {:?}", e);
-        }
-    }
-}
-
-// Nouvelle fonction pour tester des cas complexes
-fn test_complex_program() {
-    print_separator("TEST COMPLEX PROGRAM");
-    
-    let complex_brace = r#"
-// Fibonacci en mode Braces
-fn fibonacci(n: int) -> int {
-    if n <= 1 {
-        return n;
-    }
-    
-    let mut a = 0;
-    let mut b = 1;
-    let mut i = 2;
-    
-    while i <= n {
-        let temp = a + b;
-        a = b;
-        b = temp;
-        i = i + 1;
-    }
-    
-    return b;
-}
-
-let result = fibonacci(10);"#;
-
-    let complex_indent = r#"
-# Fibonacci en mode Indentation
-fn fibonacci(n: int) -> int:
-    if n <= 1:
-        return n
-    
-    let mut a = 0
-    let mut b = 1
-    let mut i = 2
-    
-    while i <= n:
-        let temp = a + b
-        a = b
-        b = temp
-        i = i + 1
-    
-    return b
-
-let result = fibonacci(10)"#;
-
-    println!("\n🔬 Testing Complex Program: Fibonacci");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
-    println!("\n▶ Brace Mode:");
-    test_with_semantic_analysis(complex_brace, SyntaxMode::Braces);
-    
-    println!("\n▶ Indentation Mode:");
-    test_with_semantic_analysis(complex_indent, SyntaxMode::Indentation);
-}
-
-fn test_with_semantic_analysis(code: &str, mode: SyntaxMode) {
-    // Tokenization
-    let mut lexer = Lexer::new(code, mode);
-    let tokens = lexer.tokenize();
-    println!("  ✅ Tokenization: {} tokens", tokens.len());
-    
-    // Parsing
-    let mut parser = Parser::new(tokens, mode);
-    match parser.parse_program() {
-        Ok(ast) => {
-            println!("  ✅ Parsing successful");
-            
-            // Semantic Analysis
-            let mut analyzer = SemanticAnalyzer::new();
-            let ast_nodes = match ast {
-                ASTNode::Program(nodes) => nodes,
-                single => vec![single],
-            };
-            
-            match analyzer.analyze(&ast_nodes) {
-                Ok(()) => {
-                    println!("  ✅ Semantic analysis passed");
-                    let stats = analyzer.get_analysis_stats();
-                    println!("  📊 Stats: {} symbols, {} types, {} scopes",
-                            stats.total_symbols, stats.total_types, stats.total_scopes);
-                }
-                Err(errors) => {
-                    println!("  ⚠️ Semantic analysis: {} errors", errors.len());
-                    for (i, e) in errors.iter().take(3).enumerate() {
-                        println!("     Error {}: {}", i+1, e.message);
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            println!("  ❌ Parsing failed: {:?}", e);
-        }
-    }
-}
-
-// Fonction pour tester la robustesse avec des erreurs
-fn test_error_recovery() {
-    print_separator("TEST ERROR RECOVERY");
-    
-    let error_cases = vec![
-        ("Missing Value", 
-         "let x = ;",
-         "let x ="),
-        
-        ("Unclosed Block",
-         "fn test() { let x = 5",
-         "fn test():\n    let x = 5"),
-        
-        ("Invalid Type",
-         "let x: unknowntype = 5;",
-         "let x: unknowntype = 5"),
-    ];
-    
-    for (name, brace_code, indent_code) in error_cases {
-        println!("\n⚠️ Testing Error Case: {}", name);
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
-        println!("▶ Brace Mode:");
-        test_error_handling(brace_code, SyntaxMode::Braces);
-        
-        println!("\n▶ Indentation Mode:");
-        test_error_handling(indent_code, SyntaxMode::Indentation);
-    }
-}
-
-fn test_error_handling(code: &str, mode: SyntaxMode) {
-    let mut lexer = Lexer::new(code, mode);
-    let tokens = lexer.tokenize();
-    
-    let mut parser = Parser::new(tokens, mode);
-    match parser.parse_program() {
-        Ok(_) => {
-            println!("  ⚠️ Unexpectedly succeeded (should have failed)");
-        }
-        Err(e) => {
-            println!("  ✅ Error correctly detected: {:?}", e.error);
-        }
-    }
 }
 
 // Nouvelle fonction main avec menu de tests
@@ -259,7 +33,7 @@ fn main() {
     println!("║              By YmC                    ║");
     println!("╚════════════════════════════════════════╝");
 
-    let syntaxe_mode = SyntaxMode::Braces;
+    // // let syntaxe_mode = SyntaxMode::Braces;
     // let syntax_mode = SyntaxMode::Indentation;
 
 
@@ -274,27 +48,9 @@ fn main() {
 
 
     // Test comparaison des AST avec et sans point-virgules
-    println!("\n=== Test: Comparing ASTs with/without semicolons ===\n");
+    //println!("\n=== Test: Comparing ASTs with/without semicolons ===\n");
 
     // Test 1: Simple let statement
-
-
-    // let code_source = "let x: int = 5;\
-    // let y = 10.5;\
-    // fn fibonnaci(n:int) -> int{} \
-    // let mut a = 0;
-    // let mut b = 1;
-    // let mut i = 2;
-    // if n <= 1 {\
-    //     return n\
-    // }\
-    // if x < y {\
-    //     print(\"x is less than y\");\
-    // } else {\
-    //     print(\"x is not less than y\");\
-    // }\
-   // ";
-
 
     let code_source = r#"fn fibonacci(n: int) -> int:
     if n <= 1:
@@ -314,7 +70,7 @@ fn main() {
     //Exemple
     # Fibonacci en mode Braces
     let x: int = 5;
-    let y = 10.5;
+    let y = 10;
     if x < y {
         print("x is less than y");
     } else {
@@ -327,23 +83,84 @@ fn main() {
         return fibonnaci(n - 1) + fibonnaci(n - 2)
     }"#;
 
+    let code = r#"fn add(a, b):
+    return a + b
+
+let result = add(5, 7)
+println("Result:", result)"#;
 
 
-    let mut lexer = Lexer::new(complex_brace, syntaxe_mode);
+    let code_2 = r#"
+let nom = "momo"
+println("Hello from PunkLang!")
+println("Je suis:", nom)
+let a = 10
+let b = 10
+if a > b:
+    println("a is greater")
+elif b > a:
+    print("b is greater")
+else:
+    println("a is equal to b")
+    println("resultat:", a * b)
+    "#;
+
+    let code_3 = r#"
+    let nom = "momo";
+    println("Hello from PunkLang!");
+    println("Je suis:", nom);
+    let a = 10;
+    let b = 10 ;
+    if a > b {
+        println("a is greater");
+    }
+    elif b > a {
+        println("b is greater");
+    }
+    else {
+        println("a is equal to b");
+        println("resultat:", a * b);
+    }
+    "#;
+
+    let code_4 = r#"
+fn add(a, b) {
+    return a + b;
+}
+
+let result = add(5, 7);
+println("Result:", result);
+    "#;
+
+
+
+
+    print_separator("PunkLang Source Code Mode Braces");
+    println!("{}", code_2);
+
+
+    // --- 1. Lexical Analysis ---
+    print_separator("Lexical Analysis");
+    let mut lexer = Lexer::new(code_2,Indentation);
     let tokens = lexer.tokenize();
+    println!("Tokenization completed. Total tokens: {}", tokens.len());
+    // dbg!(&tokens);
 
     // Affichage des tokens pour vérification
     for (i, tok) in tokens.iter().enumerate() {
         println!("{}:{:?}", i, tok);
     }
     println!("\n");
+    // --- 2. Syntax Analysis ---
+    print_separator("Syntax Analysis and AST Generation");
 
-    let mut parser = Parser::new(tokens, syntaxe_mode);
+    let mut parser = Parser::new(tokens,Indentation);
 
     match parser.parse_program() {
         Ok(ast) => {
             println!("\n ✅ AST généré avec succès!");
             println!("{:#?}", ast);
+            // dbg!(ast);
 
             // Semantic analysis
             print_separator("Analyse sémantique");
@@ -388,11 +205,57 @@ fn main() {
                     }
                 }
             }
+            print_separator("Interpretation PunkLang");
+            // if analyser.is_successful() {
+            //     print_separator("Interpretation");
+            //     let mut interpreter = Interpreter::new();
+            //     match interpreter.interpret(&ast_nodes) {
+            //         Ok(final_value) => {
+            //             println!("✅ Interpretation successful!");
+            //             println!("🏁 Final Result: {:?}", final_value);
+            //         }
+            //         Err(e) => {
+            //             println!("❌ Runtime Error: {}", e);
+            //         }
+            //     }
+            // } else {
+            //     print_separator("Interpretation Skipped");
+            //     println!("Execution halted due to semantic errors.");
+            // }
+            let mut interpreter = Interpreter::new();
+            match interpreter.interpret(&ast_nodes) {
+                Ok(final_value) => {
+                    println!("");
+                    println!("✅ Interpretation successful!");
+                    println!("🏁 Final Result: {:?}", final_value);
+                }
+                Err(e) => {
+                    println!("❌ Runtime Error: {}", e);
+                }
+            }
+
+
+
         }
         Err(e) => {
             println!("❌ Erreur lors du parsing : {}", e);
         }
     }
+
+    // --- 4. Interpretation ---
+    // print_separator("Interpretation");
+    // let mut interpreter = Interpreter::new();
+    // match interpreter.interpret(&ast_nodes) {
+    //     Ok(final_value) => {
+    //         println!("✅ Interpretation successful!");
+    //         println!("🏁 Final Result: {:?}", final_value);
+    //     }
+    //     Err(e) => {
+    //         println!("❌ Runtime Error: {}", e);
+    //     }
+    // }
+
+    print_separator("Execution Finished");
 
 
     print_separator("TEST SUITE COMPLETED");
@@ -401,6 +264,36 @@ fn main() {
 
 
 }
+
+
+
+
+// fn run_file(filename:&str){
+//     use std::fs;
+//
+//     let code_source = fs::read_to_string(filename)
+//         .expect("Failed to read source file");
+//
+//     let mut lexer = Lexer::new(&code_source, SyntaxMode::Indentation);
+//     let tokens = lexer.tokenize();
+//
+//     let mut parser = Parser::new(tokens, SyntaxMode::Indentation);
+//     let ast = parser.parse_program().expect("Failed to parse program");
+//
+//     let mut analyser = SemanticAnalyzer::new();
+//     let ast_nodes = match ast {
+//         ASTNode::Program(nodes) => nodes,
+//         single => vec![single],
+//     };
+//     analyser.analyze(&ast_nodes).expect("Semantic analysis failed");
+//
+//     let mut evaluator = interpreter::evaluator::Evaluator::new();
+//     match evaluator.eval(&ast_nodes) {
+//         Ok(_) => println!("Program executed successfully."),
+//         Err(e) => eprintln!("Runtime error: {}", e),
+//     }
+//
+// }
 
 
 
