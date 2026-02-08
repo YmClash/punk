@@ -65,11 +65,11 @@ impl Parser {
         if self.check(&[TokenType::DEDENT]) {
             self.consume(TokenType::DEDENT)?;
         }
-        
+        log::debug!("Parsed indented block with {} statements", statements.len());
         Ok(statements)
     }
 
-    /// Parse un bloc en mode accolades (C-like)
+    /// Parse un bloc en mode accolades (C,Rust-like)
     fn parse_unified_braced_block(&mut self) -> Result<Vec<ASTNode>, ParserError> {
         log::debug!("Parsing unified braced block");
         
@@ -105,6 +105,8 @@ impl Parser {
         
         // Consommer l'accolade fermante
         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
+
+        log::debug!("Parsed braced block with {} statements", statements.len());
         
         Ok(statements)
     }
