@@ -124,24 +124,45 @@ else:
     "#;
 
     let code_4 = r#"
-fn add(a, b) {
+    fn add(a, b) {
     return a + b;
-}
+    }
+    fn multiply(a, b) {
+    return a * b;
+    }
+    let a = 5;
+    let b = 7;
 
-let result = add(5, 7);
-println("Result:", result);
+    let use_addition = false;
+    if use_addition {
+        println("Condition is true, using addition");
+        println("Resultat ", add(a, b));
+    } else {
+        println("Condition is false, using multiplication");
+        println("Resultat ", multiply(a, b));
+    }
+    "#;
+
+    let code_5 = r#"
+    let mut i = 0;
+    while i < 5 {
+        println("i:", i);
+        i = i + 1;
+    }
+    println("Loop finished, final i:", i);
+
     "#;
 
 
 
 
     print_separator("PunkLang Source Code Mode Braces");
-    println!("{}", code_2);
+    println!("{}", code_5);
 
 
     // --- 1. Lexical Analysis ---
     print_separator("Lexical Analysis");
-    let mut lexer = Lexer::new(code_2,Indentation);
+    let mut lexer = Lexer::new(code_5,Braces);
     let tokens = lexer.tokenize();
     println!("Tokenization completed. Total tokens: {}", tokens.len());
     // dbg!(&tokens);
@@ -154,7 +175,7 @@ println("Result:", result);
     // --- 2. Syntax Analysis ---
     print_separator("Syntax Analysis and AST Generation");
 
-    let mut parser = Parser::new(tokens,Indentation);
+    let mut parser = Parser::new(tokens,Braces);
 
     match parser.parse_program() {
         Ok(ast) => {

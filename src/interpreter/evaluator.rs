@@ -70,6 +70,7 @@ impl Evaluator {
 
     pub fn evaluate_expression(&mut self, expr: &Expression) -> Result<Value, RuntimeError> {
         match expr {
+            // Evaluer les littéraux
             Expression::Literal(literal) => match literal{
                 Literal::Integer { value } => Ok(Value::Int(value.clone())),
                 Literal::Float { value } => Ok(Value::Float(*value)),
@@ -81,11 +82,26 @@ impl Evaluator {
                 )),
 
             },
-            //
+
+            // Evaluer les identifiants
             Expression::Identifier(name) => {
                 self.env.borrow().get(name)
             },
 
+            // Evaluer les Assignements
+            Expression::Assignment(assignement ) => {
+                let value = self.evaluate_expression(&assignement.value)?;
+                if let Expression::Identifier(name) = &*assignement.target{
+                    self.env.borrow_mut().set(name,value.clone())?;
+                    Ok(value)
+                }else {
+                    Err(RuntimeError::Unimplemented(
+                        format!("Assignment to non-identifier target is not supported: {:?}", assignement.target)
+                    ))
+                }
+            },
+
+            // Evaluer les appels de fonctions
             Expression::FunctionCall(call) => {
                 let callee = self.evaluate_expression(&call.name)?;
 
