@@ -60,6 +60,13 @@ impl Parser{
                         }
                     }
                 },
+                // TokenType::NEWLINE => {
+                //     if self.syntax_mode == SyntaxMode::Indentation && nesting_level == 0 {
+                //         self.advance();
+                //         return Ok(());
+                //     }
+                // },
+
                 _ => {}
             }
 
