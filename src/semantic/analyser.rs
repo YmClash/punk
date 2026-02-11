@@ -32,7 +32,61 @@ pub struct SemanticAnalyzer {
 impl SemanticAnalyzer {
     /// Crée un nouvel analyseur sémantique
     pub fn new() -> Self {
-        let symbol_table = SymbolTable::new();
+        let mut symbol_table = SymbolTable::new();
+
+        // ici on vas injecter nos fonction builtin
+
+        let print_type_id = {
+            let type_system = symbol_table.type_system_mut();
+            // La fonction print est variadique et retourne `unit`
+            let return_type = type_system.type_unit;
+            type_system.create_function_type(
+                vec![], // Pas de paramètres fixes
+                return_type,
+                true    // C'est une fonction variadique
+            )
+        };
+
+        //builtin println
+
+        let println_type_id = {
+            let type_system = symbol_table.type_system_mut();
+            // La fonction println est variadique et retourne `unit`
+            let return_type = type_system.type_unit;
+            type_system.create_function_type(
+                vec![], // Pas de paramètres fixes
+                return_type,
+                true    // C'est une fonction variadique
+            )
+
+        };
+        let native_location = SourceLocation{
+            file: "native",
+            // file: "native",
+            line: 0,
+            column: 0,
+        };
+
+        // ramplacement de native_location.clone() par native_location a cause de la derive Copy
+        symbol_table.declare_symbol_with_type("print".to_string(),
+            SymbolKind::Function,
+            print_type_id,
+            native_location,
+            false
+        ).expect("Failed to declare native function 'print'");
+
+        symbol_table.declare_symbol_with_type("println".to_string(),
+            SymbolKind::Function,
+            println_type_id,
+            native_location,
+            false
+        ).expect("Failed to declare native function 'println'");
+
+
+
+        //********************************************
+
+
         let type_system = crate::semantic::types::type_system::TypeSystem::new();
         let type_checker = TypeChecker::from_components(symbol_table.clone(), type_system);
 
@@ -153,7 +207,8 @@ impl SemanticAnalyzer {
 
                 // Déclarer le symbole de la structure
                 let location = SourceLocation {
-                    file: "current_file.pk".to_string(), // À remplacer par le vrai nom de fichier
+                    // file: "current_file.pk".to_string(), // ramplacement par un &static str
+                    file: "current_file.rs",
                     line: 1, // À remplacer par la vraie position
                     column: 1,
                 };
@@ -180,7 +235,7 @@ impl SemanticAnalyzer {
                 );
 
                 let location = SourceLocation {
-                    file: "current_file.rs".to_string(),
+                    file: "current_file.rs",
                     line: 1,
                     column: 1,
                 };
@@ -198,7 +253,7 @@ impl SemanticAnalyzer {
 
             ASTNode::Declaration(Declaration::Trait(trait_decl)) => {
                 let location = SourceLocation {
-                    file: "current_file.rs".to_string(),
+                    file: "current_file.rs",
                     line: 1,
                     column: 1,
                 };
@@ -214,7 +269,7 @@ impl SemanticAnalyzer {
 
             ASTNode::Declaration(Declaration::Module(module_decl)) => {
                 let location = SourceLocation {
-                    file: "current_file.rs".to_string(),
+                    file: "current_file.rs",
                     line: 1,
                     column: 1,
                 };
@@ -263,7 +318,7 @@ impl SemanticAnalyzer {
         }
         
         let location = SourceLocation {
-            file: "current_file.rs".to_string(),
+            file: "current_file.rs",
             line: self.current_line,
             column: self.current_column,
         };
@@ -315,7 +370,7 @@ impl SemanticAnalyzer {
         }
         
         let location = SourceLocation {
-            file: "current_file.rs".to_string(),
+            file: "current_file.rs",
             line: self.current_line,
             column: self.current_column,
         };
@@ -334,8 +389,10 @@ impl SemanticAnalyzer {
             None => self.symbol_table.type_system().type_unit,
         };
 
+        let is_variadic = func_decl.is_variadic;
+
         let function_type_id = self.symbol_table.type_system_mut()
-            .create_function_type(param_type_ids, return_type_id);
+            .create_function_type(param_type_ids, return_type_id, is_variadic);
 
         // Déclarer le symbole de la fonction
         self.symbol_table.declare_symbol_with_type(
@@ -494,7 +551,7 @@ impl SemanticAnalyzer {
                 .convert_ast_type(&param.parameter_type);
 
             let location = SourceLocation {
-                file: "current_file.rs".to_string(),
+                file: "current_file.rs",
                 line: 1,
                 column: 1,
             };

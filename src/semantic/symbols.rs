@@ -18,9 +18,10 @@ pub struct ScopeId(pub u32);
 
 /// Position dans le code source
 #[allow(dead_code)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Copy)]
 pub struct SourceLocation{
-    pub file: String,
+    // pub file: String,       ramplacement par un &static str pour utiliser  la derive Copy
+    pub file: &'static str,
     pub line: usize,
     pub column: usize,
 }
@@ -220,7 +221,7 @@ mod tests {
     #[test]
     fn test_symbol_creation() {
         let location = SourceLocation {
-            file: "test.punk".to_string(),
+            file: "test.punk",
             line: 1,
             column: 1,
         };
