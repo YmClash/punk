@@ -5,7 +5,9 @@ pub mod parser;
 pub mod semantic;
 pub mod compiler;
 pub mod interpreter;
-mod utils;
+
+pub mod repl;
+pub mod utils;
 
 //mod ast;
 pub use crate::lexer::lex::SyntaxMode;
