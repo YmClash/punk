@@ -20,7 +20,7 @@ impl Parser {
         // Vérifier si c'est une implémentation de trait ou une implémentation simple
         // On regarde s'il y a un trait (format: impl Trait for Type)
         let mut trait_name = None;
-        let mut target_type_str;
+        let target_type_str;
         
         // Parse le premier identifiant
         let first_identifier = self.consume_identifier()?;
