@@ -9,7 +9,7 @@ pub enum RuntimeError {
     TypeError(String),
     UndefinedVariable(String),
     DivisionByZero,
-    IndexOutOfBounds,
+    IndexOutOfBounds(String),
     ArityMismatch { expected: usize, got: usize },
     NotCallable(String),
     InvalidAssignment,
@@ -29,7 +29,8 @@ impl Display for RuntimeError {
             RuntimeError::TypeError(msg) => write!(f, "Type Error: {}", msg),
             RuntimeError::UndefinedVariable(name) => write!(f, "Undefined variable: {}", name),
             RuntimeError::DivisionByZero => write!(f, "Division by zero"),
-            RuntimeError::IndexOutOfBounds => write!(f, "Index out of bounds"),
+            // RuntimeError::IndexOutOfBounds => write!(f, "Index out of bounds"),
+                RuntimeError::IndexOutOfBounds(msg) => write!(f, "Index out of bounds: {}", msg),
             RuntimeError::ArityMismatch { expected, got } => {
                 write!(f, "Expected {} arguments, got {}", expected, got)
             },
