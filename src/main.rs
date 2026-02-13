@@ -153,16 +153,36 @@ else:
 
     "#;
 
+    let code_6 = r#"
+    let my_array = [10, 20, 30];
+    for item in my_array{
+        println("Item:", item);
+    }
+    println("Loop finished, final array:", my_array);
+
+
+    "#;
+
+    let code_7 = r#"
+    let my_array = [10, 20, 30];
+    let first_item = my_array[0];
+    let second_item = my_array[1];
+    let third_item = my_array[2];
+    println("First item:", first_item);
+    println("Second item:", second_item);
+    println("Third item:", third_item);
+    "#;
+
 
 
 
     print_separator("PunkLang Source Code Mode Braces");
-    println!("{}", code_5);
+    println!("{}", code_7);
 
 
     // --- 1. Lexical Analysis ---
     print_separator("Lexical Analysis");
-    let mut lexer = Lexer::new(code_5,Braces);
+    let mut lexer = Lexer::new(code_7,Braces);
     let tokens = lexer.tokenize();
     println!("Tokenization completed. Total tokens: {}", tokens.len());
     // dbg!(&tokens);
