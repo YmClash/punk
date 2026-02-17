@@ -173,16 +173,22 @@ else:
     println("Third item:", third_item);
     "#;
 
+    let code_8 = r#"
+    let my_dict = {"name": "punk", "version": "1"};
+    let name = my_dict["name"];
+    println("Dictionary name:", name);
+    "#;
+
 
 
 
     print_separator("PunkLang Source Code Mode Braces");
-    println!("{}", code_7);
+    println!("{}", code_8);
 
 
     // --- 1. Lexical Analysis ---
     print_separator("Lexical Analysis");
-    let mut lexer = Lexer::new(code_7,Braces);
+    let mut lexer = Lexer::new(code_8,Braces);
     let tokens = lexer.tokenize();
     println!("Tokenization completed. Total tokens: {}", tokens.len());
     // dbg!(&tokens);
