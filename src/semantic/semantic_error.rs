@@ -53,6 +53,7 @@ pub enum TypeError {
     TypeNotFound(String),
     InvalidTypeParameter(String),
     InfiniteType(String),
+    NotIndexable(String),
 }
 
 
@@ -138,6 +139,9 @@ impl Display for SemanticErrorType{
             SemanticErrorType::TypeError(TypeError::InfiniteType(msg)) => {
                 write!(f, "Type Error: Infinite type - {}", msg)
             }
+            SemanticErrorType::TypeError(TypeError::NotIndexable(name)) => {
+                    write!(f, "Type Error: Type '{}' is not indexable", name)
+            }
 
         }
     }
@@ -189,6 +193,9 @@ impl SemanticError{
             }
             SemanticErrorType::TypeError(TypeError::InfiniteType(msg)) => {
                 format!("Infinite type - {}", msg)
+            }
+            SemanticErrorType::TypeError(TypeError::NotIndexable(name)) => {
+                format!("Type '{}' is not indexable", name)
             }
 
         };
