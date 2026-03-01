@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::{fmt,marker::Sized};
+use std::ptr::write;
 use crate::parser::ast::{Type as ASTType};
 use crate::semantic::semantic_error::{TypeError};
 use crate::semantic::symbols::SymbolId;
@@ -15,6 +16,7 @@ pub struct TypeId(pub u32);
 pub enum TypeKind {
     // Types primitifs
 
+
     Int,
     Float,
     Bool,
@@ -26,6 +28,7 @@ pub enum TypeKind {
     Tuple(Vec<Type>),
     Struct(StructTypeId),
     Enum(EnumTypeId),
+    Dictionary(Box<Type>,Box<Type>), // Type des clés et des valeurs
 
     // Types pour les fonctions
     Function(FunctionType),
@@ -111,6 +114,11 @@ impl Type {
                 t1.iter().zip(t2.iter()).all(|(a, b)| a.is_compatible_with(b))
             },
 
+            // Dictionnaire compatible si les types de clés et de valeurs sont compatibles
+            (TypeKind::Dictionary(k1,v1),TypeKind::Dictionary(k2,v2)) => {
+                k1.is_compatible_with(k2) && v1.is_compatible_with(v2)
+            },
+
             // Références
             (
                 TypeKind::Reference(i1, m1, _),
@@ -160,6 +168,8 @@ impl fmt::Display for Type {
 
             TypeKind::Struct(struct_id) => write!(f, "struct({})", struct_id.name),
             TypeKind::Enum(enum_id) => write!(f, "enum({})", enum_id.name),
+            TypeKind::Dictionary(key_type, value_type) =>write!(f, "dict<{}, {}>", key_type, value_type),
+
 
             TypeKind::Function(func_type) => {
                 write!(f, "fn(")?;
@@ -431,6 +441,14 @@ impl TypeSystem {
                     TypeKind::Tuple(unified_types)
                 ))
             },
+            (TypeKind::Dictionary(k1,v1),TypeKind::Dictionary(k2,v2)) => {
+                let unified_key = self.unify(k1, k2)?;
+                let unified_value = self.unify(v1, v2)?;
+                Ok(Type::new(
+                    TypeId(0),
+                    TypeKind::Dictionary(Box::new(unified_key), Box::new(unified_value))
+                ))
+            }
 
             // Cas par défaut: types incompatibles
             _ => Err(TypeError::TypeMismatch(format!(
@@ -467,6 +485,9 @@ impl TypeSystem {
             TypeKind::Array(elem, _) => self.occurs_check(id, elem),
             TypeKind::Tuple(types) => types.iter().any(|t| self.occurs_check(id, t)),
             TypeKind::Reference(inner, _, _) => self.occurs_check(id, inner),
+            TypeKind::Dictionary(key_type,value_type) => {
+                self.occurs_check(id, key_type) || self.occurs_check(id, value_type)
+            },
             TypeKind::Function(func_type) => {
                 func_type.params.iter().any(|t| self.occurs_check(id, t)) ||
                     self.occurs_check(id, &func_type.return_type)
@@ -548,6 +569,14 @@ impl TypeSystem {
         
         self.register_type(TypeKind::Tuple(element_types))
     }
+
+    pub fn create_dictionary_type(&mut self,key_type_id: TypeId,value_type_id:TypeId) -> TypeId{
+        if let (Some(key_type),Some(value_type)) = (self.get_type(key_type_id).cloned(),self.get_type(value_type_id).cloned()){
+            self.register_type(TypeKind::Dictionary(Box::new(key_type),Box::new(value_type)))
+        }else {
+            self.type_error
+        }
+    }
     
     /// Crée un type fonction
     pub fn create_function_type(&mut self, param_type_ids: Vec<TypeId>, return_type_id: TypeId,is_variadic:bool) -> TypeId {
@@ -603,6 +632,7 @@ impl TypeSystem {
     /// Convertit un type AST en type du système  
     pub fn from_ast_type(&mut self, ast_type: &ASTType) -> TypeId {
         match ast_type {
+
             ASTType::Int => self.type_int,
             ASTType::Float => self.type_float,
             ASTType::Bool => self.type_bool,
@@ -617,7 +647,9 @@ impl TypeSystem {
             ASTType::Tuple(types) => {
                 let type_ids: Vec<TypeId> = types.iter().map(|t| self.from_ast_type(t)).collect();
                 self.create_tuple_type(type_ids)
-            },
+            }
+
+
             // ASTType::Function n'existe pas dans l'AST actuel
             // Pour gérer les types de fonction, il faudrait les ajouter à l'AST
             ASTType::Named(name) => {
@@ -772,6 +804,7 @@ mod tests {
         }
     }
 
+
     // Tests pour TypeSystem
     #[test]
     fn test_type_system_unification() {
@@ -830,10 +863,12 @@ mod tests {
         let mut system = TypeSystem::new();
 
         // Créer un type fonction (int, float) -> bool
-        let func_type_id = system.create_function_type(
-            vec![system.type_int, system.type_float],
-            system.type_bool
-        );
+        // let func_type_id = system.create_function_type(
+        //     vec![system.type_int, system.type_float],
+        //     system.type_bool
+        // );
+        let func_type_id = system.create_function_type(vec![system.type_int, system.type_float, system.type_bool], TypeId(0), false);
+        
 
         // Vérifier le type créé
         let func_type = system.get_type(func_type_id).unwrap();

@@ -8,6 +8,7 @@ use super::builtins;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use num_traits::ToPrimitive;
 use crate::interpreter::environment::Environment;
 // use crate::interpreter::value::Value::Callable;
 use crate::interpreter::value::{Callable, FunctionValue, Value};
@@ -101,6 +102,13 @@ impl Evaluator {
                 }
             },
 
+            Expression::Array(array_expr) => {
+                let mut elements = Vec::new();
+                for element_expr in &array_expr.elements{
+                    elements.push(self.evaluate_expression(element_expr)?);
+                }
+                Ok(Value::Array(Rc::new(RefCell::new(elements))))
+            }
             // Evaluer les appels de fonctions
             Expression::FunctionCall(call) => {
                 let callee = self.evaluate_expression(&call.name)?;
@@ -155,7 +163,6 @@ impl Evaluator {
 
                 }
             },
-
             Expression::BinaryOperation(bin_op) => {
                 let left = self.evaluate_expression(&bin_op.left)?;
                 let right = self.evaluate_expression(&bin_op.right)?;
@@ -194,34 +201,54 @@ impl Evaluator {
             //     self.eval_unary_op(&unop.operator, &operand)
             // },
 
-            // Expression::Assignment(assign) => {
-            //     let value = self.evaluate_expression(&assign.value)?;
-            //
-            //     if let Expression::Identifier(name) = &*assign.target {
-            //         self.env.borrow_mut().set_or_define(name.clone(), value.clone());
-            //         Ok(value)
-            //     } else {
-            //         Err(RuntimeError::InvalidAssignment)
-            //     }
-            // },
 
-            // Expression::FunctionCall(call) => {
-            //     self.eval_function_call(call)
-            // },
+            Expression::IndexAccess(access) => {
+                // let array = self.evaluate_expression(&access.array)?;
+                let collection_val = self.evaluate_expression(&access.array)?;
+                let index_val = self.evaluate_expression(&access.index)?;
+                // self.evaluate_index_access(&array, &index)
+                self.evaluate_index_access(&collection_val, &index_val)
+            },
 
-            // Expression::Array(array_expr) => {
-            //     let mut elements = Vec::new();
-            //     for elem in &array_expr.elements {
-            //         elements.push(self.eval_expression(elem)?);
-            //     }
-            //     Ok(Value::Array(Rc::new(RefCell::new(elements))))
-            // },
+            Expression::DictAccess(access) => {
+                let dict_val = self.evaluate_expression(&access.dict)?;
+                let key_val = self.evaluate_expression(&access.key)?;
 
-            // Expression::IndexAccess(access) => {
-            //     let array = self.evaluate_expression(&access.array)?;
-            //     let index = self.evaluate_expression(&access.index)?;
-            //     self.eval_index_access(&array, &index)
-            // },
+                match (dict_val, key_val) {
+                    (Value::Dictionary(dict_rc), Value::String(key)) => {
+                        let dict = dict_rc.borrow();
+                        match dict.get(&key) {
+                            Some(value) => Ok(value.clone()),
+                            None => Ok(Value::Null), // Return Null if key not found
+                        }
+                    },
+                    (Value::Dictionary(_), other) => {
+                        Err(RuntimeError::TypeError(
+                            format!("Dictionary key must be a string, but got {}.", other.type_name())
+                        ))
+                    },
+                    (other, _) => {
+                        Err(RuntimeError::TypeError(
+                            format!("Cannot access dictionary on a value of type '{}'.", other.type_name())
+                        ))
+                    }
+                }
+            },
+            Expression::DictLiteral(dict_literal) => {
+                let mut map = HashMap::new();
+                for entry in &dict_literal.entries{
+                    let key_val = self.evaluate_expression(&entry.key)?;
+                    let key_str = match key_val {
+                        Value::String(s) => s,
+                        _ => return Err(RuntimeError::TypeError(
+                            format!("Dictionary keys must be strings, got {}", key_val.type_name())
+                        )),
+                    };
+                    let value = self.evaluate_expression(&entry.value)?;
+                    map.insert(key_str, value);
+                }
+                Ok(Value::Dictionary(Rc::new(RefCell::new(map))))
+            }
 
             // Expression::LambdaExpression() => {
             //     Ok(Value::Closure(ClosureValue {
@@ -591,37 +618,54 @@ impl Evaluator {
 //         }
 //     }
 //
-//     fn eval_index_access(&self, array: &Value, index: &Value) -> Result<Value, RuntimeError> {
-//         match (array, index) {
-//             (Value::Array(arr), Value::Int(i)) => {
-//                 let borrowed = arr.borrow();
-//                 let idx = if *i < 0 {
-//                     (borrowed.len() as i64 + i) as usize
-//                 } else {
-//                     *i as usize
-//                 };
-//
-//                 borrowed.get(idx)
-//                     .cloned()
-//                     .ok_or(RuntimeError::IndexOutOfBounds)
-//             },
-//
-//             (Value::String(s), Value::Int(i)) => {
-//                 let idx = if *i < 0 {
-//                     (s.len() as i64 + i) as usize
-//                 } else {
-//                     *i as usize
-//                 };
-//
-//                 s.chars()
-//                     .nth(idx)
-//                     .map(Value::Char)
-//                     .ok_or(RuntimeError::IndexOutOfBounds)
-//             },
-//
-//             _ => Err(RuntimeError::TypeError(
-//                 format!("Cannot index {} with {}", array.type_name(), index.type_name())
-//             )),
-//         }
-//     }
+
+
+        // Evaluer l'accès aux éléments d'un tableau
+    fn evaluate_index_access(&self, collection_val: &Value, index_val: &Value) -> Result<Value, RuntimeError> {
+        match (collection_val, index_val) {
+            (Value::Array(elements_rc), Value::Int(index_bigint)) => {
+                use num_traits::ToPrimitive;
+                let index = match index_bigint.to_usize() {
+                    Some(i) => i,
+                    None => return Err(RuntimeError::IndexOutOfBounds(
+                        format!("Index {} is too large", index_bigint)
+                    ))
+                };
+                let elements = elements_rc.borrow();
+                if index < elements.len() {
+                    Ok(elements[index].clone())
+                }else {
+                    Err(RuntimeError::IndexOutOfBounds(
+                        format!("Index {} out of bounds for array of length {}", index, elements.len())
+                    ))
+                }
+            },
+            (Value::Dictionary(dict_rc), Value::String(key)) => {
+                let dict = dict_rc.borrow();
+                match dict.get(key) {
+                    Some(value) => Ok(value.clone()),
+                    None => Ok(Value::Null), // Return Null if key not found
+                }
+            },
+
+            (Value::Array(_), other) => {
+                Err(RuntimeError::IndexOutOfBounds(
+                    format!("Array index must be an integer, got {}", other.type_name())
+                ))
+            },
+            (Value::Dictionary(_), other) => {
+              Err(RuntimeError::TypeError(
+                    format!("Dictionary index must be a string, got {}", other.type_name())
+              ))
+            },
+            (other,_) => {
+                Err(RuntimeError::TypeError(
+                    format!("Cannot index a value of type {} with {}", other.type_name(), index_val.type_name())
+                ))
+            }
+
+        }
+    }
+
+
 }
