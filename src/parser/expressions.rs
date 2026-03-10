@@ -1,4 +1,8 @@
-use crate::parser::ast::{ ArrayExpression, ArraySlice, Assignment, ASTNode, BinaryOperation, CompoundAssignment, ComprehensionFor, DestructuringAssignment, DictAccess, Expression, FunctionCall, IndexAccess, LambdaExpression, ListComprehension, Literal, MemberAccess, MethodCall, Operator, Parameter, Pattern, RangeExpression, Type, UnaryOperation, UnaryOperator};
+use crate::parser::ast::{ ArrayExpression, ArraySlice, Assignment, ASTNode, BinaryOperation,
+                          CompoundAssignment, ComprehensionFor, DestructuringAssignment, DictAccess,
+                          Expression, FunctionCall, IndexAccess, LambdaExpression, ListComprehension,
+                          Literal, MemberAccess, MethodCall, Operator, Parameter, Pattern,
+                          RangeExpression, Type, UnaryOperation, UnaryOperator, DictLiteral,DictEntry};
 use crate::parser::parser::Parser;
 use crate::parser::parser_error::ParserError;
 use crate::parser::parser_error::ParserErrorType::{ExpectedArrowOrBlock, ExpectedCloseParenthesis, ExpectedCommaOrClosingParenthesis, UnexpectedEndOfInput, UnexpectedToken};
@@ -499,7 +503,8 @@ impl Parser {
             // Parse la valeur
             let value = self.parse_expression(0)?;
             
-            entries.push((key, value));
+            // entries.push((key, value));
+            entries.push(DictEntry{key:Box::new(key),value:Box::new(value)});
             
             if !self.match_token(&[TokenType::DELIMITER(Delimiters::COMMA)]) {
                 break;
@@ -507,14 +512,8 @@ impl Parser {
         }
         
         self.consume(TokenType::DELIMITER(Delimiters::RCURBRACE))?;
-        
-        // Retourner une expression Dict  
-        // TODO: Implémenter le type Dictionary dans l'AST
-        // Pour l'instant, on retourne une erreur
-        Err(ParserError::new(
-            UnexpectedToken,
-            self.current_position()
-        ))
+
+        Ok(Expression::DictLiteral(DictLiteral{entries}))
     }
     
     /// Vérifie si c'est une list comprehension

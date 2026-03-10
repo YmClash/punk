@@ -166,33 +166,33 @@ impl Evaluator {
             Expression::BinaryOperation(bin_op) => {
                 let left = self.evaluate_expression(&bin_op.left)?;
                 let right = self.evaluate_expression(&bin_op.right)?;
-                // self.eval_binary_op(&left, &bin_op.operator, &right)
-                match (&left, &right) {
-                    (Value::Int(l), Value::Int(r)) => match bin_op.operator {
-                        Operator::Addition => Ok(Value::Int(l + r)),
-                        Operator::Subtraction => Ok(Value::Int(l - r)),
-                        Operator::Multiplication => Ok(Value::Int(l * r)),
-                        Operator::Division => Ok(Value::Int(l / r)), // Note: BigInt division truncates.
-                        Operator::GreaterThan => Ok(Value::Bool(l > r)),
-                        Operator::LessThan => Ok(Value::Bool(l < r)),
-                        Operator::EqualEqual => Ok(Value::Bool(*l == *r)),
-                        Operator::NotEqual => Ok(Value::Bool(*l != *r)),
-                        _ => Err(RuntimeError::UnsupportedOperator(format!("{:?} for integers", bin_op.operator))),
-                    },
-                    (Value::Float(l), Value::Float(r)) => match bin_op.operator {
-                        Operator::Addition => Ok(Value::Float(l + r)),
-                        Operator::Subtraction => Ok(Value::Float(l - r)),
-                        Operator::Multiplication => Ok(Value::Float(l * r)),
-                        Operator::Division => Ok(Value::Float(l / r)),
-                        Operator::GreaterThan => Ok(Value::Bool(l > r)),
-                        Operator::LessThan => Ok(Value::Bool(l < r)),
-                        Operator::EqualEqual => Ok(Value::Bool(*l == *r)),
-                        Operator::NotEqual => Ok(Value::Bool(*l != *r)),
-                        _ => Err(RuntimeError::UnsupportedOperator(format!("{:?} for floats", bin_op.operator))),
-                    },
-                    // _ => Err(RuntimeError::UnsupportedOperator(format!({:?} for float)))
-                    _ => Err(RuntimeError::UnsupportedOperator(format!("Cannot apply operator {:?} to {:?} and {:?}", bin_op.operator, left, right))),
-                }
+                self.eval_binary_op(&left, &bin_op.operator, &right)
+                // match (&left, &right) {
+                //     (Value::Int(l), Value::Int(r)) => match bin_op.operator {
+                //         Operator::Addition => Ok(Value::Int(l + r)),
+                //         Operator::Subtraction => Ok(Value::Int(l - r)),
+                //         Operator::Multiplication => Ok(Value::Int(l * r)),
+                //         Operator::Division => Ok(Value::Int(l / r)), // Note: BigInt division truncates.
+                //         Operator::GreaterThan => Ok(Value::Bool(l > r)),
+                //         Operator::LessThan => Ok(Value::Bool(l < r)),
+                //         Operator::EqualEqual => Ok(Value::Bool(*l == *r)),
+                //         Operator::NotEqual => Ok(Value::Bool(*l != *r)),
+                //         _ => Err(RuntimeError::UnsupportedOperator(format!("{:?} for integers", bin_op.operator))),
+                //     },
+                //     (Value::Float(l), Value::Float(r)) => match bin_op.operator {
+                //         Operator::Addition => Ok(Value::Float(l + r)),
+                //         Operator::Subtraction => Ok(Value::Float(l - r)),
+                //         Operator::Multiplication => Ok(Value::Float(l * r)),
+                //         Operator::Division => Ok(Value::Float(l / r)),
+                //         Operator::GreaterThan => Ok(Value::Bool(l > r)),
+                //         Operator::LessThan => Ok(Value::Bool(l < r)),
+                //         Operator::EqualEqual => Ok(Value::Bool(*l == *r)),
+                //         Operator::NotEqual => Ok(Value::Bool(*l != *r)),
+                //         _ => Err(RuntimeError::UnsupportedOperator(format!("{:?} for floats", bin_op.operator))),
+                //     },
+                //     // _ => Err(RuntimeError::UnsupportedOperator(format!({:?} for float)))
+                //     _ => Err(RuntimeError::UnsupportedOperator(format!("Cannot apply operator {:?} to {:?} and {:?}", bin_op.operator, left, right))),
+                // }
 
             },
 

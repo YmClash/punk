@@ -11,6 +11,8 @@ use crate::parser::ast::{ASTNode, Expression};
 
 #[derive(Clone, Debug)]
 pub enum Value{
+
+
     // Primitive types
     Int(BigInt),
     Float(f64),
@@ -22,6 +24,7 @@ pub enum Value{
     Array(Rc<RefCell<Vec<Value>>>),
     Tuple(Vec<Value>),
     Struct(String,HashMap<String,Value>),
+    Dictionary(Rc<RefCell<HashMap<String,Value>>>),
 
     //fonctions
     Function(FunctionValue),
@@ -70,6 +73,7 @@ impl Value{
             Value::Array(_) => "array",
             Value::Tuple(_) => "tuple",
             Value::Struct(name, _) => name,
+            Value::Dictionary(_) => "dictionary",
             Value::Function(f) => &f.name,
             Value::BuiltinFunction(_) => "builtin_function",
             Value::Closure(_) => "closure",
@@ -89,6 +93,8 @@ impl Value{
             Value::String(s) => !s.is_empty(),
             Value::Array(arr) => !arr.borrow().is_empty(),
             Value::Tuple(tup) => !tup.is_empty(),
+            // Value::Struct(_, fields) => !fields.is_empty(),
+            Value::Dictionary(dict) => !dict.borrow().is_empty(),
             Value::Null => false,
             Value::Callable(_) => true,
             _ => true,
@@ -116,6 +122,17 @@ impl Display for Value {
                 }
                 write!(f, "]")
             },
+            Value::Dictionary(dict) => {
+                write!(f, "{{")?;
+                let borrowed = dict.borrow();
+                for (i,(key,val)) in borrowed.iter().enumerate(){
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}: {}", key, val)?;
+                }
+                write!(f, "}}")
+            }
             Value::Function(func) => write!(f, "<function {}>", func.name),
             _ => write!(f, "<{}>", self.type_name()),
         }

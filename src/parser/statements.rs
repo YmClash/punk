@@ -11,13 +11,15 @@ impl Parser{
         log::debug!("Début du parsing de l'instruction if");
         self.consume(TokenType::KEYWORD(Keywords::IF))?;
         let condition = self.parse_expression(0)?;
-        let then_block = self.parse_block()?;
+        // let then_block = self.parse_block()?;
+        let then_block = self.parse_unified_block()?;
 
         let mut elif_branches = Vec::new();
         while self.check(&[TokenType::KEYWORD(Keywords::ELIF)]) {
             self.consume(TokenType::KEYWORD(Keywords::ELIF))?;
             let elif_condition = self.parse_expression(0)?;
-            let elif_then_block = self.parse_block()?;
+            // let elif_then_block = self.parse_block()?;
+            let elif_then_block = self.parse_unified_block()?;
             elif_branches.push(ElifStatement {
                 condition: elif_condition,
                 block: elif_then_block,

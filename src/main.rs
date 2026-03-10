@@ -179,16 +179,56 @@ else:
     println("Dictionary name:", name);
     "#;
 
+    let code_9 = r#"
+    fn add(a:int,b:int) ->int {
+        return a + b;
+    }
+    println("Hello, World!");
+    let a = 75;
+    let b = 75;
+    let mut c = 0;
+    let d = [1,2,3,4,5];
+    if a > b {
+        println("a is greater than b");
+    } elif b > a {
+        println("b is greater than or equal to a");
+    }else{
+        println("a is equal to b");
+    }
+    println("resultat:", add(a,b));
+
+    while c < 5 {
+        println("c = ",c);
+        c = c + 1;
+    }
+
+    for i in d {
+        println("item = ",i);
+    }
+    let my_array = [10, 20, 30];
+    let first_item = my_array[0];
+    let second_item = my_array[1];
+    let third_item = my_array[2];
+    println("First item:", first_item);
+    println("Second item:", second_item);
+    println("Third item:", third_item);
+    println("Dictionary");
+    let my_dict = {"name": "punk", "version":"1" };
+    let name = my_dict["name"];
+    println("Dictionary name:", name);
+    println("FIN")
+    "#;
+
 
 
 
     print_separator("PunkLang Source Code Mode Braces");
-    println!("{}", code_8);
+    println!("{}", code_9);
 
 
     // --- 1. Lexical Analysis ---
     print_separator("Lexical Analysis");
-    let mut lexer = Lexer::new(code_8,Braces);
+    let mut lexer = Lexer::new(code_9,Braces);
     let tokens = lexer.tokenize();
     println!("Tokenization completed. Total tokens: {}", tokens.len());
     // dbg!(&tokens);
